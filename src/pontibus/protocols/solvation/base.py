@@ -10,7 +10,100 @@ def interchange_system_creation(...):
         )
         raise ValueError(errmsg)
 
+    ## TODO fix this
 
+        # Assign partial charges to smcs, doing the same thing as in _get_modeller
+        self._assign_partial_charges(
+            partial_charge_settings=settings['charge_settings'],
+            smc_components=smc_components,
+        )
+
+        component_resids = {component: np.array([0]) for component in smc_components}
+
+        use_constrained = settings['forcefield_settings'].constraints == "hbonds"
+
+        if use_constrained:
+            self.logger.info(f"Using constrained forcefield since {settings['forcefield_settings'].constraints=}")
+            force_field = ForceField(f"{settings['forcefield_settings'].small_molecule_forcefield}.offxml")
+        else:
+            self.logger.info(f"Using unconstrained forcefield since {settings['forcefield_settings'].constraints=}")
+            force_field = ForceField(
+                '_unconstrained-'.join([val for val in settings['forcefield_settings'].small_molecule_forcefield.split("-")]) + ".offxml"
+            )
+
+        force_field['vdW'].cutoff = settings['forcefield_settings'].nonbonded_cutoff
+        force_field['Electrostatics'].cutoff = settings['forcefield_settings'].nonbonded_cutoff
+
+        if solvent_component is None:
+            topology = Topology.from_molecules(*smc_components.values())
+        else:
+            from openff.interchange.components._packmol import solvate_topology, UNIT_CUBE
+
+            # might want to split out depending on if pack_box or solvate_topology is used
+            # TODO: Actually use the right settings here
+            # TODO: Either update solvation_topology to actually use non-water solvent
+            #       or use pack_box to add the solvent or make a new function altogether
+
+            # lost solvent settings include
+            #  * positive_ion
+            #  * negative_ion
+            #  * neutralize
+            # lost solvation settings include
+            #  * solvent_model
+            assert solvent_component.positive_ion == "Na+"
+            assert solvent_component.negative_ion == "Cl-"
+
+            assert len(smc_components) == 1
+
+            topology = solvate_topology(
+                topology=[*smc_components.values()][0].to_topology(),
+                nacl_conc = solvent_component.ion_concentration,
+                padding = settings['solvation_settings'].solvent_padding,
+                box_shape=UNIT_CUBE,
+            )
+
+            water = OFFMolecule.from_smiles("O")
+            na = OFFMolecule.from_smiles("[Na+]")
+            cl = OFFMolecule.from_smiles("[Cl-]")
+
+            for molecule_index, molecule in enumerate(topology.molecules):
+                for atom in molecule.atoms:
+                    atom.metadata['residue_number'] = molecule_index
+
+                if molecule.n_atoms == [*smc_components.values()][0].n_atoms:
+                    # this is probably UNK, but just leave it be I guess
+                    continue
+                # molecules don't know their residue metadata, so need to set on each atom
+                # https://github.com/openforcefield/openff-toolkit/issues/1554
+                elif molecule.is_isomorphic_with(water):
+                    for atom in molecule.atoms:
+                        atom.metadata['residue_name'] = "WAT"
+                elif molecule.is_isomorphic_with(na):
+                    for atom in molecule.atoms:
+                        atom.metadata['residue_name'] = "Na"
+                elif molecule.is_isomorphic_with(cl):
+                    for atom in molecule.atoms:
+                        atom.metadata['residue_name'] = "Cl"
+                else:
+                    raise Exception("Found unexpected molecule in solvated topology")
+
+            component_resids[solvent_component] = np.arange(1, topology.n_molecules)
+
+
+        with without_oechem_backend():
+            interchange = force_field.create_interchange(
+                topology=topology,
+                charge_from_molecules=[*smc_components.values()],
+            )
+
+        return (
+            interchange.to_openmm_topology(),
+            interchange.to_openmm_system(
+                hydrogen_mass=settings['forcefield_settings'].hydrogen_mass,
+            ),
+            interchange.positions.to_openmm(),
+            component_resids,
+        )
 
 
 class BaseAFEUnit(BaseAbsoluteUnit):
