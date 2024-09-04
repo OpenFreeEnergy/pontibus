@@ -111,10 +111,38 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     The shape of the periodic box to create.
     """
 
-    smc_key: Optional[str] = None
+    solvation_mode: Literatl['water', 'nonwater']
+    """
+    How solvation will happen.
+
+    
+    ``water``: Interchange's ``solvate_topology`` will be used. The main
+    use case is adding water and ions around a solute. You should use this
+    option if you are relying on library charges, e.g. if you are directly
+    specifying a water offxml.
+
+    ``nonwater``: Interchange's ``solvate_topology_nonwater`` will be used.
+    The main use case is adding non-water molecules around a solute (although
+    we note that a water molecule could be passed too!). Here, a
+    ``SmallMoleculeComponent`` representing the solvent is expected to be
+    passed through in the ``ChemicalSystem`` with the index key set by
+    ``small_molecule_key``.
+
+    Note
+    ----
+    ``small_molecule_key`` will be ignored if the solvation mode is set to ``water``.
+    """
+
+    small_molecule_key: Optional[str] = None
     """
     A reserved key in the ChemicalSystem to assign a SmallMoleculeComponent
     as the solvent.
+
+    Note
+    ----
+    * This should only be set if ``solvation_mode`` is set to ``nonwater``.
+      If it is set to ``water``, the SmallMoleculeComponent passed through
+      will be ignored.
     """
 
 

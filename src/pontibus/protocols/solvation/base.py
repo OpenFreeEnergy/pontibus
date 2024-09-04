@@ -5,6 +5,7 @@ from openfe.protocols.openmm_utils import (
 )
 from openff.toolkit import Molecule as OFFMolecule
 from openff.interchange.components._packmol import (
+    solvate_topology,
     solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE
@@ -111,14 +112,18 @@ def interchange_packmol_creation(
         )
         raise ValueError(errmsg)
 
-    # Adding counterion is disabled for now as solvate_topology does not
-    # allow for Molecules to be explicitly passed through
+    # We need to pick the right solvation branch and check if
+    # we set things in the right way
     if solvent_component is not None:
-        if (solvent_component.neutralize or
-            solvent_component.ion_concentration > 0 * offunit.molar):
-            errmsg = ("Adding counterions using packmol solvation "
-                      "is currently not supported")
-            raise ValueError(errmsg)
+        if solvation_settings.solvation_mode == 'water':
+            if solvent_component.smi != 'O':
+                ValueError("hydrate mode only works with water")
+        else:
+            if (solvent_component.neutralize or
+                solvent_component.ion_concentration > 0 * offunit.molar):
+                errmsg = ("Adding counterions using packmol solvation "
+                          "is currently not supported")
+                raise ValueError(errmsg)
 
     # 2. Get the force field object
     # force_fields is a list so we unpack it
@@ -188,6 +193,8 @@ def interchange_packmol_creation(
             'cube': UNIT_CUBE,
             'dodecahedron': RHOMBIC_DODECAHEDRON,
         }[solvation_settings.box_shape]
+
+        if solvent_component.smi == 'O' and solvation_settings.
 
         # Create the topology
         topology = solvate_topology_nonwater(
