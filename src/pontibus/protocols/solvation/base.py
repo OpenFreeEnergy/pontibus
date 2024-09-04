@@ -1,9 +1,18 @@
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.utils import without_oechem_backend
+from openfe.protocols.openmm_utils import (
+    charge_generation,
+)
+from openff.toolkit import Molecule as OFFMolecule
+from openff.interchange.components._packmol import (
+    solvate_topology_nonwater,
+    RHOMBIC_DODECAHEDRON,
+    UNIT_CUBE
+)
 
 
 def _set_offmol_resname(
-    offmol: OFFMol,
+    offmol: OFFMolecule,
     resname: str,
 ) -> None:
     """
@@ -24,7 +33,7 @@ def _set_offmol_resname(
         a.metadata['residue_name'] = resname
 
 
-def _get_offmol_resname(offmol: OFFMol) -> Optional[str]:
+def _get_offmol_resname(offmol: OFFMolecule) -> Optional[str]:
     """
     Helper method to get an offmol's residue name and make sure it is
     consistent across all atoms in the Molecule.
@@ -57,22 +66,59 @@ def _get_offmol_resname(offmol: OFFMol) -> Optional[str]:
     return resname
 
 
-def interchange_system_creation(
+def interchange_packmol_creation(
     ffsettings: InterchangeFFSettings,
     solvation_settings: PackmolSolvationSettings,
+    smc_components: dict[SmallMoleculeComponent, OFFMolecule],
     protein_component: Optional[ProteinComponent],
     solvent_component: Optional[SolventComponent],
-    solvent_smcs: Optional[dict[SmallMoleculeComponent, OFFMolecule]],
-    smc_components: dict[SmallMoleculeComponent, OFFMolecule],
-) -> tuple[app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]]:
+    solvent_offmol: Optional[OFFMolecule],
+) -> tuple[Interchange, dict[str, npt.NDArray]]:
+    """
+    Create an Interchange object for a given system, solvating with
+    packmol where necessary.
+
+    Parameters
+    ----------
+    ffsettings : InterchangeFFSettings
+      Settings defining how the force field is applied.
+    solvation_settings : PackmolSolvationSettings
+      Settings defining how the system will be solvated.
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
+      Solute SmallMoleculeComponents.
+    protein_component : Optional[ProteinComponent]
+      Protein component of the system, if any.
+    solvent_component : Optional[SolventComponent]
+      Solvent component of the system, if any.
+    solvent_offmol : Optional[openff.toolkit.Molecule]
+      OpenFF Molecule defining the solvent, if necessary
+
+    Returns
+    -------
+    Interchange : openff.interchange.Interchange
+      Interchange object for the created system.
+    comp_resids : dict[str, npt.NDArray]
+      A dictionary defining the residue indices matching
+      various components in the system.
+    """
 
     # 1. Component validations
+    # Adding protein components is not currently supported
     if protein_component is not None:
         errmsg = (
             "Creation of systems solely with Interchange "
             "using ProteinComponents is not currently supported"
         )
         raise ValueError(errmsg)
+
+    # Adding counterion is disabled for now as solvate_topology does not
+    # allow for Molecules to be explicitly passed through
+    if solvent_component is not None:
+        if (solvent_component.neutralize or
+            solvent_component.ion_concentration > 0 * offunit.molar):
+            errmsg = ("Adding counterions using packmol solvation "
+                      "is currently not supported")
+            raise ValueError(errmsg)
 
     # 2. Get the force field object
     # force_fields is a list so we unpack it
@@ -88,8 +134,11 @@ def interchange_system_creation(
 
     # Note: comp_resnames is dict[str, tuple[Component, list]] where the final list
     # is to append residues later on
-    # TODO: can we rely on offmol equality here instead?
+    # TODO: we should be able to rely on offmol equality in the same way that
+    # intecharge does
     comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
+
+    # If we have solvent, we add in a SOL entry
     if solvent_component is not None:
         comp_resnames['SOL'] = (solvent_component, [])
 
@@ -114,89 +163,117 @@ def interchange_system_creation(
         _set_offmol_resname(offmol, off_resname)
         comp_resnames[off_resname] = [comp, []]
 
-    # 4. No solvent case
-    # If we don't have any solvent, just go ahead and create a topology from
-    # the SMCS
-    if solvent_component is None:
-        topology = Topology.from_molecules(*smc_components.values())
-    else:
-        # TODO: add back solvate_topology code once fixed
-        if (solvent_component.neutralize
-            or solvent_component.ion_concentration > 0 * unit.molar):
-            ... pack_box things
+    # 4. Create an OFF Topology from the smcs
+    # Note: this is the base no solvent case!
+    topology = Topology.from_molecules(*smc_components.values())
+    # Also create a list of charged molecules for later use
+    charged_mols = [*smc_components.values()]
 
+    # 5. Solvent case
+    if solvent_component is not None:
 
-        if solvent_component.smiles == 'O'
-        from openff.interchange.components._packmol import solvate_topology, UNIT_CUBE
+        if solvent_offmol is None:
+            errmsg = ("Solvent component is expected but no Molecule "
+                      "representing it was passed")
+            raise ValueError(errmsg)
 
-            # might want to split out depending on if pack_box or solvate_topology is used
-            # TODO: Actually use the right settings here
-            # TODO: Either update solvate_topology to actually use non-water solvent
-            #       or use pack_box to add the solvent or make a new function altogether
+        # Append to charged molcule to charged_mols
+        charged_mols.append(solvent_offmol)
 
-            # lost solvent settings include
-            #  * positive_ion
-            #  * negative_ion
-            #  * neutralize
-            # lost solvation settings include
-            #  * solvent_model
-            assert solvent_component.positive_ion == "Na+"
-            assert solvent_component.negative_ion == "Cl-"
+        # We override the solvent residue name to SOL
+        _set_offmol_resname(solvent_offmol, 'SOL')
 
-            assert len(smc_components) == 1
+        # Pick up the user selected box shape
+        box_shape = {
+            'cubic': UNIT_CUBE,
+            'dodecahedron': RHOMBIC_DODECAHEDRON,
+        }[solvation_settings.box_shape]
 
-            topology = solvate_topology(
-                topology=[*smc_components.values()][0].to_topology(),
-                nacl_conc = solvent_component.ion_concentration,
-                padding = settings['solvation_settings'].solvent_padding,
-                box_shape=UNIT_CUBE,
-            )
+        # Create the topology
+        topology = solvate_topology_nonwater(
+            topology=topology,
+            solvent=solvent_offmol,
+            padding=solvation_settings.solvent_padding,
+            box_shape=box_shape,
+        )
 
-            water = OFFMolecule.from_smiles("O")
-            na = OFFMolecule.from_smiles("[Na+]")
-            cl = OFFMolecule.from_smiles("[Cl-]")
+    # Assign residue indices to each entry in the OFF topology
+    for molecule_index, molecule in enumerate(topology.molecules):
+        for atom in molecule.atoms:
+            atom.metadata['residue_number'] = molecule_index
 
-            for molecule_index, molecule in enumerate(topology.molecules):
-                for atom in molecule.atoms:
-                    atom.metadata['residue_number'] = molecule_index
+        # Get the residue name and store the index in comp resnames
+        resname = _get_offmol_resname(molecule)
+        comp_resnames[resname][1].append(molecule_index)
 
-                if molecule.n_atoms == [*smc_components.values()][0].n_atoms:
-                    # this is probably UNK, but just leave it be I guess
-                    continue
-                # molecules don't know their residue metadata, so need to set on each atom
-                # https://github.com/openforcefield/openff-toolkit/issues/1554
-                elif molecule.is_isomorphic_with(water):
-                    for atom in molecule.atoms:
-                        atom.metadata['residue_name'] = "WAT"
-                elif molecule.is_isomorphic_with(na):
-                    for atom in molecule.atoms:
-                        atom.metadata['residue_name'] = "Na"
-                elif molecule.is_isomorphic_with(cl):
-                    for atom in molecule.atoms:
-                        atom.metadata['residue_name'] = "Cl"
-                else:
-                    raise Exception("Found unexpected molecule in solvated topology")
+    # Now create the component_resids dictionary properly
+    comp_resids = {}
+    for entry in comp_resnames.values():
+        comp = entry[0]
+        comp_resids[comp] = np.array(entry[1])
 
-            component_resids[solvent_component] = np.arange(1, topology.n_molecules)
-
-
-    # TODO: doesn't work with solvent smcs
     interchange = force_field.create_interchange(
         topology=topology,
-        charge_from_molecules=[*smc_components.values()],
+        charge_from_molecules=charged_mols,
     )
 
-    return (
-        interchange.to_openmm_topology(),
-        interchange.to_openmm_system(
-            hydrogen_mass=ffsettings.hydrogen_mass,
-        ),
-        interchange.positions.to_openmm(),
-        component_resids,
-    )
+    return interchange, comp_resids
 
 
 class BaseSFEUnit(BaseAbsoluteUnit):
+
+    @staticmethod
+    def _get_and_charge_solvent_offmol(
+        solvent_smiles: str,
+        solvent_smcs: Optional[dict[SmallMoleculeComponent, OFFMolecule]],
+        partial_charge_settings: OpenFFPartialChargeSettings,
+    ) -> OFFMolecule:
+        """
+        Helper method to fetch the solvent offmol either
+        from an existing solvent_smcs, or from smiles.
+
+        Parameters
+        ----------
+        solvent_smiles : str
+          smiles for the solvent molecule
+        solvent_smcs : Optional[dict[SmallMoleculeComponent, OFFMolecule]]
+          SmallMoleculeComponents defining the solvent
+        partial_charge_settings : OpenFFPartialChargeSettigns
+          Settings defining how partial charges are applied
+
+        Returns
+        -------
+        offmol : openff.toolkit.Molecule
+        """
+        # Sanity check
+        if len(solvent_smcs.values()) > 1:
+            errmsg = ("Only one solvent molecule can be defined at this time")
+            raise ValueError(errmsg)
+
+        solvent_offmol = OFFMolecule.from_smiles(solvent_smiles)
+
+        # If we have a solvent_smc we use that instead
+        if solvent_smcs is not None:
+            if solvent_smcs.values()[0].is_isomorphic_with(solvent_offmol):
+                solvent_offmol = solvent_smcs.values()[0]
+        else:
+            errmsg = ("Solvent small molecule component does not match "
+                      "the solvent component smiles "
+                      f"{solvent_component.smiles}")
+            raise ValueError(errmsg)
+
+        # we need to make sure that the solvent is charged in the right way
+        charge_generation.assign_offmol_partial_charges(
+            offmol=solvent_offmol,
+            overwrite=False,
+            method=partial_charge_settings.partial_charge_method,
+            toolkit_backend=partial_charge_settings.off_toolkit_backend,
+            generate_n_conformers=partial_charge_settings.number_of_conformers,
+            nagl_model=partial_charge_settings.nagl_model,
+        )
+
+        return solvent_offmol
+
     def _get_omm_objects(
         settings: dict[str, SettingsBaseModel],
         protein_component: Optional[ProteinComponent],
@@ -243,18 +320,35 @@ class BaseSFEUnit(BaseAbsoluteUnit):
 
         # Set partial charges for all smcs
         self._assign_partial_charges(settings['charge_settings'], smc_components)
-        
-        if solvent_smcs is not None:
-            self._assign_partial_charges(settings['charge_settings'], solvent_smcs)
+
+        # Assign the solvent OFF Molecule, if necessary
+        if solvent_component is not None:
+            solvent_offmol = _get_and_charge_solvent_offmol(
+                solvent_component.smiles,
+                solvent_smcs,
+                settings['partial_charge_settings'],
+            )
+        else:
+            solvent_offmol = None
 
         with without_oechem_backend():
-            return interchange_system_creation(
+            interchange, comp_resids = interchange_system_creation(
                 settings['forcefield_settings'],
+                settings['solvation_settings'],
                 protein_component,
                 solvent_component,
-                solvent_smcs,
+                solvent_offmol,
                 smc_components,
             )
+
+        return (
+            interchange.to_openmm_topology(),
+            interchange.to_openmm_system(
+                hydrogen_mass=settings['forcefield_settings'].hydrogen_mass,
+            ),
+            interchange.positions.to_openmm(),
+            comp_resids,
+        )
 
     def run(
         self,
