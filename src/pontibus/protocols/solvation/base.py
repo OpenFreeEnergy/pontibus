@@ -122,7 +122,7 @@ def interchange_packmol_creation(
 
     # 2. Get the force field object
     # force_fields is a list so we unpack it
-    force_field = ForceField(*ffsettings.force_fields)
+    force_field = ForceField(*ffsettings.forcefields)
 
     # We also set nonbonded cutoffs whilst we are here
     # TODO: check what this means for nocutoff simulations
@@ -185,7 +185,7 @@ def interchange_packmol_creation(
 
         # Pick up the user selected box shape
         box_shape = {
-            'cubic': UNIT_CUBE,
+            'cube': UNIT_CUBE,
             'dodecahedron': RHOMBIC_DODECAHEDRON,
         }[solvation_settings.box_shape]
 
@@ -220,7 +220,7 @@ def interchange_packmol_creation(
     return interchange, comp_resids
 
 
-class BaseSFEUnit(BaseAbsoluteUnit):
+class BaseASFEUnit(BaseAbsoluteUnit):
 
     @staticmethod
     def _get_and_charge_solvent_offmol(
@@ -273,6 +273,40 @@ class BaseSFEUnit(BaseAbsoluteUnit):
         )
 
         return solvent_offmol
+
+    @staticmethod
+    def _validate_vsites(
+        system: openmm.System,
+        integrator_settings: IntegratorSettings
+    ) -> None:
+        """
+        Validate virtual site handling for alchemical system.
+
+        Parameters
+        ----------
+        System : openmm.System
+          System to validate.
+        integrator_settings : IntegratorSettings
+          Langevin integrator settings to verify against.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        * Small placeholder for a larger thing.
+        """
+        has_virtual_sites = False
+        for ix in range(system.getNumParticles()):
+            if system.isVirtualSite(ix):
+                has_virtual_sites = True
+
+        if hybrid_factory.has_virtual_sites:
+            if not integrator_settings.reassign_velocities:
+                errmsg = ("Simulations with virtual sites without velocity "
+                          "reassignments are unstable in openmmtools")
+                raise ValueError(errmsg)
 
     def _get_omm_objects(
         settings: dict[str, SettingsBaseModel],
@@ -341,14 +375,20 @@ class BaseSFEUnit(BaseAbsoluteUnit):
                 smc_components,
             )
 
-        return (
-            interchange.to_openmm_topology(),
-            interchange.to_openmm_system(
-                hydrogen_mass=settings['forcefield_settings'].hydrogen_mass,
-            ),
-            interchange.positions.to_openmm(),
-            comp_resids,
+
+        omm_topology = interchange.to_openmm_topology()
+        omm_system = interchange.to_openmm_system(
+            hydrogen_mass=settings['forcefield_settings'].hydrogen_mass
         )
+        positions = interchange.positions.to_openmm()
+
+        # Post creation system validation
+        _validate_vsites(
+            interchange.to_openmm_system(),
+            settings['integrator_settings']
+        )
+
+        return omm_topology, omm_system, positions, comp_resids
 
     def run(
         self,
@@ -388,7 +428,7 @@ class BaseSFEUnit(BaseAbsoluteUnit):
         # 2. Get components
         ## solv_smcs is a poor hack, to be refined
         alchem_comps, solv_comp, solv_smcs, prot_comp, smc_comps = self._get_components(
-            settings
+            settings['solvation_settings'].smc_key
         )
 
         # 3. Get OpenMM topology, positions and system
