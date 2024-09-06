@@ -8,7 +8,7 @@ from openff.interchange.components._packmol import (
     solvate_topology,
     solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
-    UNIT_CUBE
+    UNIT_CUBE,
 )
 
 
@@ -31,7 +31,7 @@ def _set_offmol_resname(
     None
     """
     for a in offmol.atoms:
-        a.metadata['residue_name'] = resname
+        a.metadata["residue_name"] = resname
 
 
 def _get_offmol_resname(offmol: OFFMolecule) -> Optional[str]:
@@ -55,12 +55,12 @@ def _get_offmol_resname(offmol: OFFMolecule) -> Optional[str]:
     for a in offmol.atoms:
         if resname is None:
             try:
-                resname = a.metadata['residue_name']
+                resname = a.metadata["residue_name"]
             except KeyError:
                 return None
 
-        if resname != a.metadata['residue_name']:
-            wmsg = (f"Inconsistent residue name in OFFMol: {offmol} ")
+        if resname != a.metadata["residue_name"]:
+            wmsg = f"Inconsistent residue name in OFFMol: {offmol} "
             logger.warning(wmsg)
             return None
 
@@ -114,15 +114,18 @@ def interchange_packmol_creation(
 
     # TODO: work out ways to deal with the addition of counterions
     if solvent_component is not None:
-        if (solvent_component.neutralize or
-            solvent_component.ion_concentration > 0 * offunit.molar):
-            errmsg = ("Adding counterions using packmol solvation "
-                      "is currently not supported")
+        if (
+            solvent_component.neutralize
+            or solvent_component.ion_concentration > 0 * offunit.molar
+        ):
+            errmsg = (
+                "Adding counterions using packmol solvation "
+                "is currently not supported"
+            )
             raise ValueError(errmsg)
 
         if solvent_offmol is None:
-            errmsg = ("A solvent offmol must be passed to solvate a "
-                      "system!")
+            errmsg = "A solvent offmol must be passed to solvate a " "system!"
             raise ValueError(errmsg)
 
     # 2. Get the force field object
@@ -131,8 +134,8 @@ def interchange_packmol_creation(
 
     # We also set nonbonded cutoffs whilst we are here
     # TODO: check what this means for nocutoff simulations
-    force_field['vdW'].cutoff = ffsettings.nonbonded_cutoff
-    force_field['Electrostatics'].cutoff = ffsettings.nonbonded_cutoff
+    force_field["vdW"].cutoff = ffsettings.nonbonded_cutoff
+    force_field["Electrostatics"].cutoff = ffsettings.nonbonded_cutoff
 
     # 3. Asisgn residue names so we can track our components in the generated
     # topology.
@@ -147,20 +150,22 @@ def interchange_packmol_creation(
     if solvent_component is not None:
         offmol_resname = _get_offmol_resname(solvent_offmol)
         if offmol_resname is None:
-            offmol_resname = 'SOL'
+            offmol_resname = "SOL"
             _set_offmol_resname(solvent_offmol, offmol_resname)
         comp_resnames[offmol_resname] = (solvent_component, [])
 
     # A store of residue names to replace residue names if they aren't unique
-    resnames_store = [''.join(i) for i in product(ascii_uppercase, repeat=3)]
+    resnames_store = ["".join(i) for i in product(ascii_uppercase, repeat=3)]
 
     for comp, offmol in smc_components.items():
         off_resname = _get_offmol_resname(offmol)
         if off_resname is None or off_resname in comp_resnames:
             # warn that we are overriding clashing molecule resnames
             if off_resname in comp_resnames:
-                wmsg = (f"Duplicate residue name {off_resname}, "
-                        "duplicate will be renamed")
+                wmsg = (
+                    f"Duplicate residue name {off_resname}, "
+                    "duplicate will be renamed"
+                )
                 logger.warning(wmsg)
 
             # just loop through and pick up a name that doesn't exist
@@ -189,8 +194,8 @@ def interchange_packmol_creation(
 
         # Pick up the user selected box shape
         box_shape = {
-            'cube': UNIT_CUBE,
-            'dodecahedron': RHOMBIC_DODECAHEDRON,
+            "cube": UNIT_CUBE,
+            "dodecahedron": RHOMBIC_DODECAHEDRON,
         }[solvation_settings.box_shape.lower()]
 
         # TODO: switch back to normal pack_box and allow n_solvent
@@ -205,7 +210,7 @@ def interchange_packmol_creation(
     # Assign residue indices to each entry in the OFF topology
     for molecule_index, molecule in enumerate(topology.molecules):
         for atom in molecule.atoms:
-            atom.metadata['residue_number'] = molecule_index
+            atom.metadata["residue_number"] = molecule_index
 
         # Get the residue name and store the index in comp resnames
         resname = _get_offmol_resname(molecule)
@@ -278,8 +283,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
     @staticmethod
     def _validate_vsites(
-        system: openmm.System,
-        integrator_settings: IntegratorSettings
+        system: openmm.System, integrator_settings: IntegratorSettings
     ) -> None:
         """
         Validate virtual site handling for alchemical system.
@@ -306,8 +310,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         if hybrid_factory.has_virtual_sites:
             if not integrator_settings.reassign_velocities:
-                errmsg = ("Simulations with virtual sites without velocity "
-                          "reassignments are unstable in openmmtools")
+                errmsg = (
+                    "Simulations with virtual sites without velocity "
+                    "reassignments are unstable in openmmtools"
+                )
                 raise ValueError(errmsg)
 
     def _get_omm_objects(
@@ -315,7 +321,9 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         protein_component: Optional[ProteinComponent],
         solvent_component: Optional[SolventComponent],
         smc_components: dict[SmallMoleculeComponent, OFFMolecule],
-    ) -> tuple[app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]]:
+    ) -> tuple[
+        app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]
+    ]:
         """
         Get the OpenMM Topology, Positions and System of the
         parameterised system.
@@ -341,7 +349,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           Positions of the system.
         comp_resids : dict[str, npt.NDArray]
           A dictionary of residues for each component in the System.
-        
+
         Notes
         -----
         * For now this method solely calls interchange system creation for
@@ -352,14 +360,14 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             self.logger.info("Parameterizing system")
 
         # Set partial charges for all smcs
-        self._assign_partial_charges(settings['charge_settings'], smc_components)
+        self._assign_partial_charges(settings["charge_settings"], smc_components)
 
         # Get solvent offmol if necessary
         if solvent_component is not None:
             solvent_offmol = _get_and_charge_solvent_offmol(
                 solvent_component,
-                settings['solvation_settings'],
-                settings['charge_settings'],
+                settings["solvation_settings"],
+                settings["charge_settings"],
             )
         else:
             solvent_offmol = None
@@ -367,8 +375,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         # Create your interchange object
         with without_oechem_backend():
             interchange, comp_resids = interchange_packmol_creation(
-                settings['forcefield_settings'],
-                settings['solvation_settings'],
+                settings["forcefield_settings"],
+                settings["solvation_settings"],
                 protein_component,
                 solvent_component,
                 solvent_offmol,
@@ -378,15 +386,12 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         # Get omm objects back
         omm_topology = interchange.to_openmm_topology()
         omm_system = interchange.to_openmm_system(
-            hydrogen_mass=settings['forcefield_settings'].hydrogen_mass
+            hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
         positions = interchange.positions.to_openmm()
 
         # Post creation system validation
-        _validate_vsites(
-            omm_system,
-            settings['integrator_settings']
-        )
+        _validate_vsites(omm_system, settings["integrator_settings"])
 
         return omm_topology, omm_system, positions, comp_resids
 
@@ -430,7 +435,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # 3. Get OpenMM topology, positions and system
         omm_topology, omm_system, positions, comp_resids = self._get_omm_objects(
-            settings, prot_comp, solv_comp, smc_comps,
+            settings,
+            prot_comp,
+            solv_comp,
+            smc_comps,
         )
 
         # 4. Pre-equilbrate System (Test + Avoid NaNs + get stable system)
@@ -442,7 +450,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         lambdas = self._get_lambda_schedule(settings)
 
         # 6. Get alchemical system
-        if settings['alchemical_settings'].experimental:
+        if settings["alchemical_settings"].experimental:
             raise ValueError("experimental factory code is not yet implemented")
         else:
             alchem_factory, alchem_system, alchem_indices = self._get_alchemical_system(
@@ -525,16 +533,17 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             return {"debug": {"sampler": sampler}}
 
     def _execute(
-        self, ctx: gufe.Context, **kwargs,
+        self,
+        ctx: gufe.Context,
+        **kwargs,
     ) -> dict[str, Any]:
         log_system_probe(logging.INFO, paths=[ctx.scratch])
 
-        outputs = self.run(scratch_basepath=ctx.scratch,
-                           shared_basepath=ctx.shared)
+        outputs = self.run(scratch_basepath=ctx.scratch, shared_basepath=ctx.shared)
 
         return {
-            'repeat_id': self._inputs['repeat_id'],
-            'generation': self._inputs['generation'],
-            'simtype': self._simtype,
-            **outputs
+            "repeat_id": self._inputs["repeat_id"],
+            "generation": self._inputs["generation"],
+            "simtype": self._simtype,
+            **outputs,
         }

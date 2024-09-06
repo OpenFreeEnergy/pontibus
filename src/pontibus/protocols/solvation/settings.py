@@ -34,7 +34,7 @@ from openfe.protocols.openmm_utils.omm_settings import (
 from openfe.protocols.openmm_afe.equil_afe_settings import (
     AlchemicalSettings,
     LambdaSettings,
-    AbsoluteSolvationSettings
+    AbsoluteSolvationSettings,
 )
 import numpy as np
 
