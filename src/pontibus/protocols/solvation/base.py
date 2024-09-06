@@ -112,18 +112,18 @@ def interchange_packmol_creation(
         )
         raise ValueError(errmsg)
 
-    # We need to pick the right solvation branch and check if
-    # we set things in the right way
+    # TODO: work out ways to deal with the addition of counterions
     if solvent_component is not None:
-        if solvation_settings.solvation_mode == 'water':
-            if solvent_component.smi != 'O':
-                ValueError("hydrate mode only works with water")
-        else:
-            if (solvent_component.neutralize or
-                solvent_component.ion_concentration > 0 * offunit.molar):
-                errmsg = ("Adding counterions using packmol solvation "
-                          "is currently not supported")
-                raise ValueError(errmsg)
+        if (solvent_component.neutralize or
+            solvent_component.ion_concentration > 0 * offunit.molar):
+            errmsg = ("Adding counterions using packmol solvation "
+                      "is currently not supported")
+            raise ValueError(errmsg)
+
+        if solvent_offmol is None:
+            errmsg = ("A solvent offmol must be passed to solvate a "
+                      "system!")
+            raise ValueError(errmsg)
 
     # 2. Get the force field object
     # force_fields is a list so we unpack it
@@ -143,9 +143,13 @@ def interchange_packmol_creation(
     # intecharge does
     comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
 
-    # If we have solvent, we add in a SOL entry
+    # If we have solvent, we set its residue name
     if solvent_component is not None:
-        comp_resnames['SOL'] = (solvent_component, [])
+        offmol_resname = _get_offmol_resname(solvent_offmol)
+        if offmol_resname is None:
+            offmol_resname = 'SOL'
+            _set_offmol_resname(solvent_offmol, offmol_resname)
+        comp_resnames[offmol_resname] = (solvent_component, [])
 
     # A store of residue names to replace residue names if they aren't unique
     resnames_store = [''.join(i) for i in product(ascii_uppercase, repeat=3)]
@@ -171,31 +175,25 @@ def interchange_packmol_creation(
     # 4. Create an OFF Topology from the smcs
     # Note: this is the base no solvent case!
     topology = Topology.from_molecules(*smc_components.values())
+
     # Also create a list of charged molecules for later use
     charged_mols = [*smc_components.values()]
 
     # 5. Solvent case
     if solvent_component is not None:
 
-        if solvent_offmol is None:
-            errmsg = ("Solvent component is expected but no Molecule "
-                      "representing it was passed")
-            raise ValueError(errmsg)
-
-        # Append to charged molcule to charged_mols
-        charged_mols.append(solvent_offmol)
-
-        # We override the solvent residue name to SOL
-        _set_offmol_resname(solvent_offmol, 'SOL')
+        # Append to charged molcule to charged_mols if we want to
+        # otherwise we rely on library charges
+        if solvation_settings.assign_solvent_charges:
+            charged_mols.append(solvent_offmol)
 
         # Pick up the user selected box shape
         box_shape = {
             'cube': UNIT_CUBE,
             'dodecahedron': RHOMBIC_DODECAHEDRON,
-        }[solvation_settings.box_shape]
+        }[solvation_settings.box_shape.lower()]
 
-        if solvent_component.smi == 'O' and solvation_settings.
-
+        # TODO: switch back to normal pack_box and allow n_solvent
         # Create the topology
         topology = solvate_topology_nonwater(
             topology=topology,
@@ -229,10 +227,12 @@ def interchange_packmol_creation(
 
 class BaseASFEUnit(BaseAbsoluteUnit):
 
+    _simtype: str
+
     @staticmethod
     def _get_and_charge_solvent_offmol(
-        solvent_smiles: str,
-        solvent_smcs: Optional[dict[SmallMoleculeComponent, OFFMolecule]],
+        solvent_component: Union[SolventComponent, ExtendedSolventComponent],
+        solvation_settings: PackmolSolvationSettings,
         partial_charge_settings: OpenFFPartialChargeSettings,
     ) -> OFFMolecule:
         """
@@ -241,10 +241,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         Parameters
         ----------
-        solvent_smiles : str
+        solvent_component : SolventComponent
           smiles for the solvent molecule
-        solvent_smcs : Optional[dict[SmallMoleculeComponent, OFFMolecule]]
-          SmallMoleculeComponents defining the solvent
+        solvation_settings : PackmolSolvationSettings
+          Settings defining how the system will be solvated
         partial_charge_settings : OpenFFPartialChargeSettigns
           Settings defining how partial charges are applied
 
@@ -252,32 +252,27 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         -------
         offmol : openff.toolkit.Molecule
         """
-        # Sanity check
-        if len(solvent_smcs.values()) > 1:
-            errmsg = ("Only one solvent molecule can be defined at this time")
-            raise ValueError(errmsg)
-
-        solvent_offmol = OFFMolecule.from_smiles(solvent_smiles)
-
-        # If we have a solvent_smc we use that instead
-        if solvent_smcs is not None:
-            if solvent_smcs.values()[0].is_isomorphic_with(solvent_offmol):
-                solvent_offmol = solvent_smcs.values()[0]
+        # Get the solvent offmol
+        if isinstance(solvent_component, ExtendedSolventComponent):
+            solvent_offmol = solvent_component.solvent_molecule.to_openff()
         else:
-            errmsg = ("Solvent small molecule component does not match "
-                      "the solvent component smiles "
-                      f"{solvent_component.smiles}")
-            raise ValueError(errmsg)
+            solvent_offmol = OFFMolecule.from_smiles(solvent_component.smiles)
 
-        # we need to make sure that the solvent is charged in the right way
-        charge_generation.assign_offmol_partial_charges(
-            offmol=solvent_offmol,
-            overwrite=False,
-            method=partial_charge_settings.partial_charge_method,
-            toolkit_backend=partial_charge_settings.off_toolkit_backend,
-            generate_n_conformers=partial_charge_settings.number_of_conformers,
-            nagl_model=partial_charge_settings.nagl_model,
-        )
+        # Assign solvent offmol charges if necessary
+        if solvation_settings.assign_solvent_charges:
+            if solvent_offmol.n_conformers == 0:
+                n_conf = 1
+            else:
+                n_conf = partial_charge_settings.number_of_conformers
+
+            charge_generation.assign_offmol_partial_charges(
+                offmol=solvent_offmol,
+                overwrite=False,
+                method=partial_charge_settings.partial_charge_method,
+                toolkit_backend=partial_charge_settings.off_toolkit_backend,
+                generate_n_conformers=n_conf,
+                nagl_model=partial_charge_settings.nagl_model,
+            )
 
         return solvent_offmol
 
@@ -319,7 +314,6 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         settings: dict[str, SettingsBaseModel],
         protein_component: Optional[ProteinComponent],
         solvent_component: Optional[SolventComponent],
-        solvent_smcs: Optional[dict[SmallMoleculeComponent, OFFMolecule]],
         smc_components: dict[SmallMoleculeComponent, OFFMolecule],
     ) -> tuple[app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]]:
         """
@@ -334,8 +328,6 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           Protein component for the system.
         solvent_component : Optional[SolventComponent]
           Solvent component for the system.
-        solvent_smcs : Optional[dict[SmallMoleculeComponent, OFFMolecule]]
-          SmallMoleculeComponents associated with the solvent component
         smc_components : dict[str, OFFMolecule]
           SmallMoleculeComponents defining ligands to be added to the system
 
@@ -362,18 +354,19 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         # Set partial charges for all smcs
         self._assign_partial_charges(settings['charge_settings'], smc_components)
 
-        # Assign the solvent OFF Molecule, if necessary
+        # Get solvent offmol if necessary
         if solvent_component is not None:
             solvent_offmol = _get_and_charge_solvent_offmol(
-                solvent_component.smiles,
-                solvent_smcs,
-                settings['partial_charge_settings'],
+                solvent_component,
+                settings['solvation_settings'],
+                settings['charge_settings'],
             )
         else:
             solvent_offmol = None
 
+        # Create your interchange object
         with without_oechem_backend():
-            interchange, comp_resids = interchange_system_creation(
+            interchange, comp_resids = interchange_packmol_creation(
                 settings['forcefield_settings'],
                 settings['solvation_settings'],
                 protein_component,
@@ -382,7 +375,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 smc_components,
             )
 
-
+        # Get omm objects back
         omm_topology = interchange.to_openmm_topology()
         omm_system = interchange.to_openmm_system(
             hydrogen_mass=settings['forcefield_settings'].hydrogen_mass
@@ -391,7 +384,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # Post creation system validation
         _validate_vsites(
-            interchange.to_openmm_system(),
+            omm_system,
             settings['integrator_settings']
         )
 
@@ -429,18 +422,15 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         # 0. Generaly preparation tasks
         self._prepare(verbose, scratch_basepath, shared_basepath)
 
-        # 1. Get settings
-        settings = self._handle_settings()
+        # 1. Get components
+        alchem_comps, solv_comp, prot_comp, smc_comps = self._get_components()
 
-        # 2. Get components
-        ## solv_smcs is a poor hack, to be refined
-        alchem_comps, solv_comp, solv_smcs, prot_comp, smc_comps = self._get_components(
-            settings['solvation_settings'].smc_key
-        )
+        # 2. Get settings
+        settings = self._handle_settings()
 
         # 3. Get OpenMM topology, positions and system
         omm_topology, omm_system, positions, comp_resids = self._get_omm_objects(
-            settings, prot_comp, solv_comp, solv_smcs, smc_comps,
+            settings, prot_comp, solv_comp, smc_comps,
         )
 
         # 4. Pre-equilbrate System (Test + Avoid NaNs + get stable system)
@@ -533,3 +523,18 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             }
         else:
             return {"debug": {"sampler": sampler}}
+
+    def _execute(
+        self, ctx: gufe.Context, **kwargs,
+    ) -> dict[str, Any]:
+        log_system_probe(logging.INFO, paths=[ctx.scratch])
+
+        outputs = self.run(scratch_basepath=ctx.scratch,
+                           shared_basepath=ctx.shared)
+
+        return {
+            'repeat_id': self._inputs['repeat_id'],
+            'generation': self._inputs['generation'],
+            'simtype': self._simtype,
+            **outputs
+        }
