@@ -1,11 +1,43 @@
-from pontibus.protocols.solvation import (
-    ASFESettings,
-    InterchangeFFSettings,
-    PackmolSolvationSettings,
+from typing import (
+    Union,
+    Optional
+)
+import uuid
+
+import numpy as np
+from openff.units import unit
+import gufe
+from gufe import (
+    ChemicalSystem,
+    SolventComponent,
 )
 from openfe.protocols.openmm_afe import (
     AbsoluteSolvationProtocolResult,
     AbsoluteSolvationProtocol,
+)
+from openfe.protocols.openmm_utils import (
+    system_validation,
+    settings_validation,
+)
+from pontibus.protocols.solvation.base import (
+    BaseAbsoluteUnit,
+)
+from pontibus.protocols.solvation.settings import (
+    ThermoSettings,
+    MultiStateSimulationSettings,
+    OpenMMEngineSettings,
+    IntegratorSettings,
+    OpenFFPartialChargeSettings,
+    MultiStateOutputSettings,
+    MDSimulationSettings,
+    MDOutputSettings,
+    InterchangeFFSettings,
+    PackmolSolvationSettings,
+    AlchemicalSettings,
+    LambdaSettings,
+)
+from pontibus.protocols.solvation import (
+    ASFESettings,
 )
 
 
@@ -37,13 +69,13 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         Settings
           a set of default settings
         """
-        return AbsoluteSolvationSettings(
+        return ASFESettings(
             protocol_repeats=3,
-            solvent_forcefield_settings=settings.InterchangeFFSettings(),
-            vacuum_forcefield_settings=settings.InterchangeFFSettings(
+            solvent_forcefield_settings=InterchangeFFSettings(),
+            vacuum_forcefield_settings=InterchangeFFSettings(
                 nonbonded_method="nocutoff",
             ),
-            thermo_settings=settings.ThermoSettings(
+            thermo_settings=ThermoSettings(
                 temperature=298.15 * unit.kelvin,
                 pressure=1 * unit.bar,
             ),
@@ -165,7 +197,8 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
           * If there is a SolventComponent and the `nonbonded_method` is
             `nocutoff`.
         """
-        solv = [comp for comp in state.values() if isinstance(comp, SolventComponent)]
+        solv = [comp for comp in state.values()
+                if isinstance(comp, SolventComponent)]
 
         if len(solv) > 0 and nonbonded_method.lower() == "nocutoff":
             errmsg = "nocutoff cannot be used for solvent transformations"
@@ -202,10 +235,12 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
 
         # Validate the lambda schedule
         self._validate_lambda_schedule(
-            self.settings.lambda_settings, self.settings.solvent_simulation_settings
+            self.settings.lambda_settings,
+            self.settings.solvent_simulation_settings
         )
         self._validate_lambda_schedule(
-            self.settings.lambda_settings, self.settings.vacuum_simulation_settings
+            self.settings.lambda_settings,
+            self.settings.vacuum_simulation_settings
         )
 
         # Check nonbond & solvent compatibility
@@ -237,7 +272,6 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         alchname = alchem_comps["stateA"][0].name
 
         # Create list units for vacuum and solvent transforms
-
         solvent_units = [
             ASFESolventUnit(
                 protocol=self,
@@ -256,8 +290,6 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
 
         vacuum_units = [
             ASFEVacuumUnit(
-                # These don't really reflect the actual transform
-                # Should these be overriden to be ChemicalSystem{smc} -> ChemicalSystem{} ?
                 protocol=self,
                 stateA=stateA,
                 stateB=stateB,
@@ -275,7 +307,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         return solvent_units + vacuum_units
 
 
-class AbsoluteSolvationVacuumUnit(BaseAbsoluteUnit):
+class ASFEVacuumUnit(BaseAbsoluteUnit):
     """
     Protocol Unit for the vacuum phase of an absolute solvation free energy
     """
@@ -314,7 +346,9 @@ class AbsoluteSolvationVacuumUnit(BaseAbsoluteUnit):
         # (of stateA since we enforce only one disappearing ligand)
         return alchem_comps, None, prot_comp, off_comps
 
-    def _handle_settings(self) -> dict[str, SettingsBaseModel]:
+    def _handle_settings(
+            self
+    ) -> dict[str, gufe.settings.SettingsBaseModel]:
         """
         Extract the relevant settings for a vacuum transformation.
 
@@ -361,7 +395,7 @@ class AbsoluteSolvationVacuumUnit(BaseAbsoluteUnit):
         return settings
 
 
-class AbsoluteSolvationSolventUnit(BaseAbsoluteUnit):
+class ASFESolventUnit(BaseAbsoluteUnit):
     """
     Protocol Unit for the solvent phase of an absolute solvation free energy
     """
@@ -396,7 +430,9 @@ class AbsoluteSolvationSolventUnit(BaseAbsoluteUnit):
         # disallowed on create
         return alchem_comps, solv_comp, prot_comp, off_comps
 
-    def _handle_settings(self) -> dict[str, SettingsBaseModel]:
+    def _handle_settings(
+        self
+    ) -> dict[str, gufe.settings.SettingsBaseModel]:
         """
         Extract the relevant settings for a vacuum transformation.
 

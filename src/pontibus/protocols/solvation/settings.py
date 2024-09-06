@@ -9,21 +9,22 @@ energies using OpenMM.
 See Also
 --------
 openfe.protocols.openmm_afe.AbsoluteSolvationProtocol
-
-TODO
-----
-* Add support for restraints
-
 """
+from typing import (
+    Optional,
+    Literal,
+)
+from openff.units import (
+    unit,
+    FloatQuantity
+)
 from gufe.settings import (
-    SettingsBaseModel,
     BaseForceFieldSettings,
     ThermoSettings,
 )
 from openfe.protocols.openmm_utils.omm_settings import (
     MultiStateSimulationSettings,
     BaseSolvationSettings,
-    OpenMMSolvationSettings,
     OpenMMEngineSettings,
     IntegratorSettings,
     OpenFFPartialChargeSettings,
@@ -36,8 +37,6 @@ from openfe.protocols.openmm_afe.equil_afe_settings import (
     LambdaSettings,
     AbsoluteSolvationSettings,
 )
-import numpy as np
-
 from pydantic.v1 import validator
 
 
@@ -84,7 +83,8 @@ class InterchangeFFSettings(BaseForceFieldSettings):
         # these are time units, not simulation steps
         if not v.is_compatible_with(unit.nanometer):
             raise ValueError(
-                "nonbonded_cutoff must be in distance units " "(i.e. nanometers)"
+                "nonbonded_cutoff must be in distance units "
+                "(i.e. nanometers)"
             )
         if v < 0:
             errmsg = "nonbonded_cutoff must be a positive value"

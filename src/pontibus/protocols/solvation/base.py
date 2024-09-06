@@ -1,15 +1,56 @@
+import logging
+from itertools import product
+from string import ascii_uppercase
+from typing import (
+    Any,
+    Optional,
+    Union
+)
+import numpy as np
+import numpy.typing as npt
+from openff.units import offunit
+from gufe import (
+    Component,
+    SmallMoleculeComponent,
+    ProteinComponent,
+    SolventComponent,
+)
+import gufe
+from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.utils import without_oechem_backend
 from openfe.protocols.openmm_utils import (
     charge_generation,
 )
 from openff.toolkit import Molecule as OFFMolecule
+from openff.toolkit import (
+    ForceField,
+    Topology,
+)
+from openff.interchange import (
+    Interchange
+)
 from openff.interchange.components._packmol import (
-    solvate_topology,
     solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
 )
+import openmm
+from openmm import app
+import openmmtools
+from openfe.utils import log_system_probe
+from pontibus.components import (
+    ExtendedSolventComponent
+)
+from pontibus.protocols.solvation.settings import (
+    IntegratorSettings,
+    OpenFFPartialChargeSettings,
+    InterchangeFFSettings,
+    PackmolSolvationSettings,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 def _set_offmol_resname(
@@ -140,8 +181,8 @@ def interchange_packmol_creation(
     # 3. Asisgn residue names so we can track our components in the generated
     # topology.
 
-    # Note: comp_resnames is dict[str, tuple[Component, list]] where the final list
-    # is to append residues later on
+    # Note: comp_resnames is dict[str, tuple[Component, list]] where the final
+    # list is to append residues later on
     # TODO: we should be able to rely on offmol equality in the same way that
     # intecharge does
     comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
@@ -303,12 +344,12 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         -----
         * Small placeholder for a larger thing.
         """
-        has_virtual_sites = False
+        has_virtual_sites: bool = False
         for ix in range(system.getNumParticles()):
             if system.isVirtualSite(ix):
                 has_virtual_sites = True
 
-        if hybrid_factory.has_virtual_sites:
+        if has_virtual_sites:
             if not integrator_settings.reassign_velocities:
                 errmsg = (
                     "Simulations with virtual sites without velocity "
@@ -317,12 +358,16 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 raise ValueError(errmsg)
 
     def _get_omm_objects(
+        self,
         settings: dict[str, SettingsBaseModel],
         protein_component: Optional[ProteinComponent],
         solvent_component: Optional[SolventComponent],
         smc_components: dict[SmallMoleculeComponent, OFFMolecule],
     ) -> tuple[
-        app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]
+        app.Topology,
+        openmm.System,
+        openmm.unit.Quantity,
+        dict[str, npt.NDArray]
     ]:
         """
         Get the OpenMM Topology, Positions and System of the
@@ -364,7 +409,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # Get solvent offmol if necessary
         if solvent_component is not None:
-            solvent_offmol = _get_and_charge_solvent_offmol(
+            solvent_offmol = self._get_and_charge_solvent_offmol(
                 solvent_component,
                 settings["solvation_settings"],
                 settings["charge_settings"],
@@ -391,7 +436,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         positions = interchange.positions.to_openmm()
 
         # Post creation system validation
-        _validate_vsites(omm_system, settings["integrator_settings"])
+        self._validate_vsites(omm_system, settings["integrator_settings"])
 
         return omm_topology, omm_system, positions, comp_resids
 
@@ -451,7 +496,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # 6. Get alchemical system
         if settings["alchemical_settings"].experimental:
-            raise ValueError("experimental factory code is not yet implemented")
+            errmsg = "experimental factory code is not yet implemented"
+            raise ValueError(errmsg)
         else:
             alchem_factory, alchem_system, alchem_indices = self._get_alchemical_system(
                 omm_topology, omm_system, comp_resids, alchem_comps
@@ -497,7 +543,9 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             )
 
             # 15. Run simulation
-            unit_result_dict = self._run_simulation(sampler, reporter, settings, dry)
+            unit_result_dict = self._run_simulation(
+                sampler, reporter, settings, dry
+            )
 
         finally:
             # close reporter when you're done to prevent file handle clashes
@@ -539,7 +587,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
     ) -> dict[str, Any]:
         log_system_probe(logging.INFO, paths=[ctx.scratch])
 
-        outputs = self.run(scratch_basepath=ctx.scratch, shared_basepath=ctx.shared)
+        outputs = self.run(
+            scratch_basepath=ctx.scratch,
+            shared_basepath=ctx.shared
+        )
 
         return {
             "repeat_id": self._inputs["repeat_id"],
