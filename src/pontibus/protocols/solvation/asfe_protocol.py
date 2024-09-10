@@ -23,7 +23,7 @@ from openfe.protocols.openmm_utils import (
     settings_validation,
 )
 from pontibus.protocols.solvation.base import (
-    BaseAbsoluteUnit,
+    BaseASFEUnit,
 )
 from pontibus.protocols.solvation.settings import (
     ThermoSettings,
@@ -310,7 +310,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         return solvent_units + vacuum_units
 
 
-class ASFEVacuumUnit(BaseAbsoluteUnit):
+class ASFEVacuumUnit(BaseASFEUnit):
     """
     Protocol Unit for the vacuum phase of an absolute solvation free energy
     """
@@ -398,7 +398,7 @@ class ASFEVacuumUnit(BaseAbsoluteUnit):
         return settings
 
 
-class ASFESolventUnit(BaseAbsoluteUnit):
+class ASFESolventUnit(BaseASFEUnit):
     """
     Protocol Unit for the solvent phase of an absolute solvation free energy
     """
