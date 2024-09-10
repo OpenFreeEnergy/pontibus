@@ -6,6 +6,7 @@ import importlib
 import pytest
 from importlib import resources
 from rdkit import Chem
+import gufe
 from gufe import SmallMoleculeComponent
 
 

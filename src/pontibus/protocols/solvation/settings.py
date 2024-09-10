@@ -14,10 +14,8 @@ from typing import (
     Optional,
     Literal,
 )
-from openff.units import (
-    unit,
-    FloatQuantity
-)
+from openff.units import unit
+from openff.models.types import FloatQuantity
 from gufe.settings import (
     BaseForceFieldSettings,
     ThermoSettings,
