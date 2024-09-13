@@ -3,6 +3,7 @@
 
 import pytest
 import logging
+from openmm import NonbondedForce, CustomNonbondedForce
 from openff.toolkit import Molecule
 from openff.units import unit
 from gufe import SmallMoleculeComponent, SolventComponent
@@ -18,15 +19,22 @@ from pontibus.utils.system_creation import (
     _set_offmol_resname,
     _get_offmol_resname,
 )
-
-
-LOGGER = logging.getLogger(__name__)
+from pontibus.utils.systems import WATER
 
 
 @pytest.fixture()
 def smc_components_benzene(benzene_modifications):
-    benzene_smc = benzene_modifications['benzene']
-    return {benzene_smc: benzene_smc.to_openff()}
+    benzene_off = benzene_modifications['benzene'].to_openff()
+    benzene_off.assign_partial_charges(partial_charge_method='gasteiger')
+    return {benzene_modifications['benzene']: benzene_off}
+
+
+@pytest.fixture()
+def methane():
+    m = Molecule.from_smiles('C')
+    m.generate_conformers()
+    m.assign_partial_charges(partial_charge_method='gasteiger')
+    return m
 
 
 def test_protein_component_fail(smc_components_benzene, T4_protein_component):
@@ -62,15 +70,102 @@ def test_get_and_set_offmol_resname(CN_molecule, caplog):
         assert _get_offmol_resname(CN_off) is None
     assert 'Inconsistent residue name' in caplog.text
 
+
+@pytest.mark.parametrize('neutralize, ion_conc', [
+    [True, 0.0 * unit.molar],
+    [False, 0.1 * unit.molar],
+    [True, 0.1 * unit.molar],
+])
+def test_wrong_solventcomp_settings(
+    neutralize, ion_conc, smc_components_benzene
+):
+    with pytest.raises(ValueError, match="Adding counterions"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components_benzene,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(
+                neutralize=neutralize,
+                ion_concentration=ion_conc,
+            ),
+            solvent_offmol=None,
+        )
+
+
+def test_solv_but_no_solv_offmol(
+    smc_components_benzene,
+):
+    with pytest.raises(ValueError, match="A solvent offmol"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components_benzene,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=None,
+        )
+
+
+def test_solv_mismatch(
+    smc_components_benzene,
+    methane,
+):
+    assert ExtendedSolventComponent().smiles == '[H][O][H]'
+    with pytest.raises(ValueError, match="does not match"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components_benzene,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=methane,
+        )
+
+
+def test_vacuum(smc_components_benzene):
+    interchange, comp_resids = interchange_packmol_creation(
+        ffsettings=InterchangeFFSettings(),
+        solvation_settings=PackmolSolvationSettings(),
+        smc_components=smc_components_benzene,
+        protein_component=None,
+        solvent_component=None,
+        solvent_offmol=None,
+    )
+
+    assert len(comp_resids) == 1
+    assert list(smc_components_benzene)[0] in comp_resids
+    
+    # Get the topology out
+    omm_topology = interchange.to_openmm_topology()
+    residues = list(omm_topology.residues())
+    assert len(residues) == 1
+    assert len(list(omm_topology.atoms())) == 12
+    assert residues[0].name == 'AAA'
+
+    # Get the openmm system out..
+    omm_system = interchange.to_openmm_system()
+
+    nonbond = [f for f in omm_system.getForces()
+               if isinstance(f, NonbondedForce)]
+
+    # One nonbonded force
+    assert len(nonbond) == 1
+
+    # Gas phase should be nonbonded
+    assert nonbond[0].getNonbondedMethod() == 0
+
+    bond = [f for f in omm_system.getForces()
+            if not isinstance(f, NonbondedForce)]
+
+    # 3 bonded forces
+    assert len(bond) == 3
+
 """
-1. Solvent component fails with neutralize or ion_concentration
-2. No offmol is passed
-3. NoCutoff settings on a vacuum system
 4. Named solvent
 5. Unamed solvent
   - Check we get the new residue names
   - Check we get warned about renaming
-  - 
 6. Named solvent with inconsistent name
 7. Duplicate named smcs
 8. Charged solvent

@@ -111,6 +111,20 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     The shape of the periodic box to create.
     """
 
+    assign_solvent_charges: bool = False
+    """
+    If ``True``, assign solvent charges based on the input solvent
+    molecule. If ``False``, rely on library charges.
+
+    Notes
+    -----
+    * If no partial charges are set in the input molecule, the molecule
+    will be charged using the approach defined in ``partial_charge_settings``.
+    * If not using ``ExtendedSolventComponent``, the input molecule will
+    be created using ``SolventComponent.smiles`` and partial charges will
+    be set using the approach defined in ``partial_charge_settings``.
+    """
+
 
 class ASFESettings(AbsoluteSolvationSettings):
     """
