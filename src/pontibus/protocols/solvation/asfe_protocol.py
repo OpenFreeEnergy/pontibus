@@ -1,10 +1,7 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-from typing import (
-    Union,
-    Optional
-)
+from typing import Union, Optional
 import uuid
 
 import numpy as np
@@ -200,8 +197,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
           * If there is a SolventComponent and the `nonbonded_method` is
             `nocutoff`.
         """
-        solv = [comp for comp in state.values()
-                if isinstance(comp, SolventComponent)]
+        solv = [comp for comp in state.values() if isinstance(comp, SolventComponent)]
 
         if len(solv) > 0 and nonbonded_method.lower() == "nocutoff":
             errmsg = "nocutoff cannot be used for solvent transformations"
@@ -238,12 +234,10 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
 
         # Validate the lambda schedule
         self._validate_lambda_schedule(
-            self.settings.lambda_settings,
-            self.settings.solvent_simulation_settings
+            self.settings.lambda_settings, self.settings.solvent_simulation_settings
         )
         self._validate_lambda_schedule(
-            self.settings.lambda_settings,
-            self.settings.vacuum_simulation_settings
+            self.settings.lambda_settings, self.settings.vacuum_simulation_settings
         )
 
         # Check nonbond & solvent compatibility
@@ -349,9 +343,7 @@ class ASFEVacuumUnit(BaseASFEUnit):
         # (of stateA since we enforce only one disappearing ligand)
         return alchem_comps, None, prot_comp, off_comps
 
-    def _handle_settings(
-            self
-    ) -> dict[str, gufe.settings.SettingsBaseModel]:
+    def _handle_settings(self) -> dict[str, gufe.settings.SettingsBaseModel]:
         """
         Extract the relevant settings for a vacuum transformation.
 
@@ -433,9 +425,7 @@ class ASFESolventUnit(BaseASFEUnit):
         # disallowed on create
         return alchem_comps, solv_comp, prot_comp, off_comps
 
-    def _handle_settings(
-        self
-    ) -> dict[str, gufe.settings.SettingsBaseModel]:
+    def _handle_settings(self) -> dict[str, gufe.settings.SettingsBaseModel]:
         """
         Extract the relevant settings for a vacuum transformation.
 

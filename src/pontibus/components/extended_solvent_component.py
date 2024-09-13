@@ -131,8 +131,8 @@ class ExtendedSolventComponent(SolventComponent):
             dct,
             lambda d: registry[GufeKey(d[":gufe-key:"])],
             is_gufe_key_dict,
-            mode='decode',
-            top=True
+            mode="decode",
+            top=True,
         )
 
         return from_dict_depth_one(dct)
@@ -189,10 +189,7 @@ def _from_dict_depth_one(dct: dict) -> GufeTokenizable:
     new_dct = {}
 
     for entry in dct:
-        if (
-            isinstance(dct[entry], dict) and
-            '__qualname__' in dct[entry]
-        ):
+        if isinstance(dct[entry], dict) and "__qualname__" in dct[entry]:
             new_dct[entry] = _from_dict(dct[entry])
         else:
             new_dct[entry] = dct[entry]

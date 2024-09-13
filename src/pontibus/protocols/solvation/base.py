@@ -2,11 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
-from typing import (
-    Any,
-    Optional,
-    Union
-)
+from typing import Any, Optional, Union
 import numpy.typing as npt
 from gufe import (
     SmallMoleculeComponent,
@@ -25,9 +21,7 @@ import openmm
 from openmm import app
 import openmmtools
 from openfe.utils import log_system_probe
-from pontibus.components import (
-    ExtendedSolventComponent
-)
+from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation.settings import (
     IntegratorSettings,
     OpenFFPartialChargeSettings,
@@ -132,10 +126,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         solvent_component: Optional[SolventComponent],
         smc_components: dict[SmallMoleculeComponent, OFFMolecule],
     ) -> tuple[
-        app.Topology,
-        openmm.System,
-        openmm.unit.Quantity,
-        dict[str, npt.NDArray]
+        app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]
     ]:
         """
         Get the OpenMM Topology, Positions and System of the
@@ -311,9 +302,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             )
 
             # 15. Run simulation
-            unit_result_dict = self._run_simulation(
-                sampler, reporter, settings, dry
-            )
+            unit_result_dict = self._run_simulation(sampler, reporter, settings, dry)
 
         finally:
             # close reporter when you're done to prevent file handle clashes
@@ -355,10 +344,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
     ) -> dict[str, Any]:
         log_system_probe(logging.INFO, paths=[ctx.scratch])
 
-        outputs = self.run(
-            scratch_basepath=ctx.scratch,
-            shared_basepath=ctx.shared
-        )
+        outputs = self.run(scratch_basepath=ctx.scratch, shared_basepath=ctx.shared)
 
         return {
             "repeat_id": self._inputs["repeat_id"],

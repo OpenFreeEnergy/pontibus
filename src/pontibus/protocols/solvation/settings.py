@@ -81,8 +81,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
         # these are time units, not simulation steps
         if not v.is_compatible_with(unit.nanometer):
             raise ValueError(
-                "nonbonded_cutoff must be in distance units "
-                "(i.e. nanometers)"
+                "nonbonded_cutoff must be in distance units " "(i.e. nanometers)"
             )
         if v < 0:
             errmsg = "nonbonded_cutoff must be a positive value"

@@ -43,13 +43,16 @@ class SlowTests:
     To run the `slow` tests, either use the `--runslow` flag when invoking
     pytest, or set the environment variable `PONTIBUS_SLOW_TESTS` to `true`
     """
+
     def __init__(self, config):
         self.config = config
 
     @staticmethod
     def _modify_slow(items, config):
-        msg = ("need --runslow pytest cli option or the environment variable "
-               "`PONTIBUS_SLOW_TESTS` set to `True` to run")
+        msg = (
+            "need --runslow pytest cli option or the environment variable "
+            "`PONTIBUS_SLOW_TESTS` set to `True` to run"
+        )
         skip_slow = pytest.mark.skip(reason=msg)
         for item in items:
             if "slow" in item.keywords:
@@ -57,19 +60,25 @@ class SlowTests:
 
     @staticmethod
     def _modify_integration(items, config):
-        msg = ("need --gpu pytest cli option or the environment "
-               "variable `PONTIBUS_GPU_TESTS` set to `True` to run")
+        msg = (
+            "need --gpu pytest cli option or the environment "
+            "variable `PONTIBUS_GPU_TESTS` set to `True` to run"
+        )
         skip_int = pytest.mark.skip(reason=msg)
         for item in items:
             if "gpu" in item.keywords:
                 item.add_marker(skip_int)
 
     def pytest_collection_modifyitems(self, items, config):
-        if (config.getoption('--gpu') or
-            os.getenv("PONTIBUS_GPU_TESTS", default="false").lower() == 'true'):
+        if (
+            config.getoption("--gpu")
+            or os.getenv("PONTIBUS_GPU_TESTS", default="false").lower() == "true"
+        ):
             return
-        elif (config.getoption('--runslow') or
-              os.getenv("PONTIBUS_SLOW_TESTS", default="false").lower() == 'true'):
+        elif (
+            config.getoption("--runslow")
+            or os.getenv("PONTIBUS_SLOW_TESTS", default="false").lower() == "true"
+        ):
             self._modify_integration(items, config)
         else:
             self._modify_integration(items, config)
@@ -83,7 +92,9 @@ def pytest_addoption(parser):
         "--runslow", action="store_true", default=False, help="run slow tests"
     )
     parser.addoption(
-        "--gpu", action="store_true", default=False,
+        "--gpu",
+        action="store_true",
+        default=False,
         help="run gpu tests",
     )
 
@@ -91,18 +102,17 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     config.pluginmanager.register(SlowTests(config), "slow")
     config.addinivalue_line("markers", "slow: mark test as slow")
-    config.addinivalue_line(
-            "markers", "gpu: mark test as long integration test")
+    config.addinivalue_line("markers", "gpu: mark test as long integration test")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def benzene_modifications():
     files = {}
-    with importlib.resources.files('openfe.tests.data') as d:
-        fn = str(d / 'benzene_modifications.sdf')
+    with importlib.resources.files("openfe.tests.data") as d:
+        fn = str(d / "benzene_modifications.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
         for rdmol in supp:
-            files[rdmol.GetProp('_Name')] = SmallMoleculeComponent(rdmol)
+            files[rdmol.GetProp("_Name")] = SmallMoleculeComponent(rdmol)
     return files
 
 
@@ -111,8 +121,8 @@ def CN_molecule():
     """
     A basic CH3NH2 molecule for quick testing.
     """
-    with resources.files('openfe.tests.data') as d:
-        fn = str(d / 'CN.sdf')
+    with resources.files("openfe.tests.data") as d:
+        fn = str(d / "CN.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
 
         smc = [SmallMoleculeComponent(i) for i in supp][0]
@@ -120,10 +130,10 @@ def CN_molecule():
     return smc
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def T4_protein_component():
-    with resources.files('openfe.tests.data') as d:
-        fn = str(d / '181l_only.pdb')
+    with resources.files("openfe.tests.data") as d:
+        fn = str(d / "181l_only.pdb")
         comp = gufe.ProteinComponent.from_pdb_file(fn, name="T4_protein")
 
     return comp

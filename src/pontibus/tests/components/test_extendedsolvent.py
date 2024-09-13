@@ -15,9 +15,9 @@ from pontibus.utils.systems import WATER
 def test_defaults():
     s = ExtendedSolventComponent()
 
-    assert s.smiles == '[H][O][H]'
-    assert s.positive_ion == 'Na+'
-    assert s.negative_ion == 'Cl-'
+    assert s.smiles == "[H][O][H]"
+    assert s.positive_ion == "Na+"
+    assert s.negative_ion == "Cl-"
     assert s.ion_concentration == 0.0 * unit.molar
     assert s.neutralize == False
     assert s.solvent_molecule == WATER
@@ -26,33 +26,31 @@ def test_defaults():
 def test_neq_different_smc():
     water_off = WATER.to_openff()
     # Create a water with partial charges
-    water_off.assign_partial_charges(partial_charge_method='gasteiger')
+    water_off.assign_partial_charges(partial_charge_method="gasteiger")
     WATER2 = SmallMoleculeComponent.from_openff(water_off)
     s1 = ExtendedSolventComponent(solvent_molecule=WATER)
     s2 = ExtendedSolventComponent(solvent_molecule=WATER2)
 
     assert s1 != s2
-    assert s1.smiles == '[H][O][H]' == s2.smiles
+    assert s1.smiles == "[H][O][H]" == s2.smiles
 
 
 def test_neq_different_solvent():
-    meth_off = Molecule.from_smiles('C')
+    meth_off = Molecule.from_smiles("C")
     meth_off.generate_conformers()
     METH = SmallMoleculeComponent.from_openff(meth_off)
     s1 = ExtendedSolventComponent()
     s2 = ExtendedSolventComponent(solvent_molecule=METH)
 
     assert s1 != s2
-    assert s1.smiles == '[H][O][H]'
-    assert s2.smiles == '[H][C]([H])([H])[H]'
+    assert s1.smiles == "[H][O][H]"
+    assert s2.smiles == "[H][C]([H])([H])[H]"
     assert s1.smiles != s2.smiles
 
 
 def test_dict_roundtrip_eq():
     s1 = ExtendedSolventComponent()
-    s2 = ExtendedSolventComponent.from_dict(
-        s1.to_dict()
-    )
+    s2 = ExtendedSolventComponent.from_dict(s1.to_dict())
     assert s1 == s2
     assert s1.solvent_molecule == s2.solvent_molecule
     # Smiles isn't a dict entry, so make sure it got preserved
@@ -61,9 +59,7 @@ def test_dict_roundtrip_eq():
 
 def test_keyed_dict_roundtrip_eq():
     s1 = ExtendedSolventComponent()
-    s2 = ExtendedSolventComponent.from_keyed_dict(
-        s1.to_keyed_dict()
-    )
+    s2 = ExtendedSolventComponent.from_keyed_dict(s1.to_keyed_dict())
     assert s1 == s2
     # Smiles isn't a dict entry, so make sure it got preserved
     assert s1.smiles == s2.smiles
@@ -74,9 +70,7 @@ def test_keyed_dict_roundtrip_eq():
 
 def test_shallow_dict_roundtrip_eq():
     s1 = ExtendedSolventComponent()
-    s2 = ExtendedSolventComponent.from_shallow_dict(
-        s1.to_shallow_dict()
-    )
+    s2 = ExtendedSolventComponent.from_shallow_dict(s1.to_shallow_dict())
     assert s1 == s2
     # Smiles isn't a dict entry, so make sure it got preserved
     assert s1.smiles == s2.smiles

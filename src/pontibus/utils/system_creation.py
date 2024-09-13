@@ -21,9 +21,7 @@ from openff.toolkit import (
     ForceField,
     Topology,
 )
-from openff.interchange import (
-    Interchange
-)
+from openff.interchange import Interchange
 from openff.interchange.components._packmol import (
     solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
@@ -158,8 +156,10 @@ def interchange_packmol_creation(
         if not solvent_offmol.is_isomorphic_with(
             OFFMolecule.from_smiles(solvent_component.smiles)
         ):
-            errmsg = (f"Passed molecule: {solvent_offmol} does not match the "
-                      f"the solvent component: {solvent_component.smiles}")
+            errmsg = (
+                f"Passed molecule: {solvent_offmol} does not match the "
+                f"the solvent component: {solvent_component.smiles}"
+            )
             raise ValueError(errmsg)
 
     # 2. Get the force field object
