@@ -16,7 +16,7 @@ from gufe.tokenization import (
     _from_dict,
     GufeTokenizable,
 )
-from pontibus.utils.systems import WATER
+from pontibus.utils.molecules import WATER
 
 
 class ExtendedSolventComponent(SolventComponent):

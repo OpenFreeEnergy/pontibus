@@ -20,6 +20,7 @@ from pontibus.utils.system_creation import (
     _get_offmol_resname,
 )
 from pontibus.utils.systems import WATER
+from numpy.testing import assert_almost_equal
 
 
 @pytest.fixture()
@@ -30,8 +31,8 @@ def smc_components_benzene(benzene_modifications):
 
 
 @pytest.fixture()
-def methane():
-    m = Molecule.from_smiles("C")
+def methanol():
+    m = Molecule.from_smiles("CO")
     m.generate_conformers()
     m.assign_partial_charges(partial_charge_method="gasteiger")
     return m
@@ -110,7 +111,7 @@ def test_solv_but_no_solv_offmol(
 
 def test_solv_mismatch(
     smc_components_benzene,
-    methane,
+    methanol,
 ):
     assert ExtendedSolventComponent().smiles == "[H][O][H]"
     with pytest.raises(ValueError, match="does not match"):
@@ -120,7 +121,7 @@ def test_solv_mismatch(
             smc_components=smc_components_benzene,
             protein_component=None,
             solvent_component=ExtendedSolventComponent(),
-            solvent_offmol=methane,
+            solvent_offmol=methanol,
         )
 
 
@@ -160,6 +161,42 @@ def test_vacuum(smc_components_benzene):
     # 3 bonded forces
     assert len(bond) == 3
 
+
+def test_noncharge_librarycharges(smc_components_benzene):
+    solvent_offmol = Molecule.from_smiles('O')
+    interchange, comp_resids = interchange_packmol_creation(
+        ffsettings=InterchangeFFSettings(),
+        solvation_settings=PackmolSolvationSettings(),
+        smc_components=smc_components_benzene,
+        protein_component=None,
+        solvent_component=SolventComponent(
+            smiles='O', neutralize=False,
+            ion_concentration=0 * unit.molar,
+        ),
+        solvent_offmol=solvent_offmol,
+    )
+
+
+def test_noncharge_nolibrarycharges(smc_components_benzene):
+    solvent_offmol = Molecule.from_smiles('c1ccccc1')
+    #solvent_offmol.generate_conformers()
+    #solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
+    interchange, comp_resids = interchange_packmol_creation(
+        ffsettings=InterchangeFFSettings(
+            forcefields=["openff-2.0.0.offxml",]
+        ),
+        solvation_settings=PackmolSolvationSettings(),
+        smc_components=smc_components_benzene,
+        protein_component=None,
+        solvent_component=SolventComponent(
+            smiles='c1ccccc1', neutralize=False,
+            ion_concentration=0 * unit.molar,
+        ),
+        solvent_offmol=solvent_offmol,
+    )
+
+    mol = list(interchange.topology.molecules)[-1]
+    assert assert_almost_equal(np.array(mol.partial_charges), [0 for i in range(12)])
 
 """
 4. Named solvent

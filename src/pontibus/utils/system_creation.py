@@ -91,6 +91,31 @@ def _get_offmol_resname(offmol: OFFMolecule) -> Optional[str]:
     return resname
 
 
+def _check_library_charges(
+    force_field: ForceField,
+    offmol: OFFMolecule,
+) -> None:
+    """
+    Check that library charges exists for an input molecule.
+
+    force_field : openff.toolkit.ForceField
+      Force Field object with library charges.
+    offmol : openff.toolkit.Molecule
+      Molecule to check for matching library charges.
+
+    Raises
+    ------
+    ValueError
+      If no library charges are found for the molecule.
+    """
+     handler = force_field.get_parameter_handler('LibraryCharges')
+     matches = handler.find_matches(offmol.to_topology())
+
+     if len(matches) == 0:
+         errmsg = f"No library charges found for {offmol}"
+         raise ValueError(errmsg)
+
+
 def interchange_packmol_creation(
     ffsettings: InterchangeFFSettings,
     solvation_settings: PackmolSolvationSettings,
@@ -163,7 +188,7 @@ def interchange_packmol_creation(
             raise ValueError(errmsg)
 
     # 2. Get the force field object
-    # force_fields is a list so we unpack it
+    # forcefields is a list so we unpack it
     force_field = ForceField(*ffsettings.forcefields)
 
     # We also set nonbonded cutoffs whilst we are here
@@ -177,7 +202,7 @@ def interchange_packmol_creation(
     # Note: comp_resnames is dict[str, tuple[Component, list]] where the final
     # list is to append residues later on
     # TODO: we should be able to rely on offmol equality in the same way that
-    # intecharge does
+    # intechange does
     comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
 
     # If we have solvent, we set its residue name
@@ -225,6 +250,9 @@ def interchange_packmol_creation(
         # otherwise we rely on library charges
         if solvation_settings.assign_solvent_charges:
             charged_mols.append(solvent_offmol)
+        else:
+            # Make sure we have library charges for the molecule
+            _check_library_charges(force_field, solvent_offmol)
 
         # Pick up the user selected box shape
         box_shape = {
