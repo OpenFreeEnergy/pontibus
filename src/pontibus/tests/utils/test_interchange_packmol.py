@@ -6,6 +6,7 @@ import logging
 from openmm import NonbondedForce, CustomNonbondedForce
 from openff.toolkit import Molecule
 from openff.units import unit
+from openff.units.openmm import to_openmm, from_openmm
 from gufe import SmallMoleculeComponent, SolventComponent
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
@@ -19,8 +20,8 @@ from pontibus.utils.system_creation import (
     _set_offmol_resname,
     _get_offmol_resname,
 )
-from pontibus.utils.systems import WATER
-from numpy.testing import assert_almost_equal
+from pontibus.utils.molecules import WATER
+from numpy.testing import assert_allclose, assert_equal
 
 
 @pytest.fixture()
@@ -162,10 +163,12 @@ def test_vacuum(smc_components_benzene):
     assert len(bond) == 3
 
 
-def test_noncharge_librarycharges(smc_components_benzene):
+def test_solvate_opc(smc_components_benzene):
     solvent_offmol = Molecule.from_smiles('O')
     interchange, comp_resids = interchange_packmol_creation(
-        ffsettings=InterchangeFFSettings(),
+        ffsettings=InterchangeFFSettings(
+            forcefields=["openff-2.0.0.offxml", 'opc.offxml'],
+        ),
         solvation_settings=PackmolSolvationSettings(),
         smc_components=smc_components_benzene,
         protein_component=None,
@@ -176,27 +179,110 @@ def test_noncharge_librarycharges(smc_components_benzene):
         solvent_offmol=solvent_offmol,
     )
 
+    topology = interchange.to_openmm_topology()
+    system = interchange.to_openmm_system()
+    nonbonded_force = [
+        f for f in system.getForces()
+        if isinstance(f, NonbondedForce)
+    ][0]
+                       
+
+    num_waters = topology.getNumResidues() - 1
+
+    # Check particles
+    # 12 benzene atoms + num_waters * 3 water atoms
+    standard_particles = 12 + (num_waters * 3)
+
+    # check some particles aren't virtual sites
+    for i in range(standard_particles):
+        assert not system.isVirtualSite(i)
+
+    # check the water nonbonded values
+    water_nonbonded_params = {
+        1: [0 * unit.elementary_charge, 1.777167268 * 2 * unit.angstrom, 0.212800813 * unit.kilocalorie_per_mole]
+        2: [0.679142 * unit.elementary_charge, 
+        3: [
+        4: [-0.679142 * 2 * unit.elementary_charge, 0.1 * unit.nanometer, 0 * unit.kilocalorie_per_mole],
+
+    }
+    for i in range(standard_particles - 12):
+        c, s, e = nonbonded_force.getParticleParameters(i + 12)
+        if i % 1
+
+    for i in range(standard_particles, system.getNumParticles()):
+        assert system.isVirtualSite(i)
+        c, s, e = nonbonded_force.getParticleParameters(i)
+        assert from_openmm(c) == -0.679142 * 2 * unit.elementary_charge
+        assert from_openmm(e) == 0 * unit.kilocalorie_per_mole
+        assert from_openmm(s) == 1 * unit.angstrom
+
+
+    # Check that the openmm topology has the right indices
+    # TODO: at least raise an issue - this is SUPER SUPER problematic
+    ## honestly this might be the reason I will refuse to implement vsites
+    ## eps = [at.id for at in topology.atoms()
+    ##        if at.name == 'EP']
+    ## assert_equal(
+    ##     eps,
+    ##     [i for i in range(standard_particles, system.getNumParticles())]
+    ## )
+
+
+#def test_library_charges_opc3(smc_components_benzene):
+#    ...
+#
+#
+#def test_setcharge_water_solvent(smc_components_benzene):
+#    ...
+#
+#
+#def test_setcharge_coc_solvent(smc_components_benzene):
+#    ...
+#
 
 def test_noncharge_nolibrarycharges(smc_components_benzene):
-    solvent_offmol = Molecule.from_smiles('c1ccccc1')
-    #solvent_offmol.generate_conformers()
-    #solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
-    interchange, comp_resids = interchange_packmol_creation(
-        ffsettings=InterchangeFFSettings(
-            forcefields=["openff-2.0.0.offxml",]
-        ),
-        solvation_settings=PackmolSolvationSettings(),
-        smc_components=smc_components_benzene,
-        protein_component=None,
-        solvent_component=SolventComponent(
-            smiles='c1ccccc1', neutralize=False,
-            ion_concentration=0 * unit.molar,
-        ),
-        solvent_offmol=solvent_offmol,
-    )
+    solvent_offmol = Molecule.from_smiles('COC')
 
-    mol = list(interchange.topology.molecules)[-1]
-    assert assert_almost_equal(np.array(mol.partial_charges), [0 for i in range(12)])
+    with pytest.raises(ValueError, match="No library charges"):
+        _, _ = interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=["openff-2.0.0.offxml",]
+            ),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components_benzene,
+            protein_component=None,
+            solvent_component=SolventComponent(
+                smiles='COC', neutralize=False,
+                ion_concentration=0 * unit.molar,
+            ),
+            solvent_offmol=solvent_offmol,
+        )
+
+
+#def test_precharged_named(smc_components_benzene):
+#    ...
+#
+#
+#def test_precharged_unamed(smc_components_benzene):
+#    ...
+#
+#
+#def test_inconsistent_solvent_name(smc_components_benzene):
+#    ...
+#
+#
+#def test_duplicate_named_smcs(smc_components_benzene):
+#    ...
+#
+#
+#def test_box_setting_cube(smc_components_benzene):
+#    ...
+#
+#
+#def test_box_setting_dodecahedron(smc_components_benzene):
+#    ...
+
+
 
 """
 4. Named solvent
@@ -205,11 +291,10 @@ def test_noncharge_nolibrarycharges(smc_components_benzene):
   - Check we get warned about renaming
 6. Named solvent with inconsistent name
 7. Duplicate named smcs
-8. Charged solvent
-9. Uncharged solvent
 10. Cube
 11. Dodecahedron
 12. Check we get the right residues
 13. Check we get the right number of atoms
   - with a solvent w/ virtual sites
+  - check omm topology indices match virtual sites
 """

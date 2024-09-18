@@ -108,12 +108,12 @@ def _check_library_charges(
     ValueError
       If no library charges are found for the molecule.
     """
-     handler = force_field.get_parameter_handler('LibraryCharges')
-     matches = handler.find_matches(offmol.to_topology())
+    handler = force_field.get_parameter_handler('LibraryCharges')
+    matches = handler.find_matches(offmol.to_topology())
 
-     if len(matches) == 0:
-         errmsg = f"No library charges found for {offmol}"
-         raise ValueError(errmsg)
+    if len(matches) == 0:
+        errmsg = f"No library charges found for {offmol}"
+        raise ValueError(errmsg)
 
 
 def interchange_packmol_creation(
@@ -190,6 +190,10 @@ def interchange_packmol_creation(
     # 2. Get the force field object
     # forcefields is a list so we unpack it
     force_field = ForceField(*ffsettings.forcefields)
+
+    # Cautiously deregister the AM1BCC handler, we shouldn't need it.
+    # See: https://github.com/openforcefield/openff-interchange/issues/1048
+    force_field.deregister_parameter_handler('ToolkitAM1BCC')
 
     # We also set nonbonded cutoffs whilst we are here
     # TODO: check what this means for nocutoff simulations
