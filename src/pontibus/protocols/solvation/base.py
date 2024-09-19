@@ -30,12 +30,6 @@ from pontibus.protocols.solvation.settings import (
 )
 from pontibus.utils.system_creation import interchange_packmol_creation
 
-from openmmtools import multistate
-import mdtraj as mdt
-from pontibus.protocols.solvation.settings import (
-    MultiStateSimulationSettings, MultiStateOutputSettings
-)
-
 
 logger = logging.getLogger(__name__)
 
