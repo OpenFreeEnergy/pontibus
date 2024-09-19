@@ -23,10 +23,9 @@ defaults:
   run:
     shell: bash -l {0}
 
-
 jobs:
   tests:
-    runs-on: $${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     name: "${{ matrix.os }} - ${{ matrix.python-version }}"
     strategy:
       fail-fast: false
