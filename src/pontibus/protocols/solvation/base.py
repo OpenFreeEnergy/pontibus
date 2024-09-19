@@ -15,6 +15,7 @@ from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.utils import without_oechem_backend
 from openfe.protocols.openmm_utils import (
     charge_generation,
+    settings_validation
 )
 from openff.toolkit import Molecule as OFFMolecule
 import openmm
@@ -28,6 +29,12 @@ from pontibus.protocols.solvation.settings import (
     PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import interchange_packmol_creation
+
+from openmmtools import multistate
+import mdtraj as mdt
+from pontibus.protocols.solvation.settings import (
+    MultiStateSimulationSettings, MultiStateOutputSettings
+)
 
 
 logger = logging.getLogger(__name__)
@@ -115,7 +122,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             if not integrator_settings.reassign_velocities:
                 errmsg = (
                     "Simulations with virtual sites without velocity "
-                    "reassignments are unstable in openmmtools"
+                    "reassignments are unstable"
                 )
                 raise ValueError(errmsg)
 
@@ -227,6 +234,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           Outputs created in the basepath directory or the debug objects
           (i.e. sampler) if ``dry==True``.
         """
+
         # 0. Generaly preparation tasks
         self._prepare(verbose, scratch_basepath, shared_basepath)
 
