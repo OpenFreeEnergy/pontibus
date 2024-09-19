@@ -196,11 +196,12 @@ def interchange_packmol_creation(
     force_field.deregister_parameter_handler('ToolkitAM1BCC')
 
     # We also set nonbonded cutoffs whilst we are here
-    # TODO: check what this means for nocutoff simulations
-    force_field["vdW"].cutoff = ffsettings.nonbonded_cutoff
+    # TODO: double check what this means for nocutoff simulations
     force_field["Electrostatics"].cutoff = ffsettings.nonbonded_cutoff
+    force_field["vdW"].cutoff = ffsettings.nonbonded_cutoff
+    force_field["vdW"].switch_width = ffsettings.switch_width
 
-    # 3. Asisgn residue names so we can track our components in the generated
+    # 3. Assign residue names so we can track our components in the generated
     # topology.
 
     # Note: comp_resnames is dict[str, tuple[Component, list]] where the final

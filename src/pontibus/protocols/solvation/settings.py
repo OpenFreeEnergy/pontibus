@@ -62,11 +62,14 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     NoCutoff are allowed. Default PME.
     """
 
-    nonbonded_cutoff: FloatQuantity["nanometer"] = 1.0 * unit.nanometer
+    nonbonded_cutoff: FloatQuantity["nanometer"] = 0.9 * unit.nanometer
     """
     Cutoff value for short range nonbonded interactions.
     Default 1.0 * unit.nanometer.
     """
+
+    switch_width: FloatQuantity["nanometer"] = 0.1 * unit.nanometer
+
 
     @validator("nonbonded_method")
     def allowed_nonbonded(cls, v):
@@ -76,7 +79,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
             raise ValueError(errmsg)
         return v
 
-    @validator("nonbonded_cutoff")
+    @validator("nonbonded_cutoff", "switch_width")
     def is_positive_distance(cls, v):
         # these are time units, not simulation steps
         if not v.is_compatible_with(unit.nanometer):

@@ -9,7 +9,7 @@ from gufe import SmallMoleculeComponent
 from pontibus.components.extended_solvent_component import (
     ExtendedSolventComponent,
 )
-from pontibus.utils.systems import WATER
+from pontibus.utils.molecules import WATER
 
 
 def test_defaults():
