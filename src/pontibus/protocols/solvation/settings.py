@@ -51,7 +51,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     OpenFF toolkit.
     """
 
-    hydrogen_mass: float = 3.0
+    hydrogen_mass: float = 3.023841
     """Mass to be repartitioned to hydrogens from neighbouring
        heavy atoms (in amu), default 3.0"""
 
@@ -63,7 +63,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     ]
     """List of force field ffxmls to apply"""
 
-    nonbonded_method: Literal['pme', 'nocutoff'] = "pme"
+    nonbonded_method: Literal["pme", "nocutoff"] = "pme"
     """
     Method for treating nonbonded interactions, currently only PME and
     NoCutoff are allowed. Default PME.
@@ -76,7 +76,6 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     """
 
     switch_width: FloatQuantity["nanometer"] = 0.1 * unit.nanometer
-
 
     @validator("nonbonded_method")
     def allowed_nonbonded(cls, v):

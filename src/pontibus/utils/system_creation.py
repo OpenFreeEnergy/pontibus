@@ -22,6 +22,7 @@ from openff.toolkit import (
     Topology,
 )
 from openff.interchange import Interchange
+from openff.interchange.interop.openmm import to_openmm_positions
 from openff.interchange.components._packmol import (
     solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
@@ -108,7 +109,7 @@ def _check_library_charges(
     ValueError
       If no library charges are found for the molecule.
     """
-    handler = force_field.get_parameter_handler('LibraryCharges')
+    handler = force_field.get_parameter_handler("LibraryCharges")
     matches = handler.find_matches(offmol.to_topology())
 
     if len(matches) == 0:
@@ -193,7 +194,7 @@ def interchange_packmol_creation(
 
     # Cautiously deregister the AM1BCC handler, we shouldn't need it.
     # See: https://github.com/openforcefield/openff-interchange/issues/1048
-    force_field.deregister_parameter_handler('ToolkitAM1BCC')
+    force_field.deregister_parameter_handler("ToolkitAM1BCC")
 
     # We also set nonbonded cutoffs whilst we are here
     # TODO: double check what this means for nocutoff simulations

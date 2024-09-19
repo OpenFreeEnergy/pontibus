@@ -12,6 +12,7 @@ from openmm import (
 from openff.toolkit import Molecule, ForceField
 from openff.units import unit
 from openff.units.openmm import to_openmm, from_openmm
+from openff.interchange.interop.openmm import to_openmm_positions
 from gufe import SmallMoleculeComponent, SolventComponent
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
@@ -395,6 +396,10 @@ class TestSolventOPCNamedBenzene(TestVacuumUnamedBenzene):
             assert from_openmm(c) == -0.679142 * 2 * unit.elementary_charge
             assert from_openmm(e) == 0 * unit.kilocalorie_per_mole
             assert from_openmm(s) * 2 ** (1 / 6) / 2.0 == 1 * unit.angstrom
+
+    def test_positions(self, interchange_system, num_particles):
+        inter, _ = interchange_system
+        assert len((to_openmm_positions(inter))) == num_particles
 
 
 # def test_library_charges_opc3(smc_components_benzene):

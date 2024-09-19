@@ -72,7 +72,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         return ASFESettings(
             protocol_repeats=3,
             solvent_forcefield_settings=InterchangeFFSettings(
-                nonbonded_method='pme',
+                nonbonded_method="pme",
             ),
             vacuum_forcefield_settings=InterchangeFFSettings(
                 nonbonded_method="nocutoff",

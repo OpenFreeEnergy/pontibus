@@ -4,6 +4,7 @@
 import logging
 from typing import Any, Optional, Union
 import numpy.typing as npt
+from openff.interchange.interop.openmm import to_openmm_positions
 from gufe import (
     SmallMoleculeComponent,
     ProteinComponent,
@@ -13,10 +14,7 @@ import gufe
 from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.utils import without_oechem_backend
-from openfe.protocols.openmm_utils import (
-    charge_generation,
-    settings_validation
-)
+from openfe.protocols.openmm_utils import charge_generation, settings_validation
 from openff.toolkit import Molecule as OFFMolecule
 import openmm
 from openmm import app
@@ -29,6 +27,20 @@ from pontibus.protocols.solvation.settings import (
     PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import interchange_packmol_creation
+
+from openff.units import unit
+from openff.units.openmm import from_openmm, to_openmm, ensure_quantity
+from openmmtools import multistate
+from openmmtools.states import (
+    SamplerState,
+    ThermodynamicState,
+    create_thermodynamic_state_protocol,
+)
+from openmmtools.alchemy import (
+    AlchemicalRegion,
+    AbsoluteAlchemicalFactory,
+    AlchemicalState,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -192,7 +204,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         omm_system = interchange.to_openmm_system(
             hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
-        positions = interchange.positions.to_openmm()
+        positions = to_openmm_positions(interchange, include_virtual_sites=True)
 
         # Post creation system validation
         self._validate_vsites(omm_system, settings["integrator_settings"])
