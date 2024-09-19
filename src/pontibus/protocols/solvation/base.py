@@ -159,7 +159,6 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         * For now this method solely calls interchange system creation for
           solvation.
         """
-
         if self.verbose:
             self.logger.info("Parameterizing system")
 
@@ -179,12 +178,12 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         # Create your interchange object
         with without_oechem_backend():
             interchange, comp_resids = interchange_packmol_creation(
-                settings["forcefield_settings"],
-                settings["solvation_settings"],
-                protein_component,
-                solvent_component,
-                solvent_offmol,
-                smc_components,
+                ffsettings=settings["forcefield_settings"],
+                solvation_settings=settings["solvation_settings"],
+                smc_components=smc_components,
+                protein_component=protein_component,
+                solvent_component=solvent_component,
+                solvent_offmol=solvent_offmol,
             )
 
         # Get omm objects back

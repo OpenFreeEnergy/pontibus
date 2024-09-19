@@ -33,7 +33,7 @@ from pontibus.protocols.solvation.settings import (
     MDOutputSettings,
     InterchangeFFSettings,
     PackmolSolvationSettings,
-    AlchemicalSettings,
+    ExperimentalAlchemicalSettings,
     LambdaSettings,
 )
 from pontibus.protocols.solvation import (
@@ -71,7 +71,9 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         """
         return ASFESettings(
             protocol_repeats=3,
-            solvent_forcefield_settings=InterchangeFFSettings(),
+            solvent_forcefield_settings=InterchangeFFSettings(
+                nonbonded_method='pme',
+            ),
             vacuum_forcefield_settings=InterchangeFFSettings(
                 nonbonded_method="nocutoff",
             ),
@@ -79,7 +81,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 temperature=298.15 * unit.kelvin,
                 pressure=1 * unit.bar,
             ),
-            alchemical_settings=AlchemicalSettings(),
+            alchemical_settings=ExperimentalAlchemicalSettings(),
             lambda_settings=LambdaSettings(
                 lambda_elec=[
                     0.0,
@@ -355,7 +357,7 @@ class ASFEVacuumUnit(BaseASFEUnit):
             * thermo_settings : ThermoSettings
             * charge_settings : OpenFFPartialChargeSettings
             * solvation_settings : PackmolSolvationSettings
-            * alchemical_settings : AlchemicalSettings
+            * alchemical_settings : ExperimentalAlchemicalSettings
             * lambda_settings : LambdaSettings
             * engine_settings : OpenMMEngineSettings
             * integrator_settings : IntegratorSettings
@@ -437,7 +439,7 @@ class ASFESolventUnit(BaseASFEUnit):
             * thermo_settings : ThermoSettings
             * charge_settings : OpenFFPartialChargeSettings
             * solvation_settings : PackmolSolvationSettings
-            * alchemical_settings : AlchemicalSettings
+            * alchemical_settings : ExperimentalAlchemicalSettings
             * lambda_settings : LambdaSettings
             * engine_settings : OpenMMEngineSettings
             * integrator_settings : IntegratorSettings

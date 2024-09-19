@@ -38,6 +38,13 @@ from openfe.protocols.openmm_afe.equil_afe_settings import (
 from pydantic.v1 import validator
 
 
+class ExperimentalAlchemicalSettings(AlchemicalSettings):
+    experimental: bool = False
+    """
+    Turn on experimental alchemy settings
+    """
+
+
 class InterchangeFFSettings(BaseForceFieldSettings):
     """
     Parameters to set up the force field using Interchange and the
@@ -56,7 +63,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     ]
     """List of force field ffxmls to apply"""
 
-    nonbonded_method = "PME", "NoCutoff"
+    nonbonded_method: Literal['pme', 'nocutoff'] = "pme"
     """
     Method for treating nonbonded interactions, currently only PME and
     NoCutoff are allowed. Default PME.
