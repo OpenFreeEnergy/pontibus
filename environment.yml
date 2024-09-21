@@ -4,7 +4,7 @@ channels:
 dependencies:
   - pip
   - openfe
-  - openff-toolkit >0.16
+  - openff-toolkit >0.16.0
   - openff-interchange >0.3.28
   #Testing deps
   - pytest
