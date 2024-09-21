@@ -116,6 +116,45 @@ def _check_library_charges(
         raise ValueError(errmsg)
 
 
+def _check_charged_mols(molecules: list[OFFMolecule]) -> None:
+    """
+    Checks list of molecules passed to Interchange for partial charge
+    assignment.
+
+    Parameters
+    ----------
+    molecules : list[openff.toolkit.Molecule]
+
+    Raises
+    ------
+    ValueError
+      If any molecules in the list are isomorphic.
+      If any molecules in the last have no charges.
+    """
+    if any(m.partial_charges is None for m in molecules):
+        errmsg = (
+            "One or more molecules have been explicitly passed "
+            "for partial charge assignment but do not have "
+            "partial charges"
+        )
+        raise ValueError(errmsg)
+
+    for i, moli in enumerate(molecules):
+        for j, molj in enumerate(molecules):
+            if i == j:
+                continue
+            if moli.is_isomorphic_with(molj) and not all(
+                moli.partial_charges == molj.partial_charges
+            ):
+                errmsg = (
+                    f"Isomorphic molecules {moli} and {molj}"
+                    "have been passed for partial charge "
+                    "assignment with different charges. "
+                    "This is not currently allowed."
+                )
+                raise ValueError(errmsg)
+
+
 def interchange_packmol_creation(
     ffsettings: InterchangeFFSettings,
     solvation_settings: PackmolSolvationSettings,
@@ -243,7 +282,7 @@ def interchange_packmol_creation(
 
     # 4. Create an OFF Topology from the smcs
     # Note: this is the base no solvent case!
-    topology = Topology.from_molecules(*smc_components.values())
+    topology = Topology.from_molecules([*smc_components.values()])
 
     # Also create a list of charged molecules for later use
     charged_mols = [*smc_components.values()]
@@ -254,13 +293,6 @@ def interchange_packmol_creation(
         # Append to charged molcule to charged_mols if we want to
         # otherwise we rely on library charges
         if solvation_settings.assign_solvent_charges:
-            if solvent_offmol.partial_charges is None:
-                errmsg = (
-                    "PackmolSolvationSettings.assign_solvent_charges "
-                    "is ``True`` but the solvent molecule has no "
-                    "partial charges"
-                )
-                raise ValueError(errmsg)
             charged_mols.append(solvent_offmol)
         else:
             # Make sure we have library charges for the molecule
@@ -296,6 +328,10 @@ def interchange_packmol_creation(
     for entry in comp_resnames.values():
         comp = entry[0]
         comp_resids[comp] = np.array(entry[1])
+
+    # Run validation checks on inputs to Interchange
+    # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
+    _check_charged_mols(charged_mols)
 
     interchange = force_field.create_interchange(
         topology=topology,

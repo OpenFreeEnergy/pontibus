@@ -26,6 +26,7 @@ from pontibus.utils.system_creation import (
     _set_offmol_resname,
     _get_offmol_resname,
     _check_library_charges,
+    _check_charged_mols,
 )
 from pontibus.utils.molecules import WATER
 from numpy.testing import assert_allclose, assert_equal
@@ -67,6 +68,13 @@ def water_off_named_charged():
     return water
 
 
+@pytest.fixture(scope="module")
+def water_off_am1bcc():
+    water = WATER.to_openff()
+    water.assign_partial_charges(partial_charge_method="am1bcc")
+    return water
+
+
 def test_get_and_set_offmol_resname(CN_molecule, caplog):
     CN_off = CN_molecule.to_openff()
 
@@ -97,6 +105,20 @@ def test_check_library_charges_fail(methanol):
     ff = ForceField("openff-2.0.0.offxml")
     with pytest.raises(ValueError, match="No library charges"):
         _check_library_charges(ff, methanol)
+
+
+def test_check_charged_mols_pass(methanol):
+    _check_charged_mols([methanol])
+
+
+def test_check_charged_mols_nocharge(water_off, methanol):
+    with pytest.raises(ValueError, match="One or more"):
+        _check_charged_mols([water_off, methanol])
+
+
+def test_check_charged_mols(water_off_am1bcc, water_off_named_charged):
+    with pytest.raises(ValueError, match="different charges"):
+        _check_charged_mols([water_off_am1bcc, water_off_named_charged])
 
 
 def test_protein_component_fail(smc_components_benzene_named, T4_protein_component):
@@ -168,13 +190,11 @@ def test_solv_mismatch(
 @pytest.mark.parametrize(
     "assign_charges, errmsg",
     [
-        (True, "PackmolSolvationSettings.assign_solvent_charges"),
+        (True, "do not have partial charges"),
         (False, "No library charges"),
     ],
 )
-def test_noncharge_nolibrarycharges(
-    smc_components_benzene_named, assign_charges, errmsg
-):
+def test_charge_assignment_errors(smc_components_benzene_named, assign_charges, errmsg):
     """
     True case: passing a Molecule without partial charges to Interchange
     and asking to get charges from it will fail.
@@ -202,6 +222,44 @@ def test_noncharge_nolibrarycharges(
             ),
             solvent_offmol=solvent_offmol,
         )
+
+
+def test_assign_duplicate_resnames(caplog):
+    """
+    Pass two smcs named the same and expect one to be renamed
+    """
+    a = Molecule.from_smiles('C')
+    b = Molecule.from_smiles('CCC')
+    a.generate_conformers()
+    b.generate_conformers()
+    a.assign_partial_charges(partial_charge_method='gasteiger')
+    b.assign_partial_charges(partial_charge_method='gasteiger')
+    _set_offmol_resname(a, 'FOO')
+    _set_offmol_resname(b, 'FOO')
+    smc_a = SmallMoleculeComponent.from_openff(a)
+    smc_b = SmallMoleculeComponent.from_openff(b)
+
+    smcs = {smc_a: a, smc_b: b}
+
+    with caplog.at_level(logging.WARNING):
+        _, smc_comps = interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=[
+                    "openff-2.0.0.offxml",
+                ]
+            ),
+            solvation_settings=None,
+            smc_components=smcs,
+            protein_component=None,
+            solvent_component=None,
+            solvent_offmol=None,
+        )
+    for match in ["Duplicate", "residue name to AAA"]:
+        assert match in caplog.text
+
+    assert len(smc_comps) == 2
+    assert smc_comps[smc_a][0] == 0
+    assert smc_comps[smc_b][0] == 1
 
 
 @pytest.mark.parametrize(
@@ -250,7 +308,7 @@ def test_noncharge_nolibrarycharges(
         "c1ccncc1",
     ],
 )
-def test_solvent_packing(smc_components_benzene_named, smiles):
+def test_nonwater_solvent(smc_components_benzene_named, smiles):
     solvent_offmol = Molecule.from_smiles(smiles)
     solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
 
@@ -640,9 +698,7 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
 
 
 """
-4. Named solvent
 5. Unamed solvent
-  - Check we get the new residue names
   - Check we get warned about renaming
 6. Named solvent with inconsistent name
 7. Duplicate named smcs
@@ -653,4 +709,5 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
   - with a solvent w/ virtual sites
   - check omm topology indices match virtual sites (it doesn't!)
 14. Check nonbonded cutoffs set via ffsettings
+15. Check charged mols tests.
 """
