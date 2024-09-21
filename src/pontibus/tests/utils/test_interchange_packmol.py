@@ -228,14 +228,14 @@ def test_assign_duplicate_resnames(caplog):
     """
     Pass two smcs named the same and expect one to be renamed
     """
-    a = Molecule.from_smiles('C')
-    b = Molecule.from_smiles('CCC')
+    a = Molecule.from_smiles("C")
+    b = Molecule.from_smiles("CCC")
     a.generate_conformers()
     b.generate_conformers()
-    a.assign_partial_charges(partial_charge_method='gasteiger')
-    b.assign_partial_charges(partial_charge_method='gasteiger')
-    _set_offmol_resname(a, 'FOO')
-    _set_offmol_resname(b, 'FOO')
+    a.assign_partial_charges(partial_charge_method="gasteiger")
+    b.assign_partial_charges(partial_charge_method="gasteiger")
+    _set_offmol_resname(a, "FOO")
+    _set_offmol_resname(b, "FOO")
     smc_a = SmallMoleculeComponent.from_openff(a)
     smc_b = SmallMoleculeComponent.from_openff(b)
 
