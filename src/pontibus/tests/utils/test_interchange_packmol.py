@@ -252,7 +252,7 @@ def test_noncharge_nolibrarycharges(
 )
 def test_solvent_packing(smc_components_benzene_named, smiles):
     solvent_offmol = Molecule.from_smiles(smiles)
-    solvent_offmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
 
     interchange, _ = interchange_packmol_creation(
         ffsettings=InterchangeFFSettings(
