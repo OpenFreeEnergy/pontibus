@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - openfe >=1.0
   - gufe >=1.0
   - openff-toolkit >0.16.0
   - openff-interchange >0.3.28
@@ -15,4 +14,5 @@ dependencies:
   - nbval
   # docs
   - pip:
+    - git+https://github.com/OpenFreeEnergy/openfe@main
     - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@a45f3edd5bc3e973c1a01b577c71efa1b62a65d6
