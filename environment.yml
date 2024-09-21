@@ -3,7 +3,8 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - openfe
+  - openfe >=1.0
+  - gufe >=1.0
   - openff-toolkit >0.16.0
   - openff-interchange >0.3.28
   #Testing deps
