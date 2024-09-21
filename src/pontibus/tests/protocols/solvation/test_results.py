@@ -1,8 +1,8 @@
-import gzip
+# This code is part of OpenFE and is licensed under the MIT license.
+# For details, see https://github.com/OpenFreeEnergy/openfe
 import itertools
 import pytest
 import json
-from importlib import resources
 
 import numpy as np
 from openff.units import unit as offunit
@@ -11,35 +11,23 @@ import openfe
 from pontibus.protocols.solvation import ASFEProtocolResult
 
 
-@pytest.fixture
-def afe_solv_transformation_json() -> str:
-    """
-    ASFE results object as created by quickrun.
-
-    generated with devtools/gent-serialized-results.py
-    """
-    d = resources.files("pontibus.tests.data.solvation_protocol")
-    fname = "ASFEProtocol_json_results.gz"
-
-    with gzip.open((d / fname).as_posix(), 'r') as f:
-        return f.read().decode()
-
-
 class TestProtocolResult:
     @pytest.fixture()
     def protocolresult(self, afe_solv_transformation_json):
-        d = json.loads(afe_solv_transformation_json,
-                       cls=gufe.tokenization.JSON_HANDLER.decoder)
+        d = json.loads(
+            afe_solv_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder
+        )
 
-        pr = openfe.ProtocolResult.from_dict(d['protocol_result'])
+        pr = openfe.ProtocolResult.from_dict(d["protocol_result"])
 
         return pr
 
     def test_reload_protocol_result(self, afe_solv_transformation_json):
-        d = json.loads(afe_solv_transformation_json,
-                       cls=gufe.tokenization.JSON_HANDLER.decoder)
+        d = json.loads(
+            afe_solv_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder
+        )
 
-        pr = ASFEProtocolResult.from_dict(d['protocol_result'])
+        pr = ASFEProtocolResult.from_dict(d["protocol_result"])
 
         assert pr
 
@@ -63,14 +51,14 @@ class TestProtocolResult:
         inds = protocolresult.get_individual_estimates()
 
         assert isinstance(inds, dict)
-        assert isinstance(inds['solvent'], list)
-        assert isinstance(inds['vacuum'], list)
-        assert len(inds['solvent']) == len(inds['vacuum']) == 3
-        for e, u in itertools.chain(inds['solvent'], inds['vacuum']):
+        assert isinstance(inds["solvent"], list)
+        assert isinstance(inds["vacuum"], list)
+        assert len(inds["solvent"]) == len(inds["vacuum"]) == 3
+        for e, u in itertools.chain(inds["solvent"], inds["vacuum"]):
             assert e.is_compatible_with(offunit.kilojoule_per_mole)
             assert u.is_compatible_with(offunit.kilojoule_per_mole)
 
-    @pytest.mark.parametrize('key', ['solvent', 'vacuum'])
+    @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_get_forwards_etc(self, key, protocolresult):
         far = protocolresult.get_forward_and_reverse_energy_analysis()
 
@@ -79,27 +67,34 @@ class TestProtocolResult:
         far1 = far[key][0]
         assert isinstance(far1, dict)
 
-        for k in ['fractions', 'forward_DGs', 'forward_dDGs',
-                  'reverse_DGs', 'reverse_dDGs']:
+        for k in [
+            "fractions",
+            "forward_DGs",
+            "forward_dDGs",
+            "reverse_DGs",
+            "reverse_dDGs",
+        ]:
             assert k in far1
 
-            if k == 'fractions':
+            if k == "fractions":
                 assert isinstance(far1[k], np.ndarray)
 
-    @pytest.mark.parametrize('key', ['solvent', 'vacuum'])
+    @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_get_frwd_reverse_none_return(self, key, protocolresult):
         # fetch the first result of type key
         data = [i for i in protocolresult.data[key].values()][0][0]
         # set the output to None
-        data.outputs['forward_and_reverse_energies'] = None
+        data.outputs["forward_and_reverse_energies"] = None
 
         # now fetch the analysis results and expect a warning
-        wmsg = ("were found in the forward and reverse dictionaries "
-                f"of the repeats of the {key}")
+        wmsg = (
+            "were found in the forward and reverse dictionaries "
+            f"of the repeats of the {key}"
+        )
         with pytest.warns(UserWarning, match=wmsg):
             protocolresult.get_forward_and_reverse_energy_analysis()
 
-    @pytest.mark.parametrize('key', ['solvent', 'vacuum'])
+    @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_get_overlap_matrices(self, key, protocolresult):
         ovp = protocolresult.get_overlap_matrices()
 
@@ -108,10 +103,10 @@ class TestProtocolResult:
         assert len(ovp[key]) == 3
 
         ovp1 = ovp[key][0]
-        assert isinstance(ovp1['matrix'], np.ndarray)
-        assert ovp1['matrix'].shape == (14, 14)
+        assert isinstance(ovp1["matrix"], np.ndarray)
+        assert ovp1["matrix"].shape == (14, 14)
 
-    @pytest.mark.parametrize('key', ['solvent', 'vacuum'])
+    @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_get_replica_transition_statistics(self, key, protocolresult):
         rpx = protocolresult.get_replica_transition_statistics()
 
@@ -119,12 +114,12 @@ class TestProtocolResult:
         assert isinstance(rpx[key], list)
         assert len(rpx[key]) == 3
         rpx1 = rpx[key][0]
-        assert 'eigenvalues' in rpx1
-        assert 'matrix' in rpx1
-        assert rpx1['eigenvalues'].shape == (14,)
-        assert rpx1['matrix'].shape == (14, 14)
+        assert "eigenvalues" in rpx1
+        assert "matrix" in rpx1
+        assert rpx1["eigenvalues"].shape == (14,)
+        assert rpx1["matrix"].shape == (14, 14)
 
-    @pytest.mark.parametrize('key', ['solvent', 'vacuum'])
+    @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_equilibration_iterations(self, key, protocolresult):
         eq = protocolresult.equilibration_iterations()
 
@@ -133,7 +128,7 @@ class TestProtocolResult:
         assert len(eq[key]) == 3
         assert all(isinstance(v, float) for v in eq[key])
 
-    @pytest.mark.parametrize('key', ['solvent', 'vacuum'])
+    @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_production_iterations(self, key, protocolresult):
         prod = protocolresult.production_iterations()
 
