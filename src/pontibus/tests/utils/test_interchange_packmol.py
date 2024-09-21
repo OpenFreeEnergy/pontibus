@@ -59,6 +59,14 @@ def water_off():
     return WATER.to_openff()
 
 
+@pytest.fixture(scope="module")
+def water_off_named_charged():
+    water = WATER.to_openff()
+    _set_offmol_resname(water, "HOH")
+    water.assign_partial_charges(partial_charge_method="gasteiger")
+    return water
+
+
 def test_get_and_set_offmol_resname(CN_molecule, caplog):
     CN_off = CN_molecule.to_openff()
 
@@ -157,17 +165,34 @@ def test_solv_mismatch(
         )
 
 
-def test_noncharge_nolibrarycharges(smc_components_benzene_named):
+@pytest.mark.parametrize(
+    "assign_charges, errmsg",
+    [
+        (True, "PackmolSolvationSettings.assign_solvent_charges"),
+        (False, "No library charges"),
+    ],
+)
+def test_noncharge_nolibrarycharges(
+    smc_components_benzene_named, assign_charges, errmsg
+):
+    """
+    True case: passing a Molecule without partial charges to Interchange
+    and asking to get charges from it will fail.
+    False case: not having any partial charges will try to see if it's
+    in the LibraryCharges if not, it will fail (which it does here).
+    """
     solvent_offmol = Molecule.from_smiles("COC")
 
-    with pytest.raises(ValueError, match="No library charges"):
+    with pytest.raises(ValueError, match=errmsg):
         _, _ = interchange_packmol_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
                 ]
             ),
-            solvation_settings=PackmolSolvationSettings(),
+            solvation_settings=PackmolSolvationSettings(
+                assign_solvent_charges=assign_charges,
+            ),
             smc_components=smc_components_benzene_named,
             protein_component=None,
             solvent_component=SolventComponent(
@@ -176,6 +201,88 @@ def test_noncharge_nolibrarycharges(smc_components_benzene_named):
                 ion_concentration=0 * unit.molar,
             ),
             solvent_offmol=solvent_offmol,
+        )
+
+
+@pytest.mark.parametrize(
+    "smiles",
+    [
+        "C1CCCCC1",
+        "C1CCOC1",
+        "CC(=O)N(C)C",
+        "CC(=O)c1ccccc1",
+        "CC(Br)Br",
+        "CC(C)CO",
+        "CC(C)O",
+        "CC(C)OC(C)C",
+        "CC(C)c1ccccc1",
+        "CC(Cl)Cl",
+        "CCBr",
+        "CCCCC",
+        "CCCCCC",
+        "CCCCCC(C)C",
+        "CCCCCCC",
+        "CCCCCCCC",
+        "CCCCCCCCBr",
+        "CCCCCCCl",
+        "CCCCCCO",
+        "CCCCCO",
+        "CCCCO",
+        "CCCCOCCCC",
+        "CCCCOP(=O)(OCCCC)OCCCC",
+        "CCCCc1ccccc1",
+        "CCCO",
+        "CCN(CC)CC",
+        "CCO",
+        "CCOCC",
+        "CCOc1ccccc1",
+        "CCc1ccccc1",
+        "CN(C)C=O",
+        "CNC=O",
+        "COc1ccccc1",
+        "Cc1ccccc1",
+        "Cc1ccccc1C",
+        "Cc1ccccc1C(C)C",
+        "Cc1ccccn1",
+        "Cc1cccnc1C",
+        "c1ccc2c(c1)CCCC2",
+        "c1ccccc1",
+        "c1ccncc1",
+    ],
+)
+def test_solvent_packing(smc_components_benzene_named, smiles):
+    solvent_offmol = Molecule.from_smiles(smiles)
+    solvent_offmol.assign_partial_charges(partial_charge_method='gasteiger')
+
+    interchange, _ = interchange_packmol_creation(
+        ffsettings=InterchangeFFSettings(
+            forcefields=[
+                "openff-2.0.0.offxml",
+            ]
+        ),
+        solvation_settings=PackmolSolvationSettings(
+            assign_solvent_charges=True,
+        ),
+        smc_components=smc_components_benzene_named,
+        protein_component=None,
+        solvent_component=SolventComponent(
+            smiles=smiles,
+            neutralize=False,
+            ion_concentration=0 * unit.molar,
+        ),
+        solvent_offmol=solvent_offmol,
+    )
+
+    if smiles == "c1ccccc1":
+        # solvent == ligand
+        assert solvent_offmol.is_isomorphic_with(
+            list(smc_components_benzene_named.values())[0]
+        )
+        assert interchange.topology.n_unique_molecules == 1
+    else:
+        assert interchange.topology.n_unique_molecules == 2
+        assert solvent_offmol.is_isomorphic_with(
+            list(interchange.topology.unique_molecules)[1]
         )
 
 
@@ -264,6 +371,10 @@ class TestVacuumUnamedBenzene(BaseSystemTests):
         # 6 constraints, one for each hydrogen
         assert omm_system.getNumConstraints() == num_constraints
 
+    def test_positions(self, interchange_system, num_particles):
+        inter, _ = interchange_system
+        assert len((to_openmm_positions(inter))) == num_particles
+
     def test_system_nonbonded(self, nonbonds):
         # One nonbonded force
         assert len(nonbonds) == 1
@@ -306,7 +417,158 @@ class TestVacuumNamedBenzene(TestVacuumUnamedBenzene):
     resname = "BNZ"
 
 
-class TestSolventOPCNamedBenzene(TestVacuumUnamedBenzene):
+class TestSolventOPC3UnamedBenzene(TestVacuumUnamedBenzene):
+    smc_comps = "smc_components_benzene_unnamed"
+    resname = "AAA"
+    nonbond_index = 4
+    solvent_resname = "SOL"
+
+    @pytest.fixture(scope="class")
+    def interchange_system(self, water_off, request):
+        smc_components = request.getfixturevalue(self.smc_comps)
+        interchange, comp_resids = interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
+            ),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=water_off,
+        )
+
+        return interchange, comp_resids
+
+    @pytest.fixture(scope="class")
+    def num_residues(self, omm_topology):
+        return omm_topology.getNumResidues()
+
+    @pytest.fixture(scope="class")
+    def num_waters(self, num_residues):
+        return num_residues - 1
+
+    @pytest.fixture(scope="class")
+    def num_particles(self, num_waters):
+        return 12 + (3 * num_waters)
+
+    @pytest.fixture(scope="class")
+    def num_constraints(self, num_waters):
+        return 6 + (3 * num_waters)
+
+    def test_comp_resids(self, interchange_system, request, num_residues):
+        _, comp_resids = interchange_system
+
+        assert len(comp_resids) == 2
+        assert list(comp_resids)[0] == ExtendedSolventComponent()
+        assert list(comp_resids)[1] == next(
+            iter(request.getfixturevalue(self.smc_comps))
+        )
+        assert_equal(list(comp_resids.values())[0], [i for i in range(1, num_residues)])
+        assert_equal(list(comp_resids.values())[1], [0])
+
+    def test_solvent_resnames(self, omm_topology):
+        for i, res in enumerate(list(omm_topology.residues())[1:]):
+            assert res.index == res.id == i + 1
+            assert res.name == self.solvent_resname
+
+    def test_solvent_nonbond_parameters(self, nonbonds, num_particles, num_waters):
+        for index in range(12, num_particles - num_waters, 3):
+            # oxygen
+            c, s, e = nonbonds[0].getParticleParameters(index)
+            assert from_openmm(c) == -0.89517 * unit.elementary_charge
+            assert from_openmm(e).m == pytest.approx(0.683690704)
+            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(
+                3.1742703509365926
+            )
+
+            # hydrogens
+            c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
+            c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
+            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
+            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
+            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1 == c2
+            assert s1 == s2
+            assert e2 == e2
+
+
+class TestSolventOPC3NamedChargedButUnAssignedBenzene(TestSolventOPC3UnamedBenzene):
+    """
+    OPC3 model
+    Charged water offmol
+    Charges not assigned
+    """
+
+    solvent_resname = "HOH"
+
+    @pytest.fixture(scope="class")
+    def interchange_system(self, water_off_named_charged, request):
+        smc_components = request.getfixturevalue(self.smc_comps)
+        interchange, comp_resids = interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
+            ),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=water_off_named_charged,
+        )
+
+        return interchange, comp_resids
+
+
+class TestSolventOPC3NamedChargedAssignedBenzene(TestSolventOPC3UnamedBenzene):
+    """
+    OPC3 model
+    Charged water offmol
+    Charges assigned
+    """
+
+    solvent_resname = "HOH"
+
+    @pytest.fixture(scope="class")
+    def interchange_system(self, water_off_named_charged, request):
+        smc_components = request.getfixturevalue(self.smc_comps)
+        interchange, comp_resids = interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
+            ),
+            solvation_settings=PackmolSolvationSettings(
+                assign_solvent_charges=True,
+            ),
+            smc_components=smc_components,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=water_off_named_charged,
+        )
+
+        return interchange, comp_resids
+
+    def test_solvent_nonbond_parameters(
+        self, nonbonds, num_particles, num_waters, water_off_named_charged
+    ):
+        for index in range(12, num_particles - num_waters, 3):
+            # oxygen
+            c, s, e = nonbonds[0].getParticleParameters(index)
+            assert from_openmm(c) == water_off_named_charged.partial_charges[0]
+            assert from_openmm(e).m == pytest.approx(0.683690704)
+            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(
+                3.1742703509365926
+            )
+
+            # hydrogens
+            c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
+            c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
+            assert from_openmm(c1) == water_off_named_charged.partial_charges[1]
+            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
+            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1 == c2
+            assert s1 == s2
+            assert e2 == e2
+
+
+class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
     smc_comps = "smc_components_benzene_named"
     resname = "BNZ"
     nonbond_index = 4
@@ -328,48 +590,8 @@ class TestSolventOPCNamedBenzene(TestVacuumUnamedBenzene):
         return interchange, comp_resids
 
     @pytest.fixture(scope="class")
-    def num_residues(self, omm_topology):
-        return omm_topology.getNumResidues()
-
-    @pytest.fixture(scope="class")
-    def num_waters(self, num_residues):
-        return num_residues - 1
-
-    @pytest.fixture(scope="class")
     def num_particles(self, num_waters):
         return 12 + (4 * num_waters)
-
-    @pytest.fixture(scope="class")
-    def num_constraints(self, num_waters):
-        return 6 + (3 * num_waters)
-
-    @pytest.fixture(scope="class")
-    def num_bonds(self):
-        return 6
-
-    @pytest.fixture(scope="class")
-    def num_angles(self):
-        return 18
-
-    @pytest.fixture(scope="class")
-    def num_dih(self):
-        return 42
-
-    def test_comp_resids(self, interchange_system, request, num_residues):
-        _, comp_resids = interchange_system
-
-        assert len(comp_resids) == 2
-        assert list(comp_resids)[0] == ExtendedSolventComponent()
-        assert list(comp_resids)[1] == next(
-            iter(request.getfixturevalue(self.smc_comps))
-        )
-        assert_equal(list(comp_resids.values())[0], [i for i in range(1, num_residues)])
-        assert_equal(list(comp_resids.values())[1], [0])
-
-    def test_solvent_resnames(self, omm_topology):
-        for i, res in enumerate(list(omm_topology.residues())[1:]):
-            assert res.index == res.id == i + 1
-            assert res.name == "SOL"
 
     def test_solvent_nonbond_parameters(self, nonbonds, num_particles, num_waters):
         for index in range(12, num_particles - num_waters, 3):
@@ -397,18 +619,7 @@ class TestSolventOPCNamedBenzene(TestVacuumUnamedBenzene):
             assert from_openmm(e) == 0 * unit.kilocalorie_per_mole
             assert from_openmm(s) * 2 ** (1 / 6) / 2.0 == 1 * unit.angstrom
 
-    def test_positions(self, interchange_system, num_particles):
-        inter, _ = interchange_system
-        assert len((to_openmm_positions(inter))) == num_particles
 
-
-# def test_library_charges_opc3(smc_components_benzene):
-#    ... prenamed, passed on solvent component
-#
-#
-# def test_setcharge_water_solvent(smc_components_benzene):
-#    ...
-#
 # def test_setcharge_coc_solvent(smc_components_benzene):
 #    ...
 #

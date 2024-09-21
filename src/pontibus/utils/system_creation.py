@@ -22,7 +22,6 @@ from openff.toolkit import (
     Topology,
 )
 from openff.interchange import Interchange
-from openff.interchange.interop.openmm import to_openmm_positions
 from openff.interchange.components._packmol import (
     solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
@@ -255,6 +254,13 @@ def interchange_packmol_creation(
         # Append to charged molcule to charged_mols if we want to
         # otherwise we rely on library charges
         if solvation_settings.assign_solvent_charges:
+            if solvent_offmol.partial_charges is None:
+                errmsg = (
+                    "PackmolSolvationSettings.assign_solvent_charges "
+                    "is ``True`` but the solvent molecule has no "
+                    "partial charges"
+                )
+                raise ValueError(errmsg)
             charged_mols.append(solvent_offmol)
         else:
             # Make sure we have library charges for the molecule
@@ -273,6 +279,7 @@ def interchange_packmol_creation(
             solvent=solvent_offmol,
             padding=solvation_settings.solvent_padding,
             box_shape=box_shape,
+            tolerance=solvation_settings.packing_tolerance,
         )
 
     # Assign residue indices to each entry in the OFF topology

@@ -133,6 +133,13 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     be set using the approach defined in ``partial_charge_settings``.
     """
 
+    packing_tolerance: FloatQuantity['angstrom'] = 0.75 * unit.angstrom
+    """
+    Packmol setting; minimum spacing between molecules in units of distance.
+    2.0 A is recommended when packing proteins, but can go as low as 0.5 A
+    to help with convergence.
+    """
+
 
 class ASFESettings(AbsoluteSolvationSettings):
     """
