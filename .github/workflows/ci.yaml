@@ -56,7 +56,7 @@ jobs:
       - name: "Test imports"
         run: |
           # if we add more to this, consider changing to for + env vars
-          python -Ic "import openfe; print(pontibus.__version__)"
+          python -Ic "import pontibus; print(pontibus.__version__)"
 
       - name: "Environment Information"
         run: |
