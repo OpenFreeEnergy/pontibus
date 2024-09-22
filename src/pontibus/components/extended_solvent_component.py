@@ -14,6 +14,7 @@ from gufe.tokenization import (
     modify_dependencies,
 )
 from openff.units import unit
+from openfe.utils import without_oechem_backend
 
 from pontibus.utils.molecules import WATER
 
@@ -63,7 +64,9 @@ class ExtendedSolventComponent(SolventComponent):
 
         """
         self._solvent_molecule = solvent_molecule
-        smiles = solvent_molecule.to_openff().to_smiles()
+        # RDKit and OpenEye make for different smiles
+        with without_oechem_backend():
+            smiles = solvent_molecule.to_openff().to_smiles()
         super().__init__(
             smiles=smiles,
             positive_ion=positive_ion,
