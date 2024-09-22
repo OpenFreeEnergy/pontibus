@@ -1,18 +1,19 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import json
-import pytest
 
 import gufe
-from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
 import openfe
+import pytest
+from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
+
+from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation import (
     ASFEProtocol,
     ASFEProtocolResult,
     ASFESolventUnit,
     ASFEVacuumUnit,
 )
-from pontibus.components import ExtendedSolventComponent
 
 
 @pytest.fixture

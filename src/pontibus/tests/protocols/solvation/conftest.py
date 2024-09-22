@@ -1,6 +1,7 @@
-import pytest
-from importlib import resources
 import gzip
+from importlib import resources
+
+import pytest
 
 
 @pytest.fixture

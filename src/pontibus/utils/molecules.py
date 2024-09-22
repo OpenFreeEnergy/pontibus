@@ -1,6 +1,5 @@
-from openff.toolkit import Molecule
 from gufe import SmallMoleculeComponent
-
+from openff.toolkit import Molecule
 
 offmol_water = Molecule.from_dict(
     {

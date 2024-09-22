@@ -10,31 +10,26 @@ See Also
 --------
 openfe.protocols.openmm_afe.AbsoluteSolvationProtocol
 """
-from typing import (
-    Optional,
-    Literal,
-)
-from openff.units import unit
-from openff.models.types import FloatQuantity
-from gufe.settings import (
-    BaseForceFieldSettings,
-    ThermoSettings,
-)
-from openfe.protocols.openmm_utils.omm_settings import (
-    MultiStateSimulationSettings,
-    BaseSolvationSettings,
-    OpenMMEngineSettings,
-    IntegratorSettings,
-    OpenFFPartialChargeSettings,
-    MultiStateOutputSettings,
-    MDSimulationSettings,
-    MDOutputSettings,
-)
+from typing import Literal, Optional
+
+from gufe.settings import BaseForceFieldSettings, ThermoSettings
 from openfe.protocols.openmm_afe.equil_afe_settings import (
+    AbsoluteSolvationSettings,
     AlchemicalSettings,
     LambdaSettings,
-    AbsoluteSolvationSettings,
 )
+from openfe.protocols.openmm_utils.omm_settings import (
+    BaseSolvationSettings,
+    IntegratorSettings,
+    MDOutputSettings,
+    MDSimulationSettings,
+    MultiStateOutputSettings,
+    MultiStateSimulationSettings,
+    OpenFFPartialChargeSettings,
+    OpenMMEngineSettings,
+)
+from openff.models.types import FloatQuantity
+from openff.units import unit
 from pydantic.v1 import validator
 
 

@@ -1,43 +1,34 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-from typing import Union, Optional
 import uuid
+from typing import Optional, Union
 
-import numpy as np
-from openff.units import unit
 import gufe
-from gufe import (
-    ChemicalSystem,
-    SolventComponent,
-)
+import numpy as np
+from gufe import ChemicalSystem, SolventComponent
 from openfe.protocols.openmm_afe import (
-    AbsoluteSolvationProtocolResult,
     AbsoluteSolvationProtocol,
+    AbsoluteSolvationProtocolResult,
 )
-from openfe.protocols.openmm_utils import (
-    system_validation,
-    settings_validation,
-)
-from pontibus.protocols.solvation.base import (
-    BaseASFEUnit,
-)
+from openfe.protocols.openmm_utils import settings_validation, system_validation
+from openff.units import unit
+
+from pontibus.protocols.solvation import ASFESettings
+from pontibus.protocols.solvation.base import BaseASFEUnit
 from pontibus.protocols.solvation.settings import (
-    ThermoSettings,
-    MultiStateSimulationSettings,
-    OpenMMEngineSettings,
-    IntegratorSettings,
-    OpenFFPartialChargeSettings,
-    MultiStateOutputSettings,
-    MDSimulationSettings,
-    MDOutputSettings,
-    InterchangeFFSettings,
-    PackmolSolvationSettings,
     ExperimentalAlchemicalSettings,
+    IntegratorSettings,
+    InterchangeFFSettings,
     LambdaSettings,
-)
-from pontibus.protocols.solvation import (
-    ASFESettings,
+    MDOutputSettings,
+    MDSimulationSettings,
+    MultiStateOutputSettings,
+    MultiStateSimulationSettings,
+    OpenFFPartialChargeSettings,
+    OpenMMEngineSettings,
+    PackmolSolvationSettings,
+    ThermoSettings,
 )
 
 

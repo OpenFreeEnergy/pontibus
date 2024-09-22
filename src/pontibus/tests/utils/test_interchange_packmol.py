@@ -1,35 +1,35 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-import pytest
 import logging
+
+import pytest
+from gufe import SmallMoleculeComponent, SolventComponent
+from numpy.testing import assert_allclose, assert_equal
+from openff.interchange.interop.openmm import to_openmm_positions
+from openff.toolkit import ForceField, Molecule
+from openff.units import unit
+from openff.units.openmm import from_openmm, to_openmm
 from openmm import (
-    NonbondedForce,
-    HarmonicBondForce,
     HarmonicAngleForce,
+    HarmonicBondForce,
+    NonbondedForce,
     PeriodicTorsionForce,
 )
-from openff.toolkit import Molecule, ForceField
-from openff.units import unit
-from openff.units.openmm import to_openmm, from_openmm
-from openff.interchange.interop.openmm import to_openmm_positions
-from gufe import SmallMoleculeComponent, SolventComponent
+
+from pontibus.components.extended_solvent_component import ExtendedSolventComponent
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.components.extended_solvent_component import (
-    ExtendedSolventComponent,
-)
-from pontibus.utils.system_creation import (
-    interchange_packmol_creation,
-    _set_offmol_resname,
-    _get_offmol_resname,
-    _check_library_charges,
-    _check_charged_mols,
-)
 from pontibus.utils.molecules import WATER
-from numpy.testing import assert_allclose, assert_equal
+from pontibus.utils.system_creation import (
+    _check_charged_mols,
+    _check_library_charges,
+    _get_offmol_resname,
+    _set_offmol_resname,
+    interchange_packmol_creation,
+)
 
 
 @pytest.fixture(scope="module")

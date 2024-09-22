@@ -3,35 +3,26 @@
 import logging
 from itertools import product
 from string import ascii_uppercase
-from typing import (
-    Any,
-    Optional,
-)
+from typing import Any, Optional
+
 import numpy as np
 import numpy.typing as npt
-from openff.units import unit as offunit
-from gufe import (
-    Component,
-    SmallMoleculeComponent,
-    ProteinComponent,
-    SolventComponent,
-)
-from openff.toolkit import Molecule as OFFMolecule
-from openff.toolkit import (
-    ForceField,
-    Topology,
-)
+from gufe import Component, ProteinComponent, SmallMoleculeComponent, SolventComponent
 from openff.interchange import Interchange
 from openff.interchange.components._packmol import (
-    solvate_topology_nonwater,
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
+    solvate_topology_nonwater,
 )
+from openff.toolkit import ForceField
+from openff.toolkit import Molecule as OFFMolecule
+from openff.toolkit import Topology
+from openff.units import unit as offunit
+
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-
 
 logger = logging.getLogger(__name__)
 

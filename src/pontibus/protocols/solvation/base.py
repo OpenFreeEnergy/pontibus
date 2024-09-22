@@ -3,23 +3,33 @@
 
 import logging
 from typing import Any, Optional, Union
-import numpy.typing as npt
-from openff.interchange.interop.openmm import to_openmm_positions
-from gufe import (
-    SmallMoleculeComponent,
-    ProteinComponent,
-    SolventComponent,
-)
+
 import gufe
+import numpy.typing as npt
+import openmm
+import openmmtools
+from gufe import ProteinComponent, SmallMoleculeComponent, SolventComponent
 from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
-from openfe.utils import without_oechem_backend
 from openfe.protocols.openmm_utils import charge_generation, settings_validation
+from openfe.utils import log_system_probe, without_oechem_backend
+from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
-import openmm
+from openff.units import unit
+from openff.units.openmm import ensure_quantity, from_openmm, to_openmm
 from openmm import app
-import openmmtools
-from openfe.utils import log_system_probe
+from openmmtools import multistate
+from openmmtools.alchemy import (
+    AbsoluteAlchemicalFactory,
+    AlchemicalRegion,
+    AlchemicalState,
+)
+from openmmtools.states import (
+    SamplerState,
+    ThermodynamicState,
+    create_thermodynamic_state_protocol,
+)
+
 from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation.settings import (
     IntegratorSettings,
@@ -27,21 +37,6 @@ from pontibus.protocols.solvation.settings import (
     PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import interchange_packmol_creation
-
-from openff.units import unit
-from openff.units.openmm import from_openmm, to_openmm, ensure_quantity
-from openmmtools import multistate
-from openmmtools.states import (
-    SamplerState,
-    ThermodynamicState,
-    create_thermodynamic_state_protocol,
-)
-from openmmtools.alchemy import (
-    AlchemicalRegion,
-    AbsoluteAlchemicalFactory,
-    AlchemicalState,
-)
-
 
 logger = logging.getLogger(__name__)
 

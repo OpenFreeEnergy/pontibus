@@ -1,13 +1,14 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import itertools
-import pytest
 import json
 
-import numpy as np
-from openff.units import unit as offunit
 import gufe
+import numpy as np
 import openfe
+import pytest
+from openff.units import unit as offunit
+
 from pontibus.protocols.solvation import ASFEProtocolResult
 
 

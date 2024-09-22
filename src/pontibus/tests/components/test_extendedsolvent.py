@@ -2,13 +2,12 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import pytest
+from gufe import SmallMoleculeComponent
+from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
 from openff.toolkit import Molecule
 from openff.units import unit
-from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
-from gufe import SmallMoleculeComponent
-from pontibus.components.extended_solvent_component import (
-    ExtendedSolventComponent,
-)
+
+from pontibus.components.extended_solvent_component import ExtendedSolventComponent
 from pontibus.utils.molecules import WATER
 
 

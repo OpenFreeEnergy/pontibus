@@ -1,14 +1,14 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
-import pytest
 from unittest import mock
 
 import mdtraj as mdt
+import pytest
+from gufe import ChemicalSystem
 from openff.units import unit
 
-from gufe import ChemicalSystem
-from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
 from pontibus.components import ExtendedSolventComponent
+from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
 
 
 @pytest.mark.parametrize("method", ["repex", "sams", "independent", "InDePeNdENT"])

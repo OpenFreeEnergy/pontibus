@@ -2,20 +2,19 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 from typing import Union
-from openff.units import unit
-from gufe import (
-    SolventComponent,
-    SmallMoleculeComponent,
-)
+
+from gufe import SmallMoleculeComponent, SolventComponent
 from gufe.tokenization import (
-    modify_dependencies,
     TOKENIZABLE_CLASS_REGISTRY,
     TOKENIZABLE_REGISTRY,
     GufeKey,
-    is_gufe_key_dict,
-    _from_dict,
     GufeTokenizable,
+    _from_dict,
+    is_gufe_key_dict,
+    modify_dependencies,
 )
+from openff.units import unit
+
 from pontibus.utils.molecules import WATER
 
 
