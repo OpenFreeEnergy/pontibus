@@ -1,4 +1,3 @@
-import click
 import json
 import gzip
 import pathlib
@@ -7,10 +6,6 @@ from gufe.tokenization import JSON_HANDLER
 from gufe import SmallMoleculeComponent, ChemicalSystem
 from openff.toolkit import Molecule
 from pontibus.components import ExtendedSolventComponent
-
-
-solvents: dict[str, SmallMoleculeComponent] = {}
-systems: list[ChemicalSystem] = []
 
 
 def add_chemical_systems(
@@ -53,7 +48,7 @@ def add_chemical_systems(
         ))
 
 
-def store_chemical_systems(systems: list[ChemicalSystem]):
+def store_chemical_systems(systems: list[ChemicalSystem], outdir: pathlib.Path):
     """
     Store ChemicalSystems to gzip file.
 
@@ -63,14 +58,17 @@ def store_chemical_systems(systems: list[ChemicalSystem]):
       List of ChemicalSystems to store to file.
     """
     for system in systems:
-        with gzip.open(f"{system.name}_chemicalsystem.gz", 'wt') as zipfile:
+        with gzip.open(outdir / f"{system.name}_chemicalsystem.gz", 'wt') as zipfile:
             json.dump(system.to_dict(), zipfile, cls=JSON_HANDLER.encoder)
 
 
-@click.command
-@click.option(
-    '--sdfs',
-    type=click.Path(dir_okay=False, file_okay=True, path_type=pathlib.Path),
-    required=True,
-    help="Path to the prepared PDB file to validate",
-)
+if __name__ == "__main__":
+    solvents: dict[str, SmallMoleculeComponent] = {}
+    systems: list[ChemicalSystem] = []
+
+    add_chemical_systems('sub_sampled_fsolv.sdf', 'fsolv', solvents, systems)
+    add_chemical_systems('sub_sampled_mnsol.sdf', 'mnsol', solvents, systems)
+
+    outdir = pathlib.Path('chemicalsystems')
+    outdir.mkdir(exist_ok=True)
+    store_chemical_systems(systems, outdir)

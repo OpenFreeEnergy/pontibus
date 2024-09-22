@@ -14,9 +14,9 @@ from openfe.protocols.openmm_afe import (
 from openfe.protocols.openmm_utils import settings_validation, system_validation
 from openff.units import unit
 
-from pontibus.protocols.solvation import ASFESettings
 from pontibus.protocols.solvation.base import BaseASFEUnit
 from pontibus.protocols.solvation.settings import (
+    ASFESettings,
     ExperimentalAlchemicalSettings,
     IntegratorSettings,
     InterchangeFFSettings,

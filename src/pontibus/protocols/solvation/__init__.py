@@ -7,10 +7,10 @@ Run absolute solvation free energy calculations using OpenMM and OpenMMTools.
 from .asfe_protocol import (
     ASFEProtocol,
     ASFEProtocolResult,
+    ASFESettings,
     ASFESolventUnit,
     ASFEVacuumUnit,
 )
-from .settings import ASFESettings
 
 __all__ = [
     "ASFEProtocol",
