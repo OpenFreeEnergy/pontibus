@@ -1,26 +1,21 @@
-import pathlib
-import json
 import gzip
-from openff.units import unit
+import json
+import pathlib
+
+from gufe import AlchemicalNetwork, ChemicalSystem, Transformation
 from gufe.tokenization import JSON_HANDLER
-from gufe import (
-    AlchemicalNetwork,
-    ChemicalSystem,
-    Transformation
-)
+from openff.toolkit import Molecule
+from openff.units import unit
 from pontibus.protocols.solvation import ASFEProtocol
 
 
 def deserialize_system(file: pathlib.Path):
-    with gzip.open(file, 'r') as f:
-        d = json.loads(
-            f.read().decode(),
-            cls=JSON_HANDLER.decoder
-        )
+    with gzip.open(file, "r") as f:
+        d = json.loads(f.read().decode(), cls=JSON_HANDLER.decoder)
     return ChemicalSystem.from_dict(d)
 
 
-def get_settings():
+def get_water_settings():
     settings = ASFEProtocol.default_settings()
     settings.protocol_repeats = 1
     settings.solvent_forcefield_settings.forcefields = [
@@ -32,27 +27,52 @@ def get_settings():
     ]
     settings.solvent_simulation_settings.time_per_iteration = 5 * unit.picosecond
     settings.vacuum_simulation_settings.time_per_iteration = 5 * unit.picosecond
+    settings.vacuum_engine_settings.compute_platform = "CPU"
+    settings.solvent_engine_settings.compute_platform = "CUDA"
+    settings.solvation_settings.box_shape = "dodecahedron"
+    return settings
+
+
+def get_nonwater_settings():
+    settings = ASFEProtocol.default_settings()
+    settings.protocol_repeats = 1
+    settings.solvent_forcefield_settings.forcefields = [
+        "openff-2.0.0.offxml",
+        "tip3p.offxml",
+    ]
+    settings.vacuum_forcefield_settings.forcefields = [
+        "openff-2.0.0.offxml",
+    ]
+    settings.solvent_simulation_settings.time_per_iteration = 5 * unit.picosecond
+    settings.vacuum_simulation_settings.time_per_iteration = 5 * unit.picosecond
+    settings.vacuum_engine_settings.compute_platform = "CUDA"
+    settings.solvent_engine_settings.compute_platform = "CUDA"
+    settings.solvation_settings.box_shape = "dodecahedron"
+    settings.solvation_settings.assign_solvent_charges = True
     return settings
 
 
 def get_transformation(stateA):
-    settings = get_settings()
-    stateB = stateA.components['solvent']
+    solvent = stateA.components["solvent"]
+
+    water = Molecule.from_smiles("O")
+    if water.is_isomorphic_with(solvent.solvent_molecule.to_openff()):
+        settings = get_water_settings()
+    else:
+        settings = get_nonwater_settings()
+
+    stateB = ChemicalSystem({"solvent": solvent})
     protocol = ASFEProtocol(settings=settings)
     return Transformation(
-        stateA=stateA,
-        stateB=stateB,
-        mapping=None,
-        protocol=protocol,
-        name=stateA.name
+        stateA=stateA, stateB=stateB, mapping=None, protocol=protocol, name=stateA.name
     )
 
 
 def run(outdir: pathlib.Path):
     systems: list[ChemicalSystem] = []
 
-    systems_dir = pathlib.Path('chemicalsystems')
-    system_files = systems_dir.glob('*.gz')
+    systems_dir = pathlib.Path("chemicalsystems")
+    system_files = systems_dir.glob("*.gz")
 
     for file in system_files:
         systems.append(deserialize_system(file))
@@ -77,6 +97,6 @@ def run(outdir: pathlib.Path):
 
 
 if __name__ == "__main__":
-    outdir = pathlib.Path('2.0.0_single_repeat_inputs')
+    outdir = pathlib.Path("2.0.0_single_repeat_inputs")
     outdir.mkdir(exist_ok=False)
     run(outdir)
