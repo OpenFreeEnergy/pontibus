@@ -1,0 +1,39 @@
+name: pontibus
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - gufe >=1.0
+  - openff-toolkit >0.16.0
+  - openff-interchange >0.3.28
+  - openff-nagl-base >=0.3.3
+  # OpenFE stack deps
+  - duecredit<0.10
+  - kartograf>=1.0.0
+  - lomap2>=3.0.0
+  - numpy
+  - networkx
+  - rdkit
+  - packaging
+  - pip
+  - pydantic >=1.10.17
+  - pyyaml
+  - coverage
+  - cinnabar ~=0.4.0
+  - click
+  - typing-extensions
+  - openmm >=8.0.0,!=8.1.0
+  - openmmtools
+  - openmmforcefields
+  - plugcli
+  - tqdm
+  # Testing deps
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - mypy
+  - nbval
+  # docs
+  - pip:
+    - git+https://github.com/OpenFreeEnergy/openfe@main
+    - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@a45f3edd5bc3e973c1a01b577c71efa1b62a65d6
