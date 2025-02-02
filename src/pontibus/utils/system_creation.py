@@ -300,6 +300,7 @@ def interchange_packmol_creation(
         topology = solvate_topology_nonwater(
             topology=topology,
             solvent=solvent_offmol,
+            target_density=0.95 * offunit.grams / offunit.mL,
             padding=solvation_settings.solvent_padding,
             box_shape=box_shape,
             tolerance=solvation_settings.packing_tolerance,
