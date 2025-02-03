@@ -61,7 +61,7 @@ def protocol_result(afe_solv_transformation_json):
 
 class TestProtocol(GufeTokenizableTestsMixin):
     cls = ASFEProtocol
-    key = "ASFEProtocol-a9fe65baa34fb42a281cf9064ba9afa0"
+    key = "ASFEProtocol-6d821918a2d558cda0c5bfa7d6d5bace"
     repr = f"<{key}>"
 
     @pytest.fixture()
