@@ -383,7 +383,7 @@ class BaseSystemTests:
     def omm_topology(self, interchange_system):
         interchange, _ = interchange_system
 
-        return interchange.to_openmm_topology()
+        return interchange.to_openmm_topology(collate=True)
 
     @pytest.fixture(scope="class")
     def nonbonds(self, omm_system):

@@ -195,7 +195,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             )
 
         # Get omm objects back
-        omm_topology = interchange.to_openmm_topology()
+        omm_topology = interchange.to_openmm_topology(collate=True)
         omm_system = interchange.to_openmm_system(
             hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
