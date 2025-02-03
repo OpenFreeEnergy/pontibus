@@ -91,9 +91,7 @@ class TestSolventUnit(GufeTokenizableTestsMixin):
 
 class TestVacuumUnit(GufeTokenizableTestsMixin):
     cls = ASFEVacuumUnit
-    repr = (
-        "ASFEVacuumUnit(Absolute Solvation, benzene vacuum leg"
-    )
+    repr = "ASFEVacuumUnit(Absolute Solvation, benzene vacuum leg"
     key = None
 
     @pytest.fixture()

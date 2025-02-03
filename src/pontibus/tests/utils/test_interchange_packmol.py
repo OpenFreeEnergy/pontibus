@@ -118,10 +118,10 @@ def test_check_deduplicate_charged_mols(smc_components_benzene_unnamed):
     different conformer.
     """
     benzene1 = list(smc_components_benzene_unnamed.values())[0]
-    benzene1.assign_partial_charges(partial_charge_method='gasteiger')
-    benzene2 = Molecule.from_smiles('c1ccccc1')
+    benzene1.assign_partial_charges(partial_charge_method="gasteiger")
+    benzene2 = Molecule.from_smiles("c1ccccc1")
     benzene2.generate_conformers(n_conformers=1)
-    benzene2.assign_partial_charges(partial_charge_method='gasteiger')
+    benzene2.assign_partial_charges(partial_charge_method="gasteiger")
 
     assert all(benzene1.partial_charges == benzene2.partial_charges)
     assert np.any(benzene1.conformers[0] != benzene2.conformers[0])

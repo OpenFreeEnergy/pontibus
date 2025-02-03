@@ -108,7 +108,7 @@ def _check_library_charges(
 
 
 def _check_and_deduplicate_charged_mols(
-    molecules: list[OFFMolecule]
+    molecules: list[OFFMolecule],
 ) -> list[OFFMolecule]:
     """
     Checks list of molecules with charges and removes any isomorphic
@@ -143,8 +143,7 @@ def _check_and_deduplicate_charged_mols(
 
     for moli in molecules:
         isomorphic_mols = [
-            molj for molj in unique_mols
-            if moli.is_isomorphic_with(molj)
+            molj for molj in unique_mols if moli.is_isomorphic_with(molj)
         ]
 
         if isomorphic_mols:
