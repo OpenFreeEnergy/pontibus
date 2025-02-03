@@ -5,6 +5,7 @@ import logging
 
 import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
+import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import ForceField, Molecule
@@ -24,7 +25,7 @@ from pontibus.protocols.solvation.settings import (
 )
 from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
-    _check_charged_mols,
+    _check_and_deduplicate_charged_mols,
     _check_library_charges,
     _get_offmol_resname,
     _set_offmol_resname,
@@ -108,17 +109,38 @@ def test_check_library_charges_fail(methanol):
 
 
 def test_check_charged_mols_pass(methanol):
-    _check_charged_mols([methanol])
+    _check_and_deduplicate_charged_mols([methanol])
+
+
+def test_check_deduplicate_charged_mols(smc_components_benzene_unnamed):
+    """
+    Base test case for deduplication. Same molecule, same partial charges,
+    different conformer.
+    """
+    benzene1 = list(smc_components_benzene_unnamed.values())[0]
+    benzene1.assign_partial_charges(partial_charge_method="gasteiger")
+    benzene2 = Molecule.from_smiles("c1ccccc1")
+    benzene2.generate_conformers(n_conformers=1)
+    benzene2.assign_partial_charges(partial_charge_method="gasteiger")
+
+    assert all(benzene1.partial_charges == benzene2.partial_charges)
+    assert np.any(benzene1.conformers[0] != benzene2.conformers[0])
+    assert benzene1.is_isomorphic_with(benzene2)
+
+    uniques = _check_and_deduplicate_charged_mols([benzene1, benzene2])
+
+    assert len(uniques) == 1
+    assert uniques[0] == benzene1
 
 
 def test_check_charged_mols_nocharge(water_off, methanol):
     with pytest.raises(ValueError, match="One or more"):
-        _check_charged_mols([water_off, methanol])
+        _check_and_deduplicate_charged_mols([water_off, methanol])
 
 
 def test_check_charged_mols(water_off_am1bcc, water_off_named_charged):
     with pytest.raises(ValueError, match="different charges"):
-        _check_charged_mols([water_off_am1bcc, water_off_named_charged])
+        _check_and_deduplicate_charged_mols([water_off_am1bcc, water_off_named_charged])
 
 
 def test_protein_component_fail(smc_components_benzene_named, T4_protein_component):
@@ -312,6 +334,12 @@ def test_nonwater_solvent(smc_components_benzene_named, smiles):
     solvent_offmol = Molecule.from_smiles(smiles)
     solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
 
+    if smiles == "c1ccccc1":
+        ligand = list(smc_components_benzene_named.values())[0]
+        assert solvent_offmol.is_isomorphic_with(ligand)
+        assert_allclose(solvent_offmol.partial_charges, ligand.partial_charges)
+        assert all(solvent_offmol.partial_charges == ligand.partial_charges)
+
     interchange, _ = interchange_packmol_creation(
         ffsettings=InterchangeFFSettings(
             forcefields=[
@@ -355,7 +383,7 @@ class BaseSystemTests:
     def omm_topology(self, interchange_system):
         interchange, _ = interchange_system
 
-        return interchange.to_openmm_topology()
+        return interchange.to_openmm_topology(collate=True)
 
     @pytest.fixture(scope="class")
     def nonbonds(self, omm_system):

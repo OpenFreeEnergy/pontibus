@@ -5,7 +5,7 @@ dependencies:
   - pip
   - gufe >=1.0
   - openff-toolkit >0.16.0
-  - openff-interchange >0.3.28
+  - openff-interchange >=0.4
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
   - duecredit<0.10
@@ -16,13 +16,13 @@ dependencies:
   - rdkit
   - packaging
   - pip
-  - pydantic >=1.10.17
+  - pydantic >=2.0
   - pyyaml
   - coverage
   - cinnabar ~=0.4.0
   - click
   - typing-extensions
-  - openmm >=8.0.0,!=8.1.0
+  - openmm >=8.0.0,!=8.1.0,<8.2.0
   - openmmtools
   - openmmforcefields
   - plugcli

@@ -195,7 +195,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             )
 
         # Get omm objects back
-        omm_topology = interchange.to_openmm_topology()
+        omm_topology = interchange.to_openmm_topology(collate=True)
         omm_system = interchange.to_openmm_system(
             hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
@@ -288,7 +288,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         try:
             # 12. Get context caches
             energy_ctx_cache, sampler_ctx_cache = self._get_ctx_caches(
-                settings["engine_settings"]
+                settings["forcefield_settings"],
+                settings["engine_settings"],
             )
 
             # 13. Get integrator
