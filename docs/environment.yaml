@@ -7,7 +7,7 @@ dependencies:
 - packaging
 - plugcli
 - python=3.10
-- sphinx  <7
+- sphinx<7
 - sphinx-click
 - gitpython
 - libsass
@@ -17,6 +17,7 @@ dependencies:
 - pip:
   - sphinx-design
   - sphinx-toolbox
+  - sphinx<7
   - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@main
 
 # These are added automatically by RTD, so we include them here
