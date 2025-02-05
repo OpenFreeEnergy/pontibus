@@ -12,7 +12,6 @@ aimed specifically at facilitating the validation of OpenFF Force Fields.
 
    getting_started
    api
-   tutorials/index
 
 
 
