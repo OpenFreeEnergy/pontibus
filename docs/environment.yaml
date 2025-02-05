@@ -8,6 +8,7 @@ dependencies:
 - plugcli
 - python=3.10
 - sphinx  #<7
+- sphinx-click
 - gitpython
 - libsass
 - nbsphinx
