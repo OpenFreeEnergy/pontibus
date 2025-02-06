@@ -76,11 +76,10 @@ jobs:
 
       - name: codecov-pr
         if: ${{ github.repository == 'OpenFreeEnergy/pontibus'
-                && github.event_name == 'pull_request' }}
-        uses: codecov/codecov-action@v4
+                && github.event_name != 'schedule' }}
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml
           fail_ci_if_error: False
           verbose: True
-          flags: fast-tests
