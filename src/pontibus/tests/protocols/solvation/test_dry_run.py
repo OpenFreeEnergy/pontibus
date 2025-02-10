@@ -56,10 +56,12 @@ def test_dry_run_vacuum_benzene(benzene_modifications, method, tmpdir):
         assert not vac_sampler.is_periodic
 
 
-def test_dry_run_solv_benzene(benzene_modifications, tmpdir):
+@pytest.mark.parametrize("experimental", [True, False])
+def test_dry_run_solv_benzene(experimental, benzene_modifications, tmpdir):
     s = ASFEProtocol.default_settings()
     s.protocol_repeats = 1
     s.solvent_output_settings.output_indices = "resname AAA"
+    s.alchemical_settings.experimental = experimental
 
     protocol = ASFEProtocol(
         settings=s,

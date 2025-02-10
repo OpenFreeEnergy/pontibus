@@ -13,6 +13,7 @@ from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
     solvate_topology_nonwater,
+    pack_box,
 )
 from openff.toolkit import ForceField
 from openff.toolkit import Molecule as OFFMolecule
@@ -166,6 +167,172 @@ def _check_and_deduplicate_charged_mols(
     return unique_mols
 
 
+def _validate_components(
+    protein_component: Optional[ProteinComponent],
+    solvent_component: Optional[SolventComponent],
+    solvent_offmol: Optional[OFFMolecule],
+) -> None:
+    """
+    Validates input components to ``interchange_packmol_creation``.
+
+
+    Parameters
+    ----------
+    protein_component : Optional[ProteinComponent]
+      Protein component of the system, if any.
+    solvent_component : Optional[SolventComponent]
+      Solvent component of the system, if any.
+    solvent_offmol : Optional[openff.toolkit.Molecule]
+      OpenFF Molecule defining the solvent, if necessary
+
+
+    Raises
+    ------
+    ValueError
+      If there is a protein_component.
+      If the solvent_component requests counterions.
+      If we have a solvent_component but no solvent_offmol.
+      If the solvent_component and solvent_offmol are not isomorphic.
+      If the solvent_offmol doesn't have one conformer.
+    """
+    # Adding protein components is not currently supported
+    if protein_component is not None:
+        errmsg = (
+            "Creation of systems solely with Interchange "
+            "using ProteinComponents is not currently supported"
+        )
+        raise ValueError(errmsg)
+
+    # TODO: work out ways to deal with the addition of counterions
+    if solvent_component is not None:
+        if (
+            solvent_component.neutralize
+            or solvent_component.ion_concentration > 0 * offunit.molar
+        ):
+            errmsg = (
+                "Adding counterions using packmol solvation "
+                "is currently not supported"
+            )
+            raise ValueError(errmsg)
+
+        if solvent_offmol is None:
+            errmsg = "A solvent offmol must be passed to solvate a system!"
+            raise ValueError(errmsg)
+
+        # Check that the component matches the offmol
+        if not solvent_offmol.is_isomorphic_with(
+            OFFMolecule.from_smiles(solvent_component.smiles)
+        ):
+            errmsg = (
+                f"Passed molecule: {solvent_offmol} does not match the "
+                f"the solvent component: {solvent_component.smiles}"
+            )
+            raise ValueError(errmsg)
+
+        # TODO: check here that the offmol has a single conformer
+        if solvent_offmol.n_conformers != 1:
+            errmsg = (
+                "Solvent OpenFF Molecule should have a single conformer. "
+                f"Number of conformers found: {solvent_offmol.n_conformers}"
+            )
+            raise ValueError(errmsg)
+
+
+def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
+    """
+    Get a ForceField object based on an input InterchangeFFSettings object.
+
+    Parameters
+    ----------
+    ffsettings : InterchangeFFSettings
+      Settings defining how the force field is applied.
+
+    Returns
+    -------
+    force_field : ForceField
+      An OpenFF toolkit ForceField object.
+    """
+    # forcefields is a list so we unpack it
+    force_field = ForceField(*ffsettings.forcefields)
+
+    # Cautiously deregister the AM1BCC handler, we shouldn't need it.
+    # See: https://github.com/openforcefield/openff-interchange/issues/1048
+    force_field.deregister_parameter_handler("ToolkitAM1BCC")
+
+    # We also set nonbonded cutoffs whilst we are here
+    # TODO: double check what this means for nocutoff simulations
+    force_field["Electrostatics"].cutoff = ffsettings.nonbonded_cutoff
+    force_field["vdW"].cutoff = ffsettings.nonbonded_cutoff
+    force_field["vdW"].switch_width = ffsettings.switch_width
+
+    return force_field
+
+
+def _get_comp_resnames(
+    smc_components: dict[SmallMoleculeComponent, OFFMolecule],
+    solvent_component: Optional[SolventComponent],
+    solvent_offmol: Optional[OFFMolecule],
+) -> dict[str, tuple[Component, list[Any]]]:
+    """
+    Assign residue names so we can track components in a generated Topology.
+
+    Parameters
+    ----------
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
+      Solute SmallMoleculeComponents.
+    solvent_component : Optional[SolventComponent]
+      Solvent component of the system, if any.
+    solvent_offmol : Optional[openff.toolkit.Molecule]
+      OpenFF Molecule defining the solvent, if necessary
+
+    Returns
+    -------
+    comp_resnames: dict[str, tuple[Component, list[Any]]]
+      A dictionary keyed by residue names which contains
+      a tuple with the matching Component and an empty list
+      which will later be populated with residue numbers.
+    """
+    # Note: comp_resnames is dict[str, tuple[Component, list]] where the final
+    # list is to append residues later on
+    # TODO: make this a method
+    # TODO: we should be able to rely on offmol equality in the same way that
+    # intechange does
+    comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
+
+    # If we have solvent, we set its residue name
+    if solvent_component is not None:
+        offmol_resname = _get_offmol_resname(solvent_offmol)
+        if offmol_resname is None:
+            offmol_resname = "SOL"
+            _set_offmol_resname(solvent_offmol, offmol_resname)
+        comp_resnames[offmol_resname] = (solvent_component, [])
+
+    # A store of residue names to replace residue names if they aren't unique
+    resnames_store = ["".join(i) for i in product(ascii_uppercase, repeat=3)]
+
+    for comp, offmol in smc_components.items():
+        off_resname = _get_offmol_resname(offmol)
+        if off_resname is None or off_resname in comp_resnames:
+            # warn that we are overriding clashing molecule resnames
+            if off_resname in comp_resnames:
+                wmsg = (
+                    f"Duplicate residue name {off_resname}, "
+                    "duplicate will be renamed"
+                )
+                logger.warning(wmsg)
+
+            # just loop through and pick up a name that doesn't exist
+            while (off_resname in comp_resnames) or (off_resname is None):
+                off_resname = resnames_store.pop(0)
+
+        wmsg = f"Setting component {comp} residue name to {off_resname}"
+        logger.warning(wmsg)
+        _set_offmol_resname(offmol, off_resname)
+        comp_resnames[off_resname] = [comp, []]
+
+    return comp_resnames
+
+
 def interchange_packmol_creation(
     ffsettings: InterchangeFFSettings,
     solvation_settings: PackmolSolvationSettings,
@@ -203,93 +370,16 @@ def interchange_packmol_creation(
     """
 
     # 1. Component validations
-    # Adding protein components is not currently supported
-    if protein_component is not None:
-        errmsg = (
-            "Creation of systems solely with Interchange "
-            "using ProteinComponents is not currently supported"
-        )
-        raise ValueError(errmsg)
-
-    # TODO: work out ways to deal with the addition of counterions
-    if solvent_component is not None:
-        if (
-            solvent_component.neutralize
-            or solvent_component.ion_concentration > 0 * offunit.molar
-        ):
-            errmsg = (
-                "Adding counterions using packmol solvation "
-                "is currently not supported"
-            )
-            raise ValueError(errmsg)
-
-        if solvent_offmol is None:
-            errmsg = "A solvent offmol must be passed to solvate a system!"
-            raise ValueError(errmsg)
-
-        # Check that the component matches the offmol
-        if not solvent_offmol.is_isomorphic_with(
-            OFFMolecule.from_smiles(solvent_component.smiles)
-        ):
-            errmsg = (
-                f"Passed molecule: {solvent_offmol} does not match the "
-                f"the solvent component: {solvent_component.smiles}"
-            )
-            raise ValueError(errmsg)
+    _validate_components(protein_component, solvent_component, solvent_offmol)
 
     # 2. Get the force field object
-    # forcefields is a list so we unpack it
-    force_field = ForceField(*ffsettings.forcefields)
-
-    # Cautiously deregister the AM1BCC handler, we shouldn't need it.
-    # See: https://github.com/openforcefield/openff-interchange/issues/1048
-    force_field.deregister_parameter_handler("ToolkitAM1BCC")
-
-    # We also set nonbonded cutoffs whilst we are here
-    # TODO: double check what this means for nocutoff simulations
-    force_field["Electrostatics"].cutoff = ffsettings.nonbonded_cutoff
-    force_field["vdW"].cutoff = ffsettings.nonbonded_cutoff
-    force_field["vdW"].switch_width = ffsettings.switch_width
+    force_field = _get_force_field(ffsettings)
 
     # 3. Assign residue names so we can track our components in the generated
     # topology.
-
-    # Note: comp_resnames is dict[str, tuple[Component, list]] where the final
-    # list is to append residues later on
-    # TODO: we should be able to rely on offmol equality in the same way that
-    # intechange does
-    comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
-
-    # If we have solvent, we set its residue name
-    if solvent_component is not None:
-        offmol_resname = _get_offmol_resname(solvent_offmol)
-        if offmol_resname is None:
-            offmol_resname = "SOL"
-            _set_offmol_resname(solvent_offmol, offmol_resname)
-        comp_resnames[offmol_resname] = (solvent_component, [])
-
-    # A store of residue names to replace residue names if they aren't unique
-    resnames_store = ["".join(i) for i in product(ascii_uppercase, repeat=3)]
-
-    for comp, offmol in smc_components.items():
-        off_resname = _get_offmol_resname(offmol)
-        if off_resname is None or off_resname in comp_resnames:
-            # warn that we are overriding clashing molecule resnames
-            if off_resname in comp_resnames:
-                wmsg = (
-                    f"Duplicate residue name {off_resname}, "
-                    "duplicate will be renamed"
-                )
-                logger.warning(wmsg)
-
-            # just loop through and pick up a name that doesn't exist
-            while (off_resname in comp_resnames) or (off_resname is None):
-                off_resname = resnames_store.pop(0)
-
-        wmsg = f"Setting component {comp} residue name to {off_resname}"
-        logger.warning(wmsg)
-        _set_offmol_resname(offmol, off_resname)
-        comp_resnames[off_resname] = [comp, []]
+    comp_resnames = _get_comp_resnames(
+        smc_components, solvent_component, solvent_offmol
+    )
 
     # 4. Create an OFF Topology from the smcs
     # Note: this is the base no solvent case!
@@ -299,10 +389,11 @@ def interchange_packmol_creation(
     charged_mols = [*smc_components.values()]
 
     # 5. Solvent case
+    # TODO: make this a method
     if solvent_component is not None:
 
         # Append to charged molcule to charged_mols if we want to
-        # otherwise we rely on library charges
+        # otherwise we rely on library charges -- TODO: this doesn't make sense
         if solvation_settings.assign_solvent_charges:
             charged_mols.append(solvent_offmol)
         else:
@@ -326,6 +417,7 @@ def interchange_packmol_creation(
             tolerance=solvation_settings.packing_tolerance,
         )
 
+    # TODO: this is actually useful, make this a method
     # Assign residue indices to each entry in the OFF topology
     for molecule_index, molecule in enumerate(topology.molecules):
         for atom in molecule.atoms:

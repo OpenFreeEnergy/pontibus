@@ -36,7 +36,10 @@ from pydantic.v1 import validator
 class ExperimentalAlchemicalSettings(AlchemicalSettings):
     experimental: bool = False
     """
-    Turn on experimental alchemy settings
+    Enable the use of experimental alchemical features.
+
+    This includes, but is not limited to, support for virtual sites
+    in alchemical transformations.
     """
 
 

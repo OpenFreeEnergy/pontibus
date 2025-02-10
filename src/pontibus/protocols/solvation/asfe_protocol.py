@@ -129,9 +129,9 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
             solvent_engine_settings=OpenMMEngineSettings(),
             integrator_settings=IntegratorSettings(),
             solvent_equil_simulation_settings=MDSimulationSettings(
-                equilibration_length_nvt=0.1 * unit.nanosecond,
-                equilibration_length=0.2 * unit.nanosecond,
-                production_length=0.5 * unit.nanosecond,
+                equilibration_length_nvt=0.5 * unit.nanosecond,
+                equilibration_length=0.5 * unit.nanosecond,
+                production_length=9.5 * unit.nanosecond,
             ),
             solvent_equil_output_settings=MDOutputSettings(
                 equil_nvt_structure="equil_nvt_structure.pdb",

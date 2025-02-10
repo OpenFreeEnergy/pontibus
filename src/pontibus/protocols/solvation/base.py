@@ -8,7 +8,12 @@ import gufe
 import numpy.typing as npt
 import openmm
 import openmmtools
-from gufe import ProteinComponent, SmallMoleculeComponent, SolventComponent
+from gufe import (
+    Component,
+    ProteinComponent,
+    SmallMoleculeComponent,
+    SolventComponent,
+)
 from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.protocols.openmm_utils import charge_generation, settings_validation
@@ -35,6 +40,9 @@ from pontibus.protocols.solvation.settings import (
     IntegratorSettings,
     OpenFFPartialChargeSettings,
     PackmolSolvationSettings,
+)
+from pontibus.utils.experimental_absolute_factory import (
+    ExperimentalAbsoluteAlchemicalFactory,
 )
 from pontibus.utils.system_creation import interchange_packmol_creation
 
@@ -67,26 +75,31 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         Returns
         -------
         offmol : openff.toolkit.Molecule
+
+        Notes
+        -----
+        * If created from a smiles, the solvent will be assigned
+          a single conformer through `Molecule.generate_conformers`.
         """
         # Get the solvent offmol
         if isinstance(solvent_component, ExtendedSolventComponent):
             solvent_offmol = solvent_component.solvent_molecule.to_openff()
         else:
+            # If not, we create the solvent from smiles
+            # We generate a single conformer to avoid packing issues
             solvent_offmol = OFFMolecule.from_smiles(solvent_component.smiles)
+            solvent_offmol.generate_conformers(n_conformers=1)
 
-        # Assign solvent offmol charges if necessary
+        # In-place assign solvent offmol charges if necessary
+        # Note: we don't enforce partial charge assignment to avoid
+        # cases where we want to rely on library charges instead.
         if solvation_settings.assign_solvent_charges:
-            if solvent_offmol.n_conformers == 0:
-                n_conf = 1
-            else:
-                n_conf = partial_charge_settings.number_of_conformers
-
             charge_generation.assign_offmol_partial_charges(
                 offmol=solvent_offmol,
                 overwrite=False,
                 method=partial_charge_settings.partial_charge_method,
                 toolkit_backend=partial_charge_settings.off_toolkit_backend,
-                generate_n_conformers=n_conf,
+                generate_n_conformers=partial_charge_settings.number_of_conformers,
                 nagl_model=partial_charge_settings.nagl_model,
             )
 
@@ -206,6 +219,61 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         return omm_topology, omm_system, positions, comp_resids
 
+    def _get_experimental_alchemical_system(
+        self,
+        topology: app.Topology,
+        system: openmm.System,
+        comp_resids: dict[Component, npt.NDArray],
+        alchem_comps: dict[str, list[Component]],
+    ) -> tuple[ExperimentalAbsoluteAlchemicalFactory, openmm.System, list[int]]:
+        """
+        Get an alchemically modified system and its associated factory using
+        the ExperimentalAbsoluteAlchemicalFactory,
+
+        Parameters
+        ----------
+        topology : openmm.Topology
+          Topology of OpenMM System.
+        system : openmm.System
+          System to alchemically modify.
+        comp_resids : dict[str, npt.NDArray]
+          A dictionary of residues for each component in the System.
+        alchem_comps : dict[str, list[Component]]
+          A dictionary of alchemical components for each end state.
+
+        Returns
+        -------
+        alchemical_factory : AbsoluteAlchemicalFactory
+          Factory for creating an alchemically modified system.
+        alchemical_system : openmm.System
+          Alchemically modified system
+        alchemical_indices : list[int]
+          A list of atom indices for the alchemically modified
+          species in the system.
+
+        Notes
+        -----
+        In theory, this option should allow for virtual sites.
+
+        TODO
+        ----
+        * Add support for all alchemical factory options
+        """
+        alchemical_indices = self._get_alchemical_indices(
+            topology, comp_resids, alchem_comps
+        )
+
+        alchemical_region = AlchemicalRegion(
+            alchemical_atoms=alchemical_indices,
+        )
+
+        alchemical_factory = ExperimentalAbsoluteAlchemicalFactory()
+        alchemical_system = alchemical_factory.create_alchemical_system(
+            system, alchemical_region
+        )
+
+        return alchemical_factory, alchemical_system, alchemical_indices
+
     def run(
         self,
         dry=False,
@@ -263,8 +331,11 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # 6. Get alchemical system
         if settings["alchemical_settings"].experimental:
-            errmsg = "experimental factory code is not yet implemented"
-            raise ValueError(errmsg)
+            alchem_factory, alchem_system, alchem_indices = (
+                self._get_experimental_alchemical_system(
+                    omm_topology, omm_system, comp_resids, alchem_comps
+                )
+            )
         else:
             alchem_factory, alchem_system, alchem_indices = self._get_alchemical_system(
                 omm_topology, omm_system, comp_resids, alchem_comps
