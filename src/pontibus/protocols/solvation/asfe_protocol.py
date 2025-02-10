@@ -132,7 +132,6 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 equilibration_length_nvt=0.5 * unit.nanosecond,
                 equilibration_length=0.5 * unit.nanosecond,
                 production_length=9.5 * unit.nanosecond,
-                trajectory_write_interval=0.5 * unit.nanosecond,
             ),
             solvent_equil_output_settings=MDOutputSettings(
                 equil_nvt_structure="equil_nvt_structure.pdb",
@@ -148,6 +147,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
             solvent_output_settings=MultiStateOutputSettings(
                 output_filename="solvent.nc",
                 checkpoint_storage_filename="solvent_checkpoint.nc",
+                trajectory_write_interval=0.5 * unit.nanosecond,
             ),
             vacuum_equil_simulation_settings=MDSimulationSettings(
                 equilibration_length_nvt=None,
