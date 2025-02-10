@@ -224,6 +224,7 @@ def test_charge_assignment_errors(smc_components_benzene_named, assign_charges, 
     in the LibraryCharges if not, it will fail (which it does here).
     """
     solvent_offmol = Molecule.from_smiles("COC")
+    solvent_offmol.generate_conformers(n_conformers=1)
 
     with pytest.raises(ValueError, match=errmsg):
         _, _ = interchange_packmol_creation(
@@ -333,6 +334,7 @@ def test_assign_duplicate_resnames(caplog):
 def test_nonwater_solvent(smc_components_benzene_named, smiles):
     solvent_offmol = Molecule.from_smiles(smiles)
     solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
+    solvent_offmol.generate_conformers(n_conformers=1)
 
     if smiles == "c1ccccc1":
         ligand = list(smc_components_benzene_named.values())[0]
