@@ -56,7 +56,7 @@ def test_dry_run_vacuum_benzene(benzene_modifications, method, tmpdir):
         assert not vac_sampler.is_periodic
 
 
-@pytest.mark.parametrize('experimental', [True, False])
+@pytest.mark.parametrize("experimental", [True, False])
 def test_dry_run_solv_benzene(experimental, benzene_modifications, tmpdir):
     s = ASFEProtocol.default_settings()
     s.protocol_repeats = 1

@@ -13,7 +13,7 @@ from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
     solvate_topology_nonwater,
-    pack_box
+    pack_box,
 )
 from openff.toolkit import ForceField
 from openff.toolkit import Molecule as OFFMolecule
@@ -241,12 +241,12 @@ def _validate_components(
 def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
     """
     Get a ForceField object based on an input InterchangeFFSettings object.
-    
+
     Parameters
     ----------
     ffsettings : InterchangeFFSettings
       Settings defining how the force field is applied.
-      
+
     Returns
     -------
     force_field : ForceField
