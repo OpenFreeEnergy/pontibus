@@ -67,26 +67,31 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         Returns
         -------
         offmol : openff.toolkit.Molecule
+
+        Notes
+        -----
+        * If created from a smiles, the solvent will be assigned
+          a single conformer through `Molecule.generate_conformers`.
         """
         # Get the solvent offmol
         if isinstance(solvent_component, ExtendedSolventComponent):
             solvent_offmol = solvent_component.solvent_molecule.to_openff()
         else:
+            # If not, we create the solvent from smiles
+            # We generate a single conformer to avoid packing issues
             solvent_offmol = OFFMolecule.from_smiles(solvent_component.smiles)
+            solvent_offmol.generate_conformers(n_conformers=1)
 
-        # Assign solvent offmol charges if necessary
+        # In-place assign solvent offmol charges if necessary
+        # Note: we don't enforce partial charge assignment to avoid
+        # cases where we want to rely on library charges instead.
         if solvation_settings.assign_solvent_charges:
-            if solvent_offmol.n_conformers == 0:
-                n_conf = 1
-            else:
-                n_conf = partial_charge_settings.number_of_conformers
-
             charge_generation.assign_offmol_partial_charges(
                 offmol=solvent_offmol,
                 overwrite=False,
                 method=partial_charge_settings.partial_charge_method,
                 toolkit_backend=partial_charge_settings.off_toolkit_backend,
-                generate_n_conformers=n_conf,
+                generate_n_conformers=partial_charge_settings.number_of_conformers,
                 nagl_model=partial_charge_settings.nagl_model,
             )
 
