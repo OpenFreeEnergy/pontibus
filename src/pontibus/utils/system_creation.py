@@ -333,6 +333,59 @@ def _get_comp_resnames(
     return comp_resnames
 
 
+def _solvate_system(
+    solute_topology: Topology,
+    solvent_offmol: OFFMolecule,
+    solvation_settings: PackmolSolvationSettings,
+) -> Topology:
+    """
+    Solvate solute Topology using the Interchange packmol interface.
+
+    Parameters
+    ----------
+    solute_topology : Topology
+      The solute Topology to solvate.
+    solvent_offmol : OFFMolecule
+      An OpenFF Molecule representing the solvent.
+    solvation_settings : PackmolSolvationSettings
+      Settings for how to solvate the system.
+
+    Returns
+    -------
+    Topology
+      The solvated Topology.
+    """
+    # Pick up the user selected box shape
+    box_shape = {
+        "cube": UNIT_CUBE,
+        "dodecahedron": RHOMBIC_DODECAHEDRON,
+    }[solvation_settings.box_shape.lower()]
+
+    # Create the topology
+    if solvation_settings.number_of_solvent_molecules is not None:
+        return pack_box(
+            molecules=[solvent_offmol],
+            number_of_copies=[solvation_settings.number_of_solvent_molecules],
+            solute=solute_topology,
+            tolerance=solvation_settings.packing_tolerance,
+            box_vectors=solvation_settings.box_vectors,
+            target_density=solvation_settings.target_density,
+            box_shape=box_shape,
+            center_solute=True,
+            working_directory=None,
+            retain_working_files=False,
+        )
+    else:
+        return solvate_topology_nonwater(
+            topology=solute_topology,
+            solvent=solvent_offmol,
+            target_density=solvation_settings.target_density,
+            padding=solvation_settings.solvent_padding,
+            box_shape=box_shape,
+            tolerance=solvation_settings.packing_tolerance,
+        )
+
+
 def interchange_packmol_creation(
     ffsettings: InterchangeFFSettings,
     solvation_settings: PackmolSolvationSettings,
@@ -389,35 +442,23 @@ def interchange_packmol_creation(
     charged_mols = [*smc_components.values()]
 
     # 5. Solvent case
-    # TODO: make this a method
     if solvent_component is not None:
 
         # Append to charged molcule to charged_mols if we want to
-        # otherwise we rely on library charges -- TODO: this doesn't make sense
+        # otherwise we rely on library charges
         if solvation_settings.assign_solvent_charges:
             charged_mols.append(solvent_offmol)
         else:
             # Make sure we have library charges for the molecule
             _check_library_charges(force_field, solvent_offmol)
 
-        # Pick up the user selected box shape
-        box_shape = {
-            "cube": UNIT_CUBE,
-            "dodecahedron": RHOMBIC_DODECAHEDRON,
-        }[solvation_settings.box_shape.lower()]
-
-        # TODO: switch back to normal pack_box and allow n_solvent
-        # Create the topology
-        topology = solvate_topology_nonwater(
-            topology=topology,
-            solvent=solvent_offmol,
-            target_density=solvation_settings.target_density,
-            padding=solvation_settings.solvent_padding,
-            box_shape=box_shape,
-            tolerance=solvation_settings.packing_tolerance,
+        topology = _solvate_system(
+            topology,
+            solvent_offmol,
+            solvation_settings,
         )
 
-    # TODO: this is actually useful, make this a method
+    # TODO: maybe make this a method
     # Assign residue indices to each entry in the OFF topology
     for molecule_index, molecule in enumerate(topology.molecules):
         for atom in molecule.atoms:

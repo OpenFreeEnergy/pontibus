@@ -432,6 +432,8 @@ def test_nonwater_solvent(smc_components_benzene_named, smiles):
             ]
         ),
         solvation_settings=PackmolSolvationSettings(
+            solvent_padding=None,
+            number_of_solvent_molecules=100,
             assign_solvent_charges=True,
         ),
         smc_components=smc_components_benzene_named,
@@ -455,6 +457,7 @@ def test_nonwater_solvent(smc_components_benzene_named, smiles):
         assert solvent_offmol.is_isomorphic_with(
             list(interchange.topology.unique_molecules)[1]
         )
+    assert interchange.topology.n_molecules == 101
 
 
 class BaseSystemTests:
