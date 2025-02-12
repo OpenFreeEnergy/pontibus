@@ -29,6 +29,8 @@ from pontibus.utils.system_creation import (
     _check_library_charges,
     _get_offmol_resname,
     _set_offmol_resname,
+    _validate_components,
+    _get_force_field,
     interchange_packmol_creation,
 )
 
@@ -112,7 +114,7 @@ def test_check_charged_mols_pass(methanol):
     _check_and_deduplicate_charged_mols([methanol])
 
 
-def test_check_deduplicate_charged_mols(smc_components_benzene_unnamed):
+def test_check_deduplicated_charged_mols(smc_components_benzene_unnamed):
     """
     Base test case for deduplication. Same molecule, same partial charges,
     different conformer.
@@ -206,6 +208,87 @@ def test_solv_mismatch(
             protein_component=None,
             solvent_component=ExtendedSolventComponent(),
             solvent_offmol=methanol,
+        )
+
+
+def test_no_solvent_conformers(
+    smc_components_benzene_named,
+):
+    solmol = Molecule.from_smiles('C')
+    solmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solmol.generate_conformers()
+    solvent = ExtendedSolventComponent(
+        solvent_molecule=SmallMoleculeComponent.from_openff(solmol)
+    )
+    solmol._conformers = []
+
+    with pytest.raises(ValueError, match="single conformer"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(
+                assign_solvent_charges=True
+            ),
+            smc_components=smc_components_benzene_named,
+            protein_component=None,
+            solvent_component=solvent,
+            solvent_offmol=solmol,
+        )
+
+
+def test_get_force_field():
+    ffsettings = InterchangeFFSettings(
+        nonbonded_cutoff=1.0 * unit.nanometer,
+        switch_width=0.2 * unit.nanometer,
+    )
+
+    ff = _get_force_field(ffsettings)
+
+    assert ff['vdW'].cutoff == ff['Electrostatics'].cutoff == 1.0 * unit.nanometer
+    assert ff['vdW'].switch_width == 0.2 * unit.nanometer
+
+
+def test_get_force_field_custom():
+    """
+    Re-implementation of the test Josh implemented in OMMForcefields
+    """
+    sage = ForceField('openff-2.2.1.offxml')
+    ethane = Molecule.from_smiles('C')
+    bond_parameter = sage.label_molecules(ethane.to_topology())[0]['Bonds'][(0, 1)]
+    bonds = sage.get_parameter_handler('Bonds')
+    new_parameter = bonds[bond_parameter.smirks]
+    new_parameter.length = 2 * unit.angstrom
+
+    ffsettings = InterchangeFFSettings(
+        forcefields=[sage.to_string(), 'opc.offxml']
+    )
+
+    ff = _get_force_field(ffsettings)
+
+    bonds = ff.get_parameter_handler('Bonds')
+    bond_param = bonds[bond_parameter.smirks]
+    assert bond_param.length == 2 * unit.angstrom
+
+
+def test_multiple_solvent_conformers(
+    smc_components_benzene_named,
+):
+    solmol = Molecule.from_smiles('CCCCCCCCCCCCCCCCCCCCCCCCCCC')
+    solmol.generate_conformers()
+    solmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solvent = ExtendedSolventComponent(
+        solvent_molecule=SmallMoleculeComponent.from_openff(solmol)
+    )
+
+    with pytest.raises(ValueError, match="single conformer"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(
+                assign_solvent_charges=True
+            ),
+            smc_components=smc_components_benzene_named,
+            protein_component=None,
+            solvent_component=solvent,
+            solvent_offmol=solmol,
         )
 
 
