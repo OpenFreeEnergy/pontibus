@@ -12,20 +12,22 @@ from openff.units import unit as offunit
 from pontibus.protocols.solvation import ASFEProtocolResult
 
 
-class TestProtocolResult:
+class TestWaterProtocolResult:
     @pytest.fixture()
-    def protocolresult(self, afe_solv_transformation_json):
+    def protocolresult(self, afe_solv_water_transformation_json):
         d = json.loads(
-            afe_solv_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder
+            afe_solv_water_transformation_json,
+            cls=gufe.tokenization.JSON_HANDLER.decoder,
         )
 
         pr = openfe.ProtocolResult.from_dict(d["protocol_result"])
 
         return pr
 
-    def test_reload_protocol_result(self, afe_solv_transformation_json):
+    def test_reload_protocol_result(self, afe_solv_water_transformation_json):
         d = json.loads(
-            afe_solv_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder
+            afe_solv_water_transformation_json,
+            cls=gufe.tokenization.JSON_HANDLER.decoder,
         )
 
         pr = ASFEProtocolResult.from_dict(d["protocol_result"])
@@ -143,3 +145,43 @@ class TestProtocolResult:
 
         with pytest.raises(ValueError, match=errmsg):
             protocolresult.get_replica_states()
+
+
+class TestOctanolProtocolResult(TestWaterProtocolResult):
+    @pytest.fixture()
+    def protocolresult(self, afe_solv_octanol_transformation_json):
+        d = json.loads(
+            afe_solv_octanol_transformation_json,
+            cls=gufe.tokenization.JSON_HANDLER.decoder,
+        )
+
+        pr = openfe.ProtocolResult.from_dict(d["protocol_result"])
+
+        return pr
+
+    def test_reload_protocol_result(self, afe_solv_octanol_transformation_json):
+        d = json.loads(
+            afe_solv_octanol_transformation_json,
+            cls=gufe.tokenization.JSON_HANDLER.decoder,
+        )
+
+        pr = ASFEProtocolResult.from_dict(d["protocol_result"])
+
+        assert pr
+
+    def test_get_estimate(self, protocolresult):
+        est = protocolresult.get_estimate()
+
+        assert est
+        assert est.m == pytest.approx(-4.83, abs=0.5)
+        assert isinstance(est, offunit.Quantity)
+        assert est.is_compatible_with(offunit.kilojoule_per_mole)
+
+    def test_get_uncertainty(self, protocolresult):
+        est = protocolresult.get_uncertainty()
+
+        assert est
+        assert est.m == pytest.approx(0.47, abs=0.2)
+        assert isinstance(est, offunit.Quantity)
+        assert est.is_compatible_with(offunit.kilojoule_per_mole)
+

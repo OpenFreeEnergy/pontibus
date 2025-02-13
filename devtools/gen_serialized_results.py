@@ -90,16 +90,38 @@ def generate_ahfe_settings():
     return settings
 
 
-def generate_asfe_json(smc):
-    protocol = ASFEProtocol(settings=generate_ahfe_settings())
+def generate_asfe_json_water(smc):
+    settings = generate_ahfe_settings()
+    settings.solvation_settings.assign_solvent_charges=False
+    protocol = ASFEProtocol(settings=settings)
     sysA = openfe.ChemicalSystem({"ligand": smc, "solvent": ExtendedSolventComponent()})
     sysB = openfe.ChemicalSystem({"solvent": ExtendedSolventComponent()})
 
     dag = protocol.create(stateA=sysA, stateB=sysB, mapping=None)
 
-    execute_and_serialize(dag, protocol, "ASFEProtocol")
+    execute_and_serialize(dag, protocol, "ASFEProtocol_water")
+
+
+def generate_asfe_json_octanol(smc):
+    settings = generate_ahfe_settings()
+    settings.solvation_settings.assign_solvent_charges=True
+    protocol = ASFEProtocol(settings=settings)
+    solvent = Molecule.from_smiles("CCCCCCCCO")
+    solvent.assign_partial_charges(partial_charge_method='am1bcc')
+    solvent.generate_conformers(n_conformers=1)
+    solvent_component = ExtendedSolventComponent(
+        solvent_molecule=openfe.SmallMoleculeComponent.from_openff(solvent),
+    )
+    sysA = openfe.ChemicalSystem({"ligand": smc, "solvent": solvent_component})
+    sysB = openfe.ChemicalSystem({"solvent": solvent_component})
+
+    dag = protocol.create(stateA=sysA, stateB=sysB, mapping=None)
+
+    execute_and_serialize(dag, protocol, "ASFEProtocol_octanol")
+
 
 
 if __name__ == "__main__":
     molA = get_molecule(LIGA, "ligandA")
-    generate_asfe_json(molA)
+    #generate_asfe_json_water(molA)
+    generate_asfe_json_octanol(molA)
