@@ -110,6 +110,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * This is currently limited to the options allowed by
       Interchange's ``solvate_topology_nonwater``.
     """
+
     number_of_solvent_molecules: Optional[int] = None
     """
     The number of solvent molecules to add.
@@ -119,7 +120,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined alongside ``solvent_padding``.
     """
 
-    box_vectors: Optional[ArrayQuantity['nanometer']] = None
+    box_vectors: Optional[ArrayQuantity["nanometer"]] = None
     """
     Simulation box vectors.
 
@@ -178,7 +179,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined alongside ``box_vectors``
     """
 
-    @validator('number_of_solvent_molecules')
+    @validator("number_of_solvent_molecules")
     def positive_solvent_number(cls, v):
         if v is None:
             return v
@@ -189,7 +190,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return v
 
-    @validator('box_vectors')
+    @validator("box_vectors")
     def supported_vectors(cls, v):
         if v is not None:
             if not _box_vectors_are_in_reduced_form(v):
@@ -217,10 +218,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         box_vectors = values.get("box_vectors")
 
         if not (target_density is None) ^ (box_vectors is None):
-            msg = (
-                "Only one of ``target_density`` or "
-                "``box_vectors`` can be defined"
-            )
+            msg = "Only one of ``target_density`` or " "``box_vectors`` can be defined"
             raise ValueError(msg)
 
         return values
@@ -232,8 +230,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         if not (box_vectors is None) and (padding is None):
             msg = (
-                "Only one of ``box_vectors`` or ``solvent_padding`` "
-                "can be defined."
+                "Only one of ``box_vectors`` or ``solvent_padding`` " "can be defined."
             )
             raise ValueError(msg)
 

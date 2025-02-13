@@ -214,8 +214,8 @@ def test_solv_mismatch(
 def test_no_solvent_conformers(
     smc_components_benzene_named,
 ):
-    solmol = Molecule.from_smiles('C')
-    solmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solmol = Molecule.from_smiles("C")
+    solmol.assign_partial_charges(partial_charge_method="gasteiger")
     solmol.generate_conformers()
     solvent = ExtendedSolventComponent(
         solvent_molecule=SmallMoleculeComponent.from_openff(solmol)
@@ -225,9 +225,7 @@ def test_no_solvent_conformers(
     with pytest.raises(ValueError, match="single conformer"):
         interchange_packmol_creation(
             ffsettings=InterchangeFFSettings(),
-            solvation_settings=PackmolSolvationSettings(
-                assign_solvent_charges=True
-            ),
+            solvation_settings=PackmolSolvationSettings(assign_solvent_charges=True),
             smc_components=smc_components_benzene_named,
             protein_component=None,
             solvent_component=solvent,
@@ -243,28 +241,26 @@ def test_get_force_field():
 
     ff = _get_force_field(ffsettings)
 
-    assert ff['vdW'].cutoff == ff['Electrostatics'].cutoff == 1.0 * unit.nanometer
-    assert ff['vdW'].switch_width == 0.2 * unit.nanometer
+    assert ff["vdW"].cutoff == ff["Electrostatics"].cutoff == 1.0 * unit.nanometer
+    assert ff["vdW"].switch_width == 0.2 * unit.nanometer
 
 
 def test_get_force_field_custom():
     """
     Re-implementation of the test Josh implemented in OMMForcefields
     """
-    sage = ForceField('openff-2.2.1.offxml')
-    ethane = Molecule.from_smiles('C')
-    bond_parameter = sage.label_molecules(ethane.to_topology())[0]['Bonds'][(0, 1)]
-    bonds = sage.get_parameter_handler('Bonds')
+    sage = ForceField("openff-2.2.1.offxml")
+    ethane = Molecule.from_smiles("C")
+    bond_parameter = sage.label_molecules(ethane.to_topology())[0]["Bonds"][(0, 1)]
+    bonds = sage.get_parameter_handler("Bonds")
     new_parameter = bonds[bond_parameter.smirks]
     new_parameter.length = 2 * unit.angstrom
 
-    ffsettings = InterchangeFFSettings(
-        forcefields=[sage.to_string(), 'opc.offxml']
-    )
+    ffsettings = InterchangeFFSettings(forcefields=[sage.to_string(), "opc.offxml"])
 
     ff = _get_force_field(ffsettings)
 
-    bonds = ff.get_parameter_handler('Bonds')
+    bonds = ff.get_parameter_handler("Bonds")
     bond_param = bonds[bond_parameter.smirks]
     assert bond_param.length == 2 * unit.angstrom
 
@@ -272,9 +268,9 @@ def test_get_force_field_custom():
 def test_multiple_solvent_conformers(
     smc_components_benzene_named,
 ):
-    solmol = Molecule.from_smiles('CCCCCCCCCCCCCCCCCCCCCCCCCCC')
+    solmol = Molecule.from_smiles("CCCCCCCCCCCCCCCCCCCCCCCCCCC")
     solmol.generate_conformers()
-    solmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solmol.assign_partial_charges(partial_charge_method="gasteiger")
     solvent = ExtendedSolventComponent(
         solvent_molecule=SmallMoleculeComponent.from_openff(solmol)
     )
@@ -282,9 +278,7 @@ def test_multiple_solvent_conformers(
     with pytest.raises(ValueError, match="single conformer"):
         interchange_packmol_creation(
             ffsettings=InterchangeFFSettings(),
-            solvation_settings=PackmolSolvationSettings(
-                assign_solvent_charges=True
-            ),
+            solvation_settings=PackmolSolvationSettings(assign_solvent_charges=True),
             smc_components=smc_components_benzene_named,
             protein_component=None,
             solvent_component=solvent,
@@ -851,14 +845,13 @@ def test_nonwater_solvent_short(smc_components_benzene_named, smiles):
 def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
     solvent_offmol = Molecule.from_smiles(solvent_smiles)
     solvent_offmol.generate_conformers(n_conformers=1)
-    solvent_offmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
     solvent_smc = SmallMoleculeComponent.from_openff(solvent_offmol)
 
     ligand_offmol = Molecule.from_smiles(solute_smiles)
     ligand_offmol.generate_conformers(n_conformers=1)
-    ligand_offmol.assign_partial_charges(partial_charge_method='gasteiger')
+    ligand_offmol.assign_partial_charges(partial_charge_method="gasteiger")
     ligand_smc = SmallMoleculeComponent.from_openff(ligand_offmol)
-
 
     interchange, _ = interchange_packmol_creation(
         ffsettings=InterchangeFFSettings(
@@ -873,9 +866,7 @@ def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
         ),
         smc_components={ligand_smc: ligand_offmol},
         protein_component=None,
-        solvent_component=ExtendedSolventComponent(
-            solvent_molecule=solvent_smc
-        ),
+        solvent_component=ExtendedSolventComponent(solvent_molecule=solvent_smc),
         solvent_offmol=solvent_offmol,
     )
 

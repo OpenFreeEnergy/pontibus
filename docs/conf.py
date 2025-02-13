@@ -16,21 +16,22 @@ import os
 from pathlib import Path
 import shutil
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+
+sys.path.insert(0, os.path.abspath(".."))
 
 import pontibus
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'pontibus'
-copyright = ("2024, Open Free Energy.")
-author = 'The OpenFE Development Team'
+project = "pontibus"
+copyright = "2024, Open Free Energy."
+author = "The OpenFE Development Team"
 
 # The short X.Y version
-version = ''
+version = ""
 # The full version, including alpha/beta/rc tags
-release = ''
+release = ""
 
 
 # -- General configuration ---------------------------------------------------
@@ -92,7 +93,7 @@ autodoc_default_options = {
 toc_object_entries_show_parents = "hide"
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -165,13 +166,13 @@ rst_prolog = """
 html_static_path = ["_static"]
 
 ## Add below when we have notebooks
-#example_notebooks_path = Path("ExampleNotebooks")
+# example_notebooks_path = Path("ExampleNotebooks")
 #
-#try:
+# try:
 #    if example_notebooks_path.exists():
 #        pass
 #    else:
 #        source = Path("../examples")
 #        shutil.copytree(source, example_notebooks_path)
-#except Exception as e:
+# except Exception as e:
 #    raise OSError("Could not copy over example notebooks")

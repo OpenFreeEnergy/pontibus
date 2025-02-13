@@ -30,4 +30,3 @@ def afe_solv_octanol_transformation_json() -> str:
 
     with gzip.open((d / fname).as_posix(), "r") as f:
         return f.read().decode()
-
