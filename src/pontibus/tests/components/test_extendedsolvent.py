@@ -52,7 +52,7 @@ def test_dict_roundtrip_eq():
     solvent_offmol.generate_conformers(n_conformers=1)
     solvent_offmol.assign_partial_charges(partial_charge_method='gasteiger')
     s1 = ExtendedSolventComponent(
-        solvent_molcule=SmallMoleculeComponent.from_openff(solvent_offmol)
+        solvent_molecule=SmallMoleculeComponent.from_openff(solvent_offmol)
     )
     s2 = ExtendedSolventComponent.from_dict(s1.to_dict())
     assert s1 == s2
