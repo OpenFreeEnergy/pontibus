@@ -51,9 +51,9 @@ def vacuum_protocol_unit(protocol_units):
 
 
 @pytest.fixture
-def protocol_result(afe_solv_transformation_json):
+def protocol_result(afe_solv_water_transformation_json):
     d = json.loads(
-        afe_solv_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder
+        afe_solv_water_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder
     )
     pr = ASFEProtocolResult.from_dict(d["protocol_result"])
     return pr

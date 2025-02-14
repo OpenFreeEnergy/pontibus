@@ -48,7 +48,12 @@ def test_neq_different_solvent():
 
 
 def test_dict_roundtrip_eq():
-    s1 = ExtendedSolventComponent()
+    solvent_offmol = Molecule.from_smiles('CO')
+    solvent_offmol.generate_conformers(n_conformers=1)
+    solvent_offmol.assign_partial_charges(partial_charge_method='gasteiger')
+    s1 = ExtendedSolventComponent(
+        solvent_molcule=SmallMoleculeComponent.from_openff(solvent_offmol)
+    )
     s2 = ExtendedSolventComponent.from_dict(s1.to_dict())
     assert s1 == s2
     assert s1.solvent_molecule == s2.solvent_molecule

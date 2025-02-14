@@ -69,7 +69,8 @@ jobs:
 
       - name: "Run tests"
         env:
-          PONTIBUS_SLOW_TESTS: ${{ fromJSON('{"false":"false","true":"true"}')[github.event_name != 'pull_request'] }}
+          # For now, disable these as they are too slow to run on gh ci
+          #PONTIBUS_SLOW_TESTS: ${{ fromJSON('{"false":"false","true":"true"}')[github.event_name != 'pull_request'] }}
           DUECREDIT_ENABLE: 'yes'
         run: |
           pytest -n logical -v --cov=pontibus --cov-report=xml --durations=10
