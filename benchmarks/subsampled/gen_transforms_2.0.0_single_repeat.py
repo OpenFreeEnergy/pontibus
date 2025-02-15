@@ -29,7 +29,12 @@ def get_water_settings():
     settings.vacuum_simulation_settings.time_per_iteration = 5 * unit.picosecond
     settings.vacuum_engine_settings.compute_platform = "CPU"
     settings.solvent_engine_settings.compute_platform = "CUDA"
-    settings.solvation_settings.box_shape = "dodecahedron"
+    settings.solvation_settings = PackmolSolvationSettings(
+        number_of_solvent_molecules=1000,
+        box_shape='dodecahedron',
+        assign_solvent_charges=True,
+        solvent_padding=None,
+    )
     return settings
 
 
@@ -47,8 +52,12 @@ def get_nonwater_settings():
     settings.vacuum_simulation_settings.time_per_iteration = 5 * unit.picosecond
     settings.vacuum_engine_settings.compute_platform = "CUDA"
     settings.solvent_engine_settings.compute_platform = "CUDA"
-    settings.solvation_settings.box_shape = "dodecahedron"
-    settings.solvation_settings.assign_solvent_charges = True
+    settings.solvation_settings = PackmolSolvationSettings(
+        number_of_solvent_molecules=1000,
+        box_shape='dodecahedron',
+        assign_solvent_charges=True,
+        solvent_padding=None,
+    )
     return settings
 
 
@@ -97,6 +106,6 @@ def run(outdir: pathlib.Path):
 
 
 if __name__ == "__main__":
-    outdir = pathlib.Path("2.0.0_single_repeat_inputs")
+    outdir = pathlib.Path("off2.0.0_single_repeat_inputs")
     outdir.mkdir(exist_ok=False)
     run(outdir)

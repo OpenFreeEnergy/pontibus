@@ -36,7 +36,7 @@ def add_chemical_systems(
         solvent_smi = rdmol.GetProp("solvent")
         if solvent_smi not in solvents.keys():
             solvent_offmol = Molecule.from_smiles(solvent_smi)
-            solvent_offmol.generate_conformers()
+            solvent_offmol.generate_conformers(n_conformers=1)
             solvent_offmol.assign_partial_charges(partial_charge_method="am1bccelf10")
             solvents[solvent_smi] = SmallMoleculeComponent.from_openff(solvent_offmol)
 
