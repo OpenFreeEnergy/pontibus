@@ -39,3 +39,13 @@ distance-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 method = "git" 
 match = ["*"]
 default-tag = "0.0.0"
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ['src']
+
+[tool.setuptools.package-data]
+pontibus = ["**/*.pdb", "**/*.sdf", "**/*.gz"]
