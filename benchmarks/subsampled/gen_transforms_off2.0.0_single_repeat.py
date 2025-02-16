@@ -7,6 +7,7 @@ from gufe.tokenization import JSON_HANDLER
 from openff.toolkit import Molecule
 from openff.units import unit
 from pontibus.protocols.solvation import ASFEProtocol
+from pontibus.protocols.solvation.settings import PackmolSolvationSettings
 
 
 def deserialize_system(file: pathlib.Path):
@@ -22,19 +23,22 @@ def get_water_settings():
         "openff-2.0.0.offxml",
         "tip3p.offxml",
     ]
+    # settings.solvent_forcefield_settings.hydrogen_mass = 1.007947
     settings.vacuum_forcefield_settings.forcefields = [
         "openff-2.0.0.offxml",
     ]
+    # settings.vacuum_forcefield_settings.hydrogen_mass = 1.007947
     settings.solvent_simulation_settings.time_per_iteration = 5 * unit.picosecond
     settings.vacuum_simulation_settings.time_per_iteration = 5 * unit.picosecond
     settings.vacuum_engine_settings.compute_platform = "CPU"
     settings.solvent_engine_settings.compute_platform = "CUDA"
     settings.solvation_settings = PackmolSolvationSettings(
-        number_of_solvent_molecules=1000,
-        box_shape='dodecahedron',
-        assign_solvent_charges=True,
+        number_of_solvent_molecules=1999,
+        box_shape='cube',
+        assign_solvent_charges=False,
         solvent_padding=None,
     )
+    # settings.integrator_settings.timestep = 2 * unit.femtosecond
     return settings
 
 
@@ -43,21 +47,23 @@ def get_nonwater_settings():
     settings.protocol_repeats = 1
     settings.solvent_forcefield_settings.forcefields = [
         "openff-2.0.0.offxml",
-        "tip3p.offxml",
     ]
+    # settings.solvent_forcefield_settings.hydrogen_mass = 1.007947
     settings.vacuum_forcefield_settings.forcefields = [
         "openff-2.0.0.offxml",
     ]
+    # settings.vacuum_forcefield_settings.hydrogen_mass = 1.007947
     settings.solvent_simulation_settings.time_per_iteration = 5 * unit.picosecond
     settings.vacuum_simulation_settings.time_per_iteration = 5 * unit.picosecond
-    settings.vacuum_engine_settings.compute_platform = "CUDA"
+    settings.vacuum_engine_settings.compute_platform = "CPU"
     settings.solvent_engine_settings.compute_platform = "CUDA"
     settings.solvation_settings = PackmolSolvationSettings(
-        number_of_solvent_molecules=1000,
-        box_shape='dodecahedron',
+        number_of_solvent_molecules=1999,
+        box_shape='cube',
         assign_solvent_charges=True,
         solvent_padding=None,
     )
+    # settings.integrator_settings.timestep = 2 * unit.femtosecond
     return settings
 
 
