@@ -48,9 +48,9 @@ def test_neq_different_solvent():
 
 
 def test_dict_roundtrip_eq():
-    solvent_offmol = Molecule.from_smiles('CO')
+    solvent_offmol = Molecule.from_smiles("CO")
     solvent_offmol.generate_conformers(n_conformers=1)
-    solvent_offmol.assign_partial_charges(partial_charge_method='gasteiger')
+    solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
     s1 = ExtendedSolventComponent(
         solvent_molecule=SmallMoleculeComponent.from_openff(solvent_offmol)
     )

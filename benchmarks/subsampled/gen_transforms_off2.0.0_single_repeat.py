@@ -34,7 +34,7 @@ def get_water_settings():
     settings.solvent_engine_settings.compute_platform = "CUDA"
     settings.solvation_settings = PackmolSolvationSettings(
         number_of_solvent_molecules=1999,
-        box_shape='cube',
+        box_shape="cube",
         assign_solvent_charges=False,
         solvent_padding=None,
     )
@@ -59,7 +59,7 @@ def get_nonwater_settings():
     settings.solvent_engine_settings.compute_platform = "CUDA"
     settings.solvation_settings = PackmolSolvationSettings(
         number_of_solvent_molecules=1999,
-        box_shape='cube',
+        box_shape="cube",
         assign_solvent_charges=True,
         solvent_padding=None,
     )
