@@ -79,14 +79,8 @@ def test_dict_roundtrip_eq(CO_component, CO_offmol):
 
 
 def test_json_serializable_eq(CO_component, CO_offmol):
-    CO_component_json = json.dumps(
-        CO_component.to_dict(),
-        cls=JSON_HANDLER.encoder
-    )
-    CO_component_dict = json.loads(
-        CO_component_json,
-        cls=JSON_HANDLER.decoder
-    )
+    CO_component_json = json.dumps(CO_component.to_dict(), cls=JSON_HANDLER.encoder)
+    CO_component_dict = json.loads(CO_component_json, cls=JSON_HANDLER.decoder)
 
     s2 = ExtendedSolventComponent.from_dict(CO_component_dict)
 
@@ -102,17 +96,11 @@ def test_json_serializable_eq(CO_component, CO_offmol):
 
 def test_keyedchain_json_serializable_eq(CO_component, CO_offmol):
     CO_component_json = json.dumps(
-        CO_component.to_keyed_chain(),
-        cls=JSON_HANDLER.encoder
+        CO_component.to_keyed_chain(), cls=JSON_HANDLER.encoder
     )
-    CO_component_keyed_chain = json.loads(
-        CO_component_json,
-        cls=JSON_HANDLER.decoder
-    )
+    CO_component_keyed_chain = json.loads(CO_component_json, cls=JSON_HANDLER.decoder)
 
-    s2 = ExtendedSolventComponent.from_keyed_chain(
-        CO_component_keyed_chain
-    )
+    s2 = ExtendedSolventComponent.from_keyed_chain(CO_component_keyed_chain)
 
     assert CO_component == s2
     assert CO_component.solvent_molecule == s2.solvent_molecule
