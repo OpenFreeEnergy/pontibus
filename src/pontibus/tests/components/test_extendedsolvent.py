@@ -3,12 +3,31 @@
 
 import pytest
 from gufe import SmallMoleculeComponent
+from gufe.tokenization import JSON_HANDLER
 from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
 from openff.toolkit import Molecule
 from openff.units import unit
+from numpy.testing import assert_allclose
+import json
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
 from pontibus.utils.molecules import WATER
+
+
+@pytest.fixture
+def CO_offmol():
+    solvent_offmol = Molecule.from_smiles("CO")
+    solvent_offmol.generate_conformers(n_conformers=1)
+    solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
+    return solvent_offmol
+
+
+@pytest.fixture
+def CO_component(CO_offmol):
+    s = ExtendedSolventComponent(
+        solvent_molecule=SmallMoleculeComponent.from_openff(CO_offmol)
+    )
+    return s
 
 
 def test_defaults():
@@ -47,18 +66,62 @@ def test_neq_different_solvent():
     assert s1.smiles != s2.smiles
 
 
-def test_dict_roundtrip_eq():
-    solvent_offmol = Molecule.from_smiles("CO")
-    solvent_offmol.generate_conformers(n_conformers=1)
-    solvent_offmol.assign_partial_charges(partial_charge_method="gasteiger")
-    s1 = ExtendedSolventComponent(
-        solvent_molecule=SmallMoleculeComponent.from_openff(solvent_offmol)
+def test_dict_roundtrip_eq(CO_component, CO_offmol):
+    s2 = ExtendedSolventComponent.from_dict(CO_component.to_dict())
+    assert CO_component == s2
+    assert CO_component.solvent_molecule == s2.solvent_molecule
+    assert_allclose(
+        CO_component.solvent_molecule.to_openff().partial_charges,
+        CO_offmol.partial_charges,
     )
-    s2 = ExtendedSolventComponent.from_dict(s1.to_dict())
-    assert s1 == s2
-    assert s1.solvent_molecule == s2.solvent_molecule
     # Smiles isn't a dict entry, so make sure it got preserved
-    assert s1.smiles == s2.smiles
+    assert CO_component.smiles == s2.smiles
+
+
+def test_json_serializable_eq(CO_component, CO_offmol):
+    CO_component_json = json.dumps(
+        CO_component.to_dict(),
+        cls=JSON_HANDLER.encoder
+    )
+    CO_component_dict = json.loads(
+        CO_component_json,
+        cls=JSON_HANDLER.decoder
+    )
+
+    s2 = ExtendedSolventComponent.from_dict(CO_component_dict)
+
+    assert CO_component == s2
+    assert CO_component.solvent_molecule == s2.solvent_molecule
+    assert_allclose(
+        CO_component.solvent_molecule.to_openff().partial_charges,
+        CO_offmol.partial_charges,
+    )
+    # Smiles isn't a dict entry, so make sure it got preserved
+    assert CO_component.smiles == s2.smiles
+
+
+def test_keyedchain_json_serializable_eq(CO_component, CO_offmol):
+    CO_component_json = json.dumps(
+        CO_component.to_keyed_chain(),
+        cls=JSON_HANDLER.encoder
+    )
+    CO_component_keyed_chain = json.loads(
+        CO_component_json,
+        cls=JSON_HANDLER.decoder
+    )
+
+    s2 = ExtendedSolventComponent.from_keyed_chain(
+        CO_component_keyed_chain
+    )
+
+    assert CO_component == s2
+    assert CO_component.solvent_molecule == s2.solvent_molecule
+    assert_allclose(
+        CO_component.solvent_molecule.to_openff().partial_charges,
+        CO_offmol.partial_charges,
+    )
+    # Smiles isn't a dict entry, so make sure it got preserved
+    assert CO_component.smiles == s2.smiles
 
 
 def test_keyed_dict_roundtrip_eq():

@@ -34,7 +34,7 @@ class ExtendedSolventComponent(SolventComponent):
         """
         Parameters
         ----------
-        solvent_molecule : SmallMoleculeComponent, optional
+        solvent_molecule : SmallMoleculeComponent
           SmallMoleculeComponent defining the solvent, default
           is a water molecule.
         positive_ion, negative_ion : str
@@ -67,6 +67,7 @@ class ExtendedSolventComponent(SolventComponent):
         # RDKit and OpenEye make for different smiles
         with without_oechem_backend():
             smiles = solvent_molecule.to_openff().to_smiles()
+
         super().__init__(
             smiles=smiles,
             positive_ion=positive_ion,
@@ -92,108 +93,10 @@ class ExtendedSolventComponent(SolventComponent):
         """For serialization"""
         ion_conc = str(self.ion_concentration)
 
-        if isinstance(self.solvent_molecule, SmallMoleculeComponent):
-            solvent = self.solvent_molecule.to_dict()
-        else:
-            solvent = self.solvent_molecule
-
         return {
-            "solvent_molecule": solvent,
+            "solvent_molecule": self.solvent_molecule,
             "positive_ion": self.positive_ion,
             "negative_ion": self.negative_ion,
             "ion_concentration": ion_conc,
             "neutralize": self._neutralize,
         }
-
-    @classmethod
-    def from_keyed_dict(cls, dct: dict):
-        """Generate an instance from keyed dict representation.
-
-        Parameters
-        ----------
-        dct : Dict
-            A dictionary produced by `to_keyed_dict` to instantiate from.
-            If an identical instance already exists in memory, it will be
-            returned.  Otherwise, a new instance will be returned.
-
-        Returns
-        -------
-        obj : ExtendedSolventComponent
-            An object instance constructed from the input keyed dictionary.
-
-        Notes
-        -----
-        This method is re-implemented in the ExtendedSolventComponent subclass
-        due to gufe tokenization not working as intended with GufeTokenizables
-        containing other GufeTokenizables.
-
-        """
-        registry = TOKENIZABLE_CLASS_REGISTRY
-        dct = modify_dependencies(
-            dct,
-            lambda d: registry[GufeKey(d[":gufe-key:"])],
-            is_gufe_key_dict,
-            mode="decode",
-            top=True,
-        )
-
-        return from_dict_depth_one(dct)
-
-    @classmethod
-    def from_shallow_dict(cls, dct: dict):
-        """Generate an instance from shallow dict representation.
-
-        Parameters
-        ----------
-        dct : Dict
-            A dictionary produced by `to_shallow_dict` to instantiate from.
-            If an identical instance already exists in memory, it will be
-            returned.  Otherwise, a new instance will be returned.
-
-        Returns
-        -------
-        obj : ExtendedSolventComponent
-            An object instance constructed from the input shallow dictionary.
-
-        Notes
-        -----
-        This method is re-implemented in the ExtendedSolventComponent subclass
-        due to gufe tokenization not working as intended with GufeTokenizables
-        containing other GufeTokenizables.
-
-        """
-        return from_dict_depth_one(dct)
-
-
-def from_dict_depth_one(dct: dict) -> GufeTokenizable:
-    obj = _from_dict_depth_one(dct)
-    # When __new__ is called to create ``obj``, it should be added to the
-    # TOKENIZABLE_REGISTRY. However, there seems to be some case (race
-    # condition?) where this doesn't happen, leading to a KeyError inside
-    # the dictionary if we use []. (When you drop into PDB and run the same
-    # line that gave the error, you get the object back.) With ``get``,
-    # ``thing`` becomes None, which is also what it would be if the weakref
-    # was to a deleted object.
-    thing = TOKENIZABLE_REGISTRY.get(obj.key)
-
-    if thing is None:  # -no-cov-
-        return obj
-    else:
-        return thing
-
-
-def _from_dict_depth_one(dct: dict) -> GufeTokenizable:
-    """
-    Helper method to enable a from_dict that also
-    deserializes attributes that are GufeTokenizables.
-    """
-
-    new_dct = {}
-
-    for entry in dct:
-        if isinstance(dct[entry], dict) and "__qualname__" in dct[entry]:
-            new_dct[entry] = _from_dict(dct[entry])
-        else:
-            new_dct[entry] = dct[entry]
-
-    return _from_dict(new_dct)
