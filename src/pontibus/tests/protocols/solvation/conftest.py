@@ -3,6 +3,15 @@ from importlib import resources
 
 import pytest
 
+import gufe
+
+
+@pytest.fixture
+def charged_benzene(benzene_modifications):
+    benzene_offmol = benzene_modifications["benzene"].to_openff()
+    benzene_offmol.assign_partial_charges(partial_charge_method="gasteiger")
+    return gufe.SmallMoleculeComponent.from_openff(benzene_offmol)
+
 
 @pytest.fixture
 def afe_solv_water_transformation_json() -> str:
