@@ -1,4 +1,4 @@
-## Sage freesolv benchmark pontibus results
+## Sage freesolv benchmark
 
 Sage freesolv benchmark using pontibus.
 
