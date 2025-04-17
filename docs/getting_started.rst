@@ -3,6 +3,13 @@ Getting Started
 
 This page details how to get started with pontibus.
 
+User Install
+************
+
+You can install pontibus via conda-forge using `mamba` or `conda`::
+
+   mamba install pontibus
+
 
 Developer Install
 *****************

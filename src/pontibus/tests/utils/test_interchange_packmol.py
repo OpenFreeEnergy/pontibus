@@ -961,8 +961,9 @@ class TestVacuumUnamedBenzene(BaseSystemTests):
         # Expected number of atoms
         assert omm_system.getNumParticles() == num_particles
 
-        # 4 forces expected
-        assert omm_system.getNumForces() == 4
+        # 5 forces expected
+        # Note: CMMotionRemover is there and needs to be removed in Protocol
+        assert omm_system.getNumForces() == 5
 
         # 6 constraints, one for each hydrogen
         assert omm_system.getNumConstraints() == num_constraints

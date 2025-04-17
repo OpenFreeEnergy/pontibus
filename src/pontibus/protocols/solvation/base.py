@@ -212,6 +212,14 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         omm_system = interchange.to_openmm_system(
             hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
+
+        # Pull out the CMMotionRemover
+        # TODO: add test that checks the number of forces
+        for idx in reversed(range(omm_system.getNumForces())):
+            force = omm_system.getForce(idx)
+            if isinstance(force, openmm.CMMotionRemover):
+                omm_system.removeForce(idx)
+
         positions = to_openmm_positions(interchange, include_virtual_sites=True)
 
         # Post creation system validation

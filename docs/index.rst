@@ -11,6 +11,7 @@ aimed specifically at facilitating the validation of OpenFF Force Fields.
    :caption: Contents:
 
    getting_started
+   CHANGELOG
    api
 
 
