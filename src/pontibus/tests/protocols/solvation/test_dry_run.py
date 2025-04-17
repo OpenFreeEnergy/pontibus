@@ -15,7 +15,6 @@ from openmm import (
     HarmonicAngleForce,
     PeriodicTorsionForce,
     MonteCarloBarostat,
-    AndersenThermostat,
 )
 
 from pontibus.components import ExtendedSolventComponent
@@ -66,9 +65,9 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
         vac_sampler = vac_unit[0].run(dry=True)["debug"]["sampler"]
         assert not vac_sampler.is_periodic
 
-        system = vac_sampler._thermodynamic_states[0].system
+        system = vac_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
         print(system.getForces())
-        assert len(system.getForces()) == 13
+        assert len(system.getForces()) == 12
 
         def assert_force_num(system, forcetype, number):
             forces = [f for f in system.getForces() if isinstance(f, forcetype)]
@@ -80,7 +79,6 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
         assert_force_num(system, HarmonicBondForce, 1)
         assert_force_num(system, HarmonicAngleForce, 1)
         assert_force_num(system, PeriodicTorsionForce, 1)
-        assert_force_num(system, AndersenThermostat, 1)
 
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
@@ -135,8 +133,8 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
 
-        system = sol_sampler._thermodynamic_states[0].system
-        assert len(system.getForces()) == 10
+        system = sol_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
+        assert len(system.getForces()) == 9
 
         def assert_force_num(system, forcetype, number):
             forces = [f for f in system.getForces() if isinstance(f, forcetype)]
@@ -149,7 +147,6 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
         assert_force_num(system, HarmonicAngleForce, 1)
         assert_force_num(system, PeriodicTorsionForce, 1)
         assert_force_num(system, MonteCarloBarostat, 1)
-        assert_force_num(system, AndersenThermostat, 1)
 
         # Check the nonbonded force is PME
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
