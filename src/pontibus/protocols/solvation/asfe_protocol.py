@@ -45,6 +45,7 @@ class ASFEProtocolResult(AbsoluteSolvationProtocolResult):
 
 class ASFEProtocol(AbsoluteSolvationProtocol):
     result_cls = ASFEProtocolResult
+    _settings_cls = ASFESettings
     _settings: ASFESettings
 
     @classmethod
