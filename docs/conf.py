@@ -135,7 +135,7 @@ myst_heading_anchors = 3
 #
 html_theme = "ofe_sphinx_theme"
 html_theme_options = {
-    "logo": {"text": "OpenFE GROMACS Protocols"},
+    "logo": {"text": "Pontibus"},
     "icon_links": [
         {
             "name": "GitHub",
