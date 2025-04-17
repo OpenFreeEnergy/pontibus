@@ -7,7 +7,16 @@ import pytest
 from gufe import ChemicalSystem
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
-from openmm import NonbondedForce
+from openmm import (
+    NonbondedForce,
+    CustomNonbondedForce,
+    CustomBondForce,
+    HarmonicBondForce,
+    HarmonicAngleForce,
+    PeriodicTorsionForce,
+    MonteCarloBarostat,
+    AndersenThermostat
+)
 
 from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
@@ -57,6 +66,28 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
         vac_sampler = vac_unit[0].run(dry=True)["debug"]["sampler"]
         assert not vac_sampler.is_periodic
 
+        system = vac_sampler._thermodynamic_states[0].system
+        print(system.getForces())
+        assert len(system.getForces()) == 13
+
+        def assert_force_num(system, forcetype, number):
+            forces = [f for f in system.getForces()
+                      if isinstance(f, forcetype)]
+            assert len(forces) == number
+
+        assert_force_num(system, NonbondedForce, 1)
+        assert_force_num(system, CustomNonbondedForce, 4)
+        assert_force_num(system, CustomBondForce, 4)
+        assert_force_num(system, HarmonicBondForce, 1)
+        assert_force_num(system, HarmonicAngleForce, 1)
+        assert_force_num(system, PeriodicTorsionForce, 1)
+        assert_force_num(system, AndersenThermostat, 1)
+
+        # Check the nonbonded force is NoCutoff
+        nonbond = [f for f in system.getForces()
+                   if isinstance(f, NonbondedForce)]
+        assert nonbond[0].getNonbondedMethod() == NonbondedForce.NoCutoff
+
 
 @pytest.mark.parametrize("experimental", [True, False])
 def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
@@ -105,6 +136,28 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
+
+        system = sol_sampler._thermodynamic_states[0].system
+        assert len(system.getForces()) == 10
+
+        def assert_force_num(system, forcetype, number):
+            forces = [f for f in system.getForces()
+                      if isinstance(f, forcetype)]
+            assert len(forces) == number
+
+        assert_force_num(system, NonbondedForce, 1)
+        assert_force_num(system, CustomNonbondedForce, 2)
+        assert_force_num(system, CustomBondForce, 2)
+        assert_force_num(system, HarmonicBondForce, 1)
+        assert_force_num(system, HarmonicAngleForce, 1)
+        assert_force_num(system, PeriodicTorsionForce, 1)
+        assert_force_num(system, MonteCarloBarostat, 1)
+        assert_force_num(system, AndersenThermostat, 1)
+
+        # Check the nonbonded force is PME
+        nonbond = [f for f in system.getForces()
+                   if isinstance(f, NonbondedForce)]
+        assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
 
 
 def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, tmpdir):
