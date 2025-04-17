@@ -15,7 +15,7 @@ from openmm import (
     HarmonicAngleForce,
     PeriodicTorsionForce,
     MonteCarloBarostat,
-    AndersenThermostat
+    AndersenThermostat,
 )
 
 from pontibus.components import ExtendedSolventComponent
@@ -71,8 +71,7 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
         assert len(system.getForces()) == 13
 
         def assert_force_num(system, forcetype, number):
-            forces = [f for f in system.getForces()
-                      if isinstance(f, forcetype)]
+            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
             assert len(forces) == number
 
         assert_force_num(system, NonbondedForce, 1)
@@ -84,8 +83,7 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
         assert_force_num(system, AndersenThermostat, 1)
 
         # Check the nonbonded force is NoCutoff
-        nonbond = [f for f in system.getForces()
-                   if isinstance(f, NonbondedForce)]
+        nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.NoCutoff
 
 
@@ -141,8 +139,7 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
         assert len(system.getForces()) == 10
 
         def assert_force_num(system, forcetype, number):
-            forces = [f for f in system.getForces()
-                      if isinstance(f, forcetype)]
+            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
             assert len(forces) == number
 
         assert_force_num(system, NonbondedForce, 1)
@@ -155,8 +152,7 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
         assert_force_num(system, AndersenThermostat, 1)
 
         # Check the nonbonded force is PME
-        nonbond = [f for f in system.getForces()
-                   if isinstance(f, NonbondedForce)]
+        nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
 
 
