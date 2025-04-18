@@ -1,5 +1,3 @@
-Please be aware theses results is missing 1 repeat for CCO in CC(=O)N(C)C solvent.
-
 These results are for the "fast" settings:
   - 750 solvent molecules
   - 14 lambda windows
