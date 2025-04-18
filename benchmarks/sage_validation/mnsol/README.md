@@ -17,5 +17,5 @@ Each results file is a tab-separated values (TSV) file, which contains:
     * The original sage benchmark estimates and errors under the `ref` key.
 
 The results files are:
-    * `mnsol_2k.tsv`: Pontibus results using 20 lambda windows, 4 fs timestep (HMR), 1999 solvent molecules (cubic box), 5 ns production sampling, 10.5 ns pre-alchemical equilibration, 0.5 ns alchemical equilibration, 2.5 ps HREX exchange frequency.
+    * `mnsol_2k.tsv`: Pontibus results using 20 lambda windows, 4 fs timestep (HMR), 1999 solvent molecules (cubic box), 5 ns production sampling, 10.5 ns pre-alchemical equilibration, 0.5 ns alchemical equilibration, 2.5 ps HREX exchange frequency. **Note:** one repeat is missing from Nc1ccccc1 (solute) | CCCCOP(=O)(OCCCC)OCCCC (solvent)
     * `mnsol_750.tsv`: Pontibus results ussing 14 lambda windows, 4 fs timestep (HMR), 750 solvent molecules (cubic box), 10 ns production sampling, 10.5 ns pre-alchemical equilibration, 1 ns alchemical equilibration, 2.5 ps HREX exchange frequency.
