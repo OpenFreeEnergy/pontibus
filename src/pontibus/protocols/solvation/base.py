@@ -282,6 +282,50 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         return alchemical_factory, alchemical_system, alchemical_indices
 
+    def _get_alchemical_system(
+        self,
+        topology: app.Topology,
+        system: openmm.System,
+        comp_resids: dict[Component, npt.NDArray],
+        alchem_comps: dict[str, list[Component]],
+    ) -> tuple[AbsoluteAlchemicalFactory, openmm.System, list[int]]:
+        """
+        Get an alchemically modified system and its associated factory.
+
+        If the experimental settings are turned on, will return an
+        ExperimentalAlchemicalFactory via
+        :meth:`_get_experimental_alchemical_system`.
+
+        Parameters
+        ----------
+        topology : openmm.Topology
+          Topology of OpenMM System.
+        system : openmm.System
+          System to alchemically modify.
+        comp_resids : dict[str, npt.NDArray]
+          A dictionary of residues for each component in the System.
+        alchem_comps : dict[str, list[Component]]
+          A dictionary of alchemical components for each end state.
+
+        Returns
+        -------
+        alchemical_factory : AbsoluteAlchemicalFactory
+          Factory for creating an alchemically modified system.
+        alchemical_system : openmm.System
+          Alchemically modified system
+        alchemical_indices : list[int]
+          A list of atom indices for the alchemically modified
+          species in the system.
+        """
+        if self.experimental:
+            return self._get_experimental_alchemical_system(
+                topology, system, comp_resids, alchem_comps,
+            )
+        else:
+            return super()._get_alchemical_system(
+                topology, system, comp_resids, alchem_comps,
+            )
+
     def run(
         self,
         dry=False,
@@ -311,119 +355,11 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           Outputs created in the basepath directory or the debug objects
           (i.e. sampler) if ``dry==True``.
         """
+        # Set the Protocol as experimental
+        if self._inputs["protocol"].settings.alchemical_settings.experimental:
+            self.experimental = True
 
-        # 0. Generaly preparation tasks
-        self._prepare(verbose, scratch_basepath, shared_basepath)
-
-        # 1. Get components
-        alchem_comps, solv_comp, prot_comp, smc_comps = self._get_components()
-
-        # 2. Get settings
-        settings = self._handle_settings()
-
-        # 3. Get OpenMM topology, positions and system
-        omm_topology, omm_system, positions, comp_resids = self._get_omm_objects(
-            settings,
-            prot_comp,
-            solv_comp,
-            smc_comps,
-        )
-
-        # 4. Pre-equilbrate System (Test + Avoid NaNs + get stable system)
-        positions, box_vectors = self._pre_equilibrate(
-            omm_system, omm_topology, positions, settings, dry
-        )
-
-        # 5. Get lambdas
-        lambdas = self._get_lambda_schedule(settings)
-
-        # 6. Get alchemical system
-        if settings["alchemical_settings"].experimental:
-            alchem_factory, alchem_system, alchem_indices = (
-                self._get_experimental_alchemical_system(
-                    omm_topology, omm_system, comp_resids, alchem_comps
-                )
-            )
-        else:
-            alchem_factory, alchem_system, alchem_indices = self._get_alchemical_system(
-                omm_topology, omm_system, comp_resids, alchem_comps
-            )
-
-        # 7. Get compound and sampler states
-        sampler_states, cmp_states = self._get_states(
-            alchem_system, positions, box_vectors, settings, lambdas, solv_comp
-        )
-
-        # 8. Create the multistate reporter & create PDB
-        reporter = self._get_reporter(
-            omm_topology,
-            positions,
-            settings["simulation_settings"],
-            settings["output_settings"],
-        )
-
-        # TODO: delete all this once this changes upstream soon
-        # Wrap in try/finally to avoid memory leak issues
-        try:
-            # 12. Get context caches
-            energy_ctx_cache, sampler_ctx_cache = self._get_ctx_caches(
-                settings["forcefield_settings"],
-                settings["engine_settings"],
-            )
-
-            # 13. Get integrator
-            integrator = self._get_integrator(
-                settings["integrator_settings"],
-                settings["simulation_settings"],
-            )
-
-            # 14. Get sampler
-            sampler = self._get_sampler(
-                integrator,
-                reporter,
-                settings["simulation_settings"],
-                settings["thermo_settings"],
-                cmp_states,
-                sampler_states,
-                energy_ctx_cache,
-                sampler_ctx_cache,
-            )
-
-            # 15. Run simulation
-            unit_result_dict = self._run_simulation(sampler, reporter, settings, dry)
-
-        finally:
-            # close reporter when you're done to prevent file handle clashes
-            reporter.close()
-
-            # clear GPU context
-            # Note: use cache.empty() when openmmtools #690 is resolved
-            for context in list(energy_ctx_cache._lru._data.keys()):
-                del energy_ctx_cache._lru._data[context]
-            for context in list(sampler_ctx_cache._lru._data.keys()):
-                del sampler_ctx_cache._lru._data[context]
-            # cautiously clear out the global context cache too
-            for context in list(
-                openmmtools.cache.global_context_cache._lru._data.keys()
-            ):
-                del openmmtools.cache.global_context_cache._lru._data[context]
-
-            del sampler_ctx_cache, energy_ctx_cache
-
-            # Keep these around in a dry run so we can inspect things
-            if not dry:
-                del integrator, sampler
-
-        if not dry:
-            nc = self.shared_basepath / settings["output_settings"].output_filename
-            chk = settings["output_settings"].checkpoint_storage_filename
-            return {
-                "nc": nc,
-                "last_checkpoint": chk,
-                **unit_result_dict,
-            }
-        else:
-            return {"debug": {"sampler": sampler}}
+        super.run(dry, verbose, scratch_basepath, shared_basepath)
 
     def _execute(
         self,
