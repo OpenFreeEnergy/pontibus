@@ -317,7 +317,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           A list of atom indices for the alchemically modified
           species in the system.
         """
-        if self.experimental:
+        if self._inputs["protocol"].settings.alchemical_settings.experimental:
             return self._get_experimental_alchemical_system(
                 topology,
                 system,
@@ -331,41 +331,6 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 comp_resids,
                 alchem_comps,
             )
-
-    def run(
-        self,
-        dry=False,
-        verbose=True,
-        scratch_basepath=None,
-        shared_basepath=None,
-    ) -> dict[str, Any]:
-        """Run the absolute free energy calculation.
-
-        Parameters
-        ----------
-        dry : bool
-          Do a dry run of the calculation, creating all necessary alchemical
-          system components (topology, system, sampler, etc...) but without
-          running the simulation, default False
-        verbose : bool
-          Verbose output of the simulation progress. Output is provided via
-          INFO level logging, default True
-        scratch_basepath : pathlib.Path
-          Path to the scratch (temporary) directory space.
-        shared_basepath : pathlib.Path
-          Path to the shared (persistent) directory space.
-
-        Returns
-        -------
-        dict
-          Outputs created in the basepath directory or the debug objects
-          (i.e. sampler) if ``dry==True``.
-        """
-        # Set the Protocol as experimental
-        if self._inputs["protocol"].settings.alchemical_settings.experimental:
-            self.experimental = True
-
-        super.run(dry, verbose, scratch_basepath, shared_basepath)
 
     def _execute(
         self,
