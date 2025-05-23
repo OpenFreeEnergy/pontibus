@@ -319,11 +319,17 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         """
         if self.experimental:
             return self._get_experimental_alchemical_system(
-                topology, system, comp_resids, alchem_comps,
+                topology,
+                system,
+                comp_resids,
+                alchem_comps,
             )
         else:
             return super()._get_alchemical_system(
-                topology, system, comp_resids, alchem_comps,
+                topology,
+                system,
+                comp_resids,
+                alchem_comps,
             )
 
     def run(
