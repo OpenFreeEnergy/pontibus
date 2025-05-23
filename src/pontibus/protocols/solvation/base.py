@@ -351,12 +351,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # 7. Get compound and sampler states
         sampler_states, cmp_states = self._get_states(
-            alchem_system,
-            positions,
-            box_vectors,
-            settings,
-            lambdas,
-            solv_comp
+            alchem_system, positions, box_vectors, settings, lambdas, solv_comp
         )
 
         # 8. Create the multistate reporter & create PDB
