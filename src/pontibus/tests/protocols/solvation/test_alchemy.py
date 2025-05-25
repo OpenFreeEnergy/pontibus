@@ -36,7 +36,7 @@ def water_off():
     return WATER.to_openff()
 
 
-class TestVSiteEnergies:
+class TestSoluteVSite:
     @pytest.fixture(scope="class")
     def interchange(self, vinyl_chloride, vsite_offxml, water_off):
         solute = openfe.SmallMoleculeComponent.from_openff(vinyl_chloride)
@@ -75,6 +75,10 @@ class TestVSiteEnergies:
         return alchemical_factory.create_alchemical_system(
             omm_system, alchemical_region
         )
+
+    def test_particle_parameters(self, alchemical_system):
+        # TODO: add tests for this here
+        pass
 
     def test_compare_energies(
         self, omm_system, alchemical_system, alchemical_region, positions
