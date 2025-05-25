@@ -7,21 +7,16 @@ The modifications here, although experimental, may support virtual sites.
 """
 import copy
 import logging
-import collections
 import itertools
-import re
 
-import numpy as np
-import openmm
-from openmm import unit
+try:
+    import openmm
+    from openmm import unit
+except ImportError:  # OpenMM < 7.6
+    from simtk import openmm, unit
 
-from openmmtools import states, forcefactories, utils
-from openmmtools.constants import ONE_4PI_EPS0
+from openmmtools import forcefactories, utils
 from openmmtools.alchemy.alchemy import (
-    AlchemicalStateError,
-    AlchemicalFunction,
-    AlchemicalState,
-    _ALCHEMICAL_REGION_ARGS,
     AlchemicalRegion,
     AbsoluteAlchemicalFactory,
 )

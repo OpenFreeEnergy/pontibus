@@ -1208,6 +1208,26 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
             assert s1 == s2
             assert e2 == e2
 
+    def test_comp_resids(
+        self, interchange_system, request, num_residues, num_waters
+    ):
+        """
+        Need to redefine to account for virtual sites in solvent.
+        """
+        _, comp_resids = interchange_system
+
+        assert len(comp_resids) == 2
+        assert list(comp_resids)[0] == ExtendedSolventComponent()
+        assert list(comp_resids)[1] == next(
+            iter(request.getfixturevalue(self.smc_comps))
+        )
+        # We have 2 residues (one extra for vsite) per water
+        assert_equal(
+            list(comp_resids.values())[0],
+            [i for i in range(1, (num_waters*2)+1)]
+        )
+        assert_equal(list(comp_resids.values())[1], [0])
+
     def test_virtual_sites(self, omm_system, num_waters, num_particles, nonbonds):
         for index in range(num_particles, num_particles - num_waters, -1):
             assert omm_system.isVirtualSite(index - 1)
