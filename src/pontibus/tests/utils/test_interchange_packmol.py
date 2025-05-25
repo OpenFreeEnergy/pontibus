@@ -1208,9 +1208,7 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
             assert s1 == s2
             assert e2 == e2
 
-    def test_comp_resids(
-        self, interchange_system, request, num_residues, num_waters
-    ):
+    def test_comp_resids(self, interchange_system, request, num_residues, num_waters):
         """
         Need to redefine to account for virtual sites in solvent.
         """
@@ -1223,8 +1221,7 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
         )
         # We have 2 residues (one extra for vsite) per water
         assert_equal(
-            list(comp_resids.values())[0],
-            [i for i in range(1, (num_waters*2)+1)]
+            list(comp_resids.values())[0], [i for i in range(1, (num_waters * 2) + 1)]
         )
         assert_equal(list(comp_resids.values())[1], [0])
 

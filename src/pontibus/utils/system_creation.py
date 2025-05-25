@@ -71,8 +71,7 @@ def _fill_vsite_compresids(
         return
     else:
         msg = (
-            f"{num_missing} virtual site residues found, "
-            "adding them to comp_resids"
+            f"{num_missing} virtual site residues found, " "adding them to comp_resids"
         )
         logger.info(msg)
 
@@ -85,9 +84,7 @@ def _fill_vsite_compresids(
         raise ValueError(errmsg)
 
     # temporary comp_resids dictionary only for virtual sites
-    vsites_comp_resids = {
-        key: [] for key in comp_resids
-    }
+    vsites_comp_resids = {key: [] for key in comp_resids}
 
     # We could use "isin" to make this real fast, but the cost here is tiny
     for residue in omm_top.residues():
@@ -102,9 +99,7 @@ def _fill_vsite_compresids(
 
     # Now we merge everything back and that's it!
     for comp in comp_resids:
-        comp_resids[comp] = np.append(
-            comp_resids[comp], vsites_comp_resids[comp]
-        )
+        comp_resids[comp] = np.append(comp_resids[comp], vsites_comp_resids[comp])
 
 
 def _set_offmol_resname(
