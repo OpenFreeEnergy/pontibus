@@ -7,13 +7,6 @@ The modifications here, although experimental, may support virtual sites.
 """
 import copy
 import logging
-import itertools
-
-try:
-    import openmm
-    from openmm import unit
-except ImportError:  # OpenMM < 7.6
-    from simtk import openmm, unit
 
 from openmmtools import forcefactories, utils
 from openmmtools.alchemy.alchemy import (

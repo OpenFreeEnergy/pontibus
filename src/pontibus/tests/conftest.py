@@ -9,6 +9,7 @@ import gufe
 import pytest
 from gufe import SmallMoleculeComponent
 from rdkit import Chem
+from openff.toolkit import ForceField
 
 
 class SlowTests:
@@ -138,3 +139,14 @@ def T4_protein_component():
         comp = gufe.ProteinComponent.from_pdb_file(fn, name="T4_protein")
 
     return comp
+
+
+@pytest.fixture(scope="session")
+def vsite_offxml():
+    offxml = (
+        resources.files("pontibus.tests.data.forcefields")
+        / "vsites-v3_n2r-vdw-dimers_hmix-only-v2-torsions.offxml"
+    ).as_posix()
+
+    ff = ForceField(offxml)
+    return ff.to_string()
