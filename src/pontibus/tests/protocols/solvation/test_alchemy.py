@@ -17,9 +17,7 @@ from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.system_creation import (
-    interchange_packmol_creation
-)
+from pontibus.utils.system_creation import interchange_packmol_creation
 from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )
@@ -39,7 +37,7 @@ def water_off():
 
 
 class TestVSiteEnergies:
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def interchange(self, vinyl_chloride, vsite_offxml, water_off):
         solute = openfe.SmallMoleculeComponent.from_openff(vinyl_chloride)
         interchange, comp_resids = interchange_packmol_creation(
@@ -58,35 +56,36 @@ class TestVSiteEnergies:
 
         return interchange
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def omm_system(self, interchange):
         return interchange.to_openmm_system()
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def positions(self, interchange):
         return to_openmm_positions(interchange, include_virtual_sites=True)
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def alchemical_region(self):
         alchemical_indices = [0, 1, 2, 3, 4, 5, 3006]
         return AlchemicalRegion(alchemical_atoms=alchemical_indices)
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def alchemical_system(self, omm_system, alchemical_region):
         alchemical_factory = ExperimentalAbsoluteAlchemicalFactory()
         return alchemical_factory.create_alchemical_system(
             omm_system, alchemical_region
         )
 
-    def test_compare_energies(self, omm_system, alchemical_system, alchemical_region, positions):
+    def test_compare_energies(
+        self, omm_system, alchemical_system, alchemical_region, positions
+    ):
         compare_system_energies(
-            omm_system,
-            alchemical_system,
-            alchemical_region,
-            positions
+            omm_system, alchemical_system, alchemical_region, positions
         )
 
-    def test_noninteracting_energies(self, omm_system, alchemical_system, alchemical_region, positions):
+    def test_noninteracting_energies(
+        self, omm_system, alchemical_system, alchemical_region, positions
+    ):
         check_noninteracting_energy_components(
             omm_system,
             alchemical_system,
@@ -94,7 +93,9 @@ class TestVSiteEnergies:
             positions,
         )
 
-    def test_interacting_energies(self, omm_system, alchemical_system, alchemical_region, positions):
+    def test_interacting_energies(
+        self, omm_system, alchemical_system, alchemical_region, positions
+    ):
         check_interacting_energy_components(
             omm_system,
             alchemical_system,
@@ -109,5 +110,5 @@ class TestVSiteEnergies:
             alchemical_system,
             positions,
             cached_trajectory_filename=None,
-            name="test"
+            name="test",
         )
