@@ -107,7 +107,7 @@ class TestSoluteVSite:
             positions,
         )
 
-    @pytest.mark.slow
+    @pytest.mark.slow  # pragma: no cover
     def test_overlap(self, omm_system, alchemical_system, positions):
         overlap_check(
             omm_system,
