@@ -80,7 +80,7 @@ def _fill_vsite_compresids(
 
     # sanity check - there should only be uniques!
     if len(np.unique(known_resids)) != len(known_resids):
-        errmsg = "Non unique residues indexes found in comp_resids!"
+        errmsg = "Non unique residue indexes found in comp_resids!"
         raise ValueError(errmsg)
 
     # temporary comp_resids dictionary only for virtual sites

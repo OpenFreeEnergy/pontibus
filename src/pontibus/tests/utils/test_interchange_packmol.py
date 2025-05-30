@@ -2,7 +2,6 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
-
 import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
 import numpy as np
@@ -25,6 +24,7 @@ from pontibus.protocols.solvation.settings import (
 )
 from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
+    _fill_vsite_compresids,
     _check_and_deduplicate_charged_mols,
     _check_library_charges,
     _get_offmol_resname,
@@ -1267,3 +1267,66 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
 14. Check nonbonded cutoffs set via ffsettings
 15. Check charged mols tests.
 """
+
+
+class TestVsitesCompresids:
+    @pytest.fixture(scope="class")
+    def solute(self):
+        offmol = Molecule.from_smiles("c1cc(ccc1O)Br")
+        offmol.generate_conformers(n_conformers=1)
+        offmol.assign_partial_charges(partial_charge_method="gasteiger")
+
+        return SmallMoleculeComponent.from_openff(offmol)
+
+    @pytest.fixture(scope="class")
+    def interchange_system(self, solute, water_off, vsite_offxml):
+        smc_components = {solute: solute.to_openff()}
+        interchange, comp_resids = interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=[vsite_offxml, "opc.offxml"],
+            ),
+            solvation_settings=PackmolSolvationSettings(
+                number_of_solvent_molecules=1000, solvent_padding=None
+            ),
+            smc_components=smc_components,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=water_off,
+        )
+
+        return interchange, comp_resids
+
+    def test_num_missing_error(self, interchange_system, monkeypatch):
+
+        interchange, comp_resids = interchange_system
+
+        monkeypatch.setattr(Topology, "n_molecules", 10000000000000000)
+
+        errmsg = "There are fewer OpenMM Topology residues"
+
+        with pytest.raises(ValueError, match=errmsg):
+            _fill_vsite_compresids(interchange, comp_resids)
+
+    def test_non_unique_resids(self, interchange_system):
+
+        interchange, comp_resids = interchange_system
+
+        new_comp_resids = {key: np.append(val, val) for key, val in comp_resids.items()}
+
+        with pytest.raises(ValueError, match="Non unique residue indexes"):
+            _fill_vsite_compresids(interchange, new_comp_resids)
+
+    def test_fill_compresids(self, interchange_system, solute):
+        interchange, comp_resids = interchange_system
+
+        omm_top = interchange.to_openmm_topology(collate=False)
+        assert omm_top.getNumResidues() == 2002
+
+        assert len(comp_resids[ExtendedSolventComponent()]) == 2000
+        assert_equal(
+            comp_resids[ExtendedSolventComponent()],
+            np.array([i for i in range(1, 1001)] + [i for i in range(1002, 2002)]),
+        )
+        assert len(comp_resids[solute]) == 2
+        assert comp_resids[solute][0] == 0
+        assert comp_resids[solute][1] == 1001
