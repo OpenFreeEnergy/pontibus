@@ -244,10 +244,6 @@ def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
     # forcefields is a list so we unpack it
     force_field = ForceField(*ffsettings.forcefields)
 
-    # Cautiously deregister the AM1BCC handler, we shouldn't need it.
-    # See: https://github.com/openforcefield/openff-interchange/issues/1048
-    force_field.deregister_parameter_handler("ToolkitAM1BCC")
-
     # We also set nonbonded cutoffs whilst we are here
     # TODO: double check what this means for nocutoff simulations
     force_field["Electrostatics"].cutoff = ffsettings.nonbonded_cutoff
