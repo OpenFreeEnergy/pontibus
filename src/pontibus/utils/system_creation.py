@@ -27,6 +27,80 @@ from pontibus.protocols.solvation.settings import (
 logger = logging.getLogger(__name__)
 
 
+def _fill_vsite_compresids(
+    interchange: Interchange,
+    comp_resids: dict[Component, npt.NDArray],
+) -> None:
+    """
+    In-place fill in the comp_resids dictionary with the
+    OpenMM Topology (note: assuming ``collate=False``)
+    residue indexes with virtual sites.
+
+    Parameters
+    ----------
+    interchange : Interchange
+      The Interchange object which defines the OpenMM
+      System / Topology we will be creating.
+    comp_resids : dict[Component, npt.NDArray]
+      The comp_resids dictionary to backfill with virtual
+      site residues. This dictionary should already have
+      non-virtual site residues assigned.
+
+    Notes
+    -----
+    This processes relies on:
+    * The OpenMM Topology being created via Interchange
+      with ``collate=False``.
+    * Each Molecule in the system having been assigned a
+      **unique** residue number **prior** to Interchange creation.
+    * The ``comp_resids`` dictionary has already been filled
+      with non-virtual site residues.
+    """
+    omm_top = interchange.to_openmm_topology(collate=False)
+    num_missing = omm_top.getNumResidues() - interchange.topology.n_molecules
+
+    if num_missing < 0:
+        errmsg = (
+            "There are fewer OpenMM Topology residues than interchange "
+            "molecules. Something went wrong!"
+        )
+        raise ValueError(errmsg)
+    elif num_missing == 0:
+        # Nothing to do here, return
+        return
+    else:
+        msg = (
+            f"{num_missing} virtual site residues found, " "adding them to comp_resids"
+        )
+        logger.info(msg)
+
+    # create a single array with all the "known" residue numbers
+    known_resids = np.concatenate(list(comp_resids.values()))
+
+    # sanity check - there should only be uniques!
+    if len(np.unique(known_resids)) != len(known_resids):
+        errmsg = "Non unique residue indexes found in comp_resids!"
+        raise ValueError(errmsg)
+
+    # temporary comp_resids dictionary only for virtual sites
+    vsites_comp_resids = {key: [] for key in comp_resids}
+
+    # We could use "isin" to make this real fast, but the cost here is tiny
+    for residue in omm_top.residues():
+        # Base case, it's a known residue, skip
+        if residue.index in known_resids:
+            continue
+
+        # We can safely do this since there shouldn't be dupes
+        for comp in comp_resids:
+            if int(residue.id) in comp_resids[comp]:
+                vsites_comp_resids[comp].append(residue.index)
+
+    # Now we merge everything back and that's it!
+    for comp in comp_resids:
+        comp_resids[comp] = np.append(comp_resids[comp], vsites_comp_resids[comp])
+
+
 def _set_offmol_resname(
     offmol: OFFMolecule,
     resname: str,
@@ -376,7 +450,7 @@ def interchange_packmol_creation(
     protein_component: ProteinComponent | None,
     solvent_component: SolventComponent | None,
     solvent_offmol: OFFMolecule | None,
-) -> tuple[Interchange, dict[str, npt.NDArray]]:
+) -> tuple[Interchange, dict[Component, npt.NDArray]]:
     """
     Create an Interchange object for a given system, solvating with
     packmol where necessary.
@@ -400,9 +474,10 @@ def interchange_packmol_creation(
     -------
     Interchange : openff.interchange.Interchange
       Interchange object for the created system.
-    comp_resids : dict[str, npt.NDArray]
-      A dictionary defining the residue indices matching
-      various components in the system.
+    comp_resids : dict[Component, npt.NDArray]
+      A dictionary defining the "canonical" (i.e. 0-indexed)
+      OpenMM Topology residue indices matching the various
+      components in the system.
     """
 
     # 1. Component validations
@@ -463,5 +538,8 @@ def interchange_packmol_creation(
         topology=topology,
         charge_from_molecules=unique_charged_mols,
     )
+
+    # Finally we fill in comp_resids for any virtual sites we have
+    _fill_vsite_compresids(interchange, comp_resids)
 
     return interchange, comp_resids
