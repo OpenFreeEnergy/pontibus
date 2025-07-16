@@ -25,7 +25,7 @@ jobs:
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-file: environment.yml
-          environment-name: gufe
+          environment-name: pontibus
           cache-environment: true
           cache-downloads: true
           create-args: >-
