@@ -36,7 +36,7 @@ def test_defaults():
     assert s.positive_ion == "Na+"
     assert s.negative_ion == "Cl-"
     assert s.ion_concentration == 0.0 * unit.molar
-    assert s.neutralize == False
+    assert not s.neutralize
     assert s.solvent_molecule == WATER
 
 

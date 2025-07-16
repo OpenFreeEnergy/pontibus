@@ -61,13 +61,13 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     NoCutoff are allowed. Default PME.
     """
 
-    nonbonded_cutoff: FloatQuantity["nanometer"] = 0.9 * unit.nanometer
+    nonbonded_cutoff: FloatQuantity["nanometer"] = 0.9 * unit.nanometer  # noqa: F821
     """
     Cutoff value for short range nonbonded interactions.
     Default 1.0 * unit.nanometer.
     """
 
-    switch_width: FloatQuantity["nanometer"] = 0.1 * unit.nanometer
+    switch_width: FloatQuantity["nanometer"] = 0.1 * unit.nanometer  # noqa: F821
     """
     The width over which the VdW switching function is applied.
     Default 0.1 * unit.nanometer.
@@ -111,7 +111,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined alongside ``solvent_padding``.
     """
 
-    box_vectors: ArrayQuantity["nanometer"] | None = None
+    box_vectors: ArrayQuantity["nanometer"] | None = None  # noqa: F821
     """
     Simulation box vectors.
 
@@ -121,7 +121,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * If defined, ``number_of_solvent_molecules`` must be defined.
     """
 
-    solvent_padding: FloatQuantity["nanometer"] | None = 1.2 * unit.nanometer
+    solvent_padding: FloatQuantity["nanometer"] | None = 1.2 * unit.nanometer  # noqa: F821
     """
     Minimum distance from any solute bounding sphere to the edge of the box.
 
@@ -149,14 +149,14 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     be set using the approach defined in ``partial_charge_settings``.
     """
 
-    packing_tolerance: FloatQuantity["angstrom"] = 2.0 * unit.angstrom
+    packing_tolerance: FloatQuantity["angstrom"] = 2.0 * unit.angstrom  # noqa: F821
     """
     Packmol setting; minimum spacing between molecules in units of distance.
     2.0 A is recommended when packing proteins, but can go as low as 0.5 A
     to help with convergence.
     """
 
-    target_density: FloatQuantity["grams / mL"] | None = 0.95 * unit.grams / unit.mL
+    target_density: FloatQuantity["grams / mL"] | None = 0.95 * unit.grams / unit.mL  # noqa: F821
     """
     Target mass density for the solvated system in units compatible with g / mL.
     Generally a ``target_density`` value of 0.95 * unit.grams / unit.mL is
