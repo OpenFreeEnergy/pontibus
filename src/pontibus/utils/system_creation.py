@@ -449,8 +449,9 @@ def interchange_packmol_creation(
             atom.metadata["residue_number"] = molecule_index
 
         # Get the residue name and store the index in comp resnames
+        # Note: lazily type ignore the return here, since None is impossible
         resname = _get_offmol_resname(molecule)
-        comp_resnames[resname][1].append(molecule_index)
+        comp_resnames[resname][1].append(molecule_index)  # type: ignore[index]
 
     # Now create the component_resids dictionary properly
     comp_resids = {}
