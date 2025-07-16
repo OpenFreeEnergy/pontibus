@@ -13,13 +13,9 @@
 
 # Incase the project was not installed
 import os
-from pathlib import Path
-import shutil
 import sys
 
 sys.path.insert(0, os.path.abspath(".."))
-
-import pontibus
 
 
 # -- Project information -----------------------------------------------------
@@ -165,7 +161,7 @@ rst_prolog = """
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-## Add below when we have notebooks
+# Add below when we have notebooks
 # example_notebooks_path = Path("ExampleNotebooks")
 #
 # try:

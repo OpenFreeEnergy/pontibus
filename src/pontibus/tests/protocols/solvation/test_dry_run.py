@@ -8,13 +8,13 @@ from gufe import ChemicalSystem
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
 from openmm import (
-    NonbondedForce,
-    CustomNonbondedForce,
     CustomBondForce,
-    HarmonicBondForce,
+    CustomNonbondedForce,
     HarmonicAngleForce,
-    PeriodicTorsionForce,
+    HarmonicBondForce,
     MonteCarloBarostat,
+    NonbondedForce,
+    PeriodicTorsionForce,
 )
 
 from pontibus.components import ExtendedSolventComponent

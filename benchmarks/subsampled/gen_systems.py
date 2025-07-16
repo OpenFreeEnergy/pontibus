@@ -5,8 +5,9 @@ import pathlib
 from gufe import ChemicalSystem, SmallMoleculeComponent
 from gufe.tokenization import JSON_HANDLER
 from openff.toolkit import Molecule
-from pontibus.components import ExtendedSolventComponent
 from rdkit import Chem
+
+from pontibus.components import ExtendedSolventComponent
 
 
 def add_chemical_systems(
@@ -44,9 +45,7 @@ def add_chemical_systems(
             ChemicalSystem(
                 {
                     "solute": SmallMoleculeComponent.from_openff(offmol),
-                    "solvent": ExtendedSolventComponent(
-                        solvent_molecule=solvents[solvent_smi]
-                    ),
+                    "solvent": ExtendedSolventComponent(solvent_molecule=solvents[solvent_smi]),
                 },
                 name=f"molecule{i}_{dataset_name}",
             )

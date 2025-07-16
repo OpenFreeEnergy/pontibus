@@ -5,21 +5,20 @@ A vendored and modified version of OpenMMTools' AbsoluteAlchemicalFactory.
 
 The modifications here, although experimental, may support virtual sites.
 """
+
 import copy
 import logging
 
 from openmmtools import forcefactories, utils
 from openmmtools.alchemy.alchemy import (
-    AlchemicalRegion,
     AbsoluteAlchemicalFactory,
+    AlchemicalRegion,
 )
-
 
 logger = logging.getLogger(__name__)
 
 
 class ExperimentalAbsoluteAlchemicalFactory(AbsoluteAlchemicalFactory):
-
     def create_alchemical_system(
         self,
         reference_system,
@@ -49,9 +48,7 @@ class ExperimentalAbsoluteAlchemicalFactory(AbsoluteAlchemicalFactory):
 
         """
         if alchemical_regions_interactions != frozenset():
-            raise NotImplementedError(
-                "Interactions between alchemical regions is untested"
-            )
+            raise NotImplementedError("Interactions between alchemical regions is untested")
 
         logger.debug(
             f"Dictionary of interacting alchemical regions: {alchemical_regions_interactions}"
@@ -68,25 +65,20 @@ class ExperimentalAbsoluteAlchemicalFactory(AbsoluteAlchemicalFactory):
 
         # Check for duplicate alchemical atoms/bonds/angles/torsions.
         all_alchemical_elements = {
-            element_type: set()
-            for element_type in ["atoms", "bonds", "angles", "torsions"]
+            element_type: set() for element_type in ["atoms", "bonds", "angles", "torsions"]
         }
 
         for alchemical_region in alchemical_regions:
             for element_type, all_elements in all_alchemical_elements.items():
                 # Ignore None alchemical elements.
-                region_elements = getattr(
-                    alchemical_region, "alchemical_" + element_type
-                )
+                region_elements = getattr(alchemical_region, "alchemical_" + element_type)
                 if region_elements is None:
                     continue
 
                 # Check if there are duplicates with previous regions.
                 duplicate_elements = all_elements & region_elements
                 if len(duplicate_elements) > 0:
-                    raise ValueError(
-                        "Two regions have duplicate {}.".format(element_type)
-                    )
+                    raise ValueError(f"Two regions have duplicate {element_type}.")
 
                 # Update all alchemical elements.
                 all_alchemical_elements[element_type].update(region_elements)
@@ -114,13 +106,9 @@ class ExperimentalAbsoluteAlchemicalFactory(AbsoluteAlchemicalFactory):
         for force_index, reference_force in enumerate(reference_system.getForces()):
             # TODO switch to functools.singledispatch when we drop Python2 support
             reference_force_name = reference_force.__class__.__name__
-            alchemical_force_creator_name = "_alchemically_modify_{}".format(
-                reference_force_name
-            )
+            alchemical_force_creator_name = f"_alchemically_modify_{reference_force_name}"
             try:
-                alchemical_force_creator_func = getattr(
-                    self, alchemical_force_creator_name
-                )
+                alchemical_force_creator_func = getattr(self, alchemical_force_creator_name)
             except AttributeError:
                 pass
             else:
@@ -132,13 +120,9 @@ class ExperimentalAbsoluteAlchemicalFactory(AbsoluteAlchemicalFactory):
                 )
                 for lambda_variable_name, lambda_forces in alchemical_forces.items():
                     try:
-                        alchemical_forces_by_lambda[lambda_variable_name].extend(
-                            lambda_forces
-                        )
+                        alchemical_forces_by_lambda[lambda_variable_name].extend(lambda_forces)
                     except KeyError:
-                        alchemical_forces_by_lambda[lambda_variable_name] = (
-                            lambda_forces
-                        )
+                        alchemical_forces_by_lambda[lambda_variable_name] = lambda_forces
 
         # Remove original forces that have been alchemically modified.
         for force_index in reversed(forces_to_remove):

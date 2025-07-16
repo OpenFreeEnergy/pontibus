@@ -1,20 +1,10 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-from typing import Union
 
 from gufe import SmallMoleculeComponent, SolventComponent
-from gufe.tokenization import (
-    TOKENIZABLE_CLASS_REGISTRY,
-    TOKENIZABLE_REGISTRY,
-    GufeKey,
-    GufeTokenizable,
-    _from_dict,
-    is_gufe_key_dict,
-    modify_dependencies,
-)
-from openff.units import unit
 from openfe.utils import without_oechem_backend
+from openff.units import Quantity, unit
 
 from pontibus.utils.molecules import WATER
 
@@ -29,7 +19,7 @@ class ExtendedSolventComponent(SolventComponent):
         positive_ion: str = "Na+",
         negative_ion: str = "Cl-",
         neutralize: bool = False,
-        ion_concentration: unit.Quantity = 0.0 * unit.molar,
+        ion_concentration: Quantity = 0.0 * unit.molar,
     ):
         """
         Parameters
@@ -44,7 +34,7 @@ class ExtendedSolventComponent(SolventComponent):
         neutralize : bool, optional
           if the net charge on the chemical state is neutralized by the ions in
           this solvent component.  Default `True`
-        ion_concentration : openff-units.unit.Quantity, optional
+        ion_concentration : openff.units.Quantity, optional
           ionic concentration required, default 0.15 * unit.molar
           this must be supplied with units, e.g. "1.5 * unit.molar"
 
@@ -77,7 +67,7 @@ class ExtendedSolventComponent(SolventComponent):
         )
 
     @property
-    def solvent_molecule(self) -> Union[str, SmallMoleculeComponent]:
+    def solvent_molecule(self) -> str | SmallMoleculeComponent:
         """SmallMoleculeComponent representation of the solvent molecules"""
         return self._solvent_molecule
 

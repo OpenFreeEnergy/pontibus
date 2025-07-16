@@ -2,12 +2,11 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 import gufe
 import numpy.typing as npt
 import openmm
-import openmmtools
 from gufe import (
     Component,
     ProteinComponent,
@@ -16,31 +15,22 @@ from gufe import (
 )
 from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
-from openfe.protocols.openmm_utils import charge_generation, settings_validation
+from openfe.protocols.openmm_utils import charge_generation
+from openfe.protocols.openmm_utils.omm_settings import (
+    IntegratorSettings,
+    OpenFFPartialChargeSettings,
+)
 from openfe.utils import log_system_probe, without_oechem_backend
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import unit
-from openff.units.openmm import ensure_quantity, from_openmm, to_openmm
 from openmm import app
-from openmmtools import multistate
 from openmmtools.alchemy import (
     AbsoluteAlchemicalFactory,
     AlchemicalRegion,
-    AlchemicalState,
-)
-from openmmtools.states import (
-    SamplerState,
-    ThermodynamicState,
-    create_thermodynamic_state_protocol,
 )
 
 from pontibus.components import ExtendedSolventComponent
-from pontibus.protocols.solvation.settings import (
-    IntegratorSettings,
-    OpenFFPartialChargeSettings,
-    PackmolSolvationSettings,
-)
+from pontibus.protocols.solvation.settings import PackmolSolvationSettings
 from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )
@@ -50,12 +40,11 @@ logger = logging.getLogger(__name__)
 
 
 class BaseASFEUnit(BaseAbsoluteUnit):
-
     _simtype: str
 
     @staticmethod
     def _get_and_charge_solvent_offmol(
-        solvent_component: Union[SolventComponent, ExtendedSolventComponent],
+        solvent_component: SolventComponent | ExtendedSolventComponent,
         solvation_settings: PackmolSolvationSettings,
         partial_charge_settings: OpenFFPartialChargeSettings,
     ) -> OFFMolecule:
@@ -83,7 +72,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         """
         # Get the solvent offmol
         if isinstance(solvent_component, ExtendedSolventComponent):
-            solvent_offmol = solvent_component.solvent_molecule.to_openff()
+            solvent_offmol = solvent_component.solvent_molecule.to_openff()  # type: ignore[union-attr]
         else:
             # If not, we create the solvent from smiles
             # We generate a single conformer to avoid packing issues
@@ -106,9 +95,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         return solvent_offmol
 
     @staticmethod
-    def _validate_vsites(
-        system: openmm.System, integrator_settings: IntegratorSettings
-    ) -> None:
+    def _validate_vsites(system: openmm.System, integrator_settings: IntegratorSettings) -> None:
         """
         Validate virtual site handling for alchemical system.
 
@@ -135,20 +122,17 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         if has_virtual_sites:
             if not integrator_settings.reassign_velocities:
                 errmsg = (
-                    "Simulations with virtual sites without velocity "
-                    "reassignments are unstable"
+                    "Simulations with virtual sites without velocity reassignments are unstable"
                 )
                 raise ValueError(errmsg)
 
     def _get_omm_objects(
         self,
         settings: dict[str, SettingsBaseModel],
-        protein_component: Optional[ProteinComponent],
-        solvent_component: Optional[SolventComponent],
+        protein_component: ProteinComponent | None,
+        solvent_component: SolventComponent | None,
         smc_components: dict[SmallMoleculeComponent, OFFMolecule],
-    ) -> tuple[
-        app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]
-    ]:
+    ) -> tuple[app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]]:
         """
         Get the OpenMM Topology, Positions and System of the
         parameterised system.
@@ -267,18 +251,14 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         ----
         * Add support for all alchemical factory options
         """
-        alchemical_indices = self._get_alchemical_indices(
-            topology, comp_resids, alchem_comps
-        )
+        alchemical_indices = self._get_alchemical_indices(topology, comp_resids, alchem_comps)
 
         alchemical_region = AlchemicalRegion(
             alchemical_atoms=alchemical_indices,
         )
 
         alchemical_factory = ExperimentalAbsoluteAlchemicalFactory()
-        alchemical_system = alchemical_factory.create_alchemical_system(
-            system, alchemical_region
-        )
+        alchemical_system = alchemical_factory.create_alchemical_system(system, alchemical_region)
 
         return alchemical_factory, alchemical_system, alchemical_indices
 

@@ -2,12 +2,12 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
+import numpy as np
 import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
-import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 from openff.interchange.interop.openmm import to_openmm_positions
-from openff.toolkit import ForceField, Molecule, Topology
+from openff.toolkit import ForceField, Molecule
 from openff.units import unit
 from openff.units.openmm import from_openmm, to_openmm
 from openmm import (
@@ -27,10 +27,9 @@ from pontibus.utils.system_creation import (
     _fill_vsite_compresids,
     _check_and_deduplicate_charged_mols,
     _check_library_charges,
+    _get_force_field,
     _get_offmol_resname,
     _set_offmol_resname,
-    _validate_components,
-    _get_force_field,
     interchange_packmol_creation,
 )
 
@@ -217,9 +216,7 @@ def test_no_solvent_conformers(
     solmol = Molecule.from_smiles("C")
     solmol.assign_partial_charges(partial_charge_method="gasteiger")
     solmol.generate_conformers()
-    solvent = ExtendedSolventComponent(
-        solvent_molecule=SmallMoleculeComponent.from_openff(solmol)
-    )
+    solvent = ExtendedSolventComponent(solvent_molecule=SmallMoleculeComponent.from_openff(solmol))
     solmol._conformers = []
 
     with pytest.raises(ValueError, match="single conformer"):
@@ -271,9 +268,7 @@ def test_multiple_solvent_conformers(
     solmol = Molecule.from_smiles("CCCCCCCCCCCCCCCCCCCCCCCCCCC")
     solmol.generate_conformers()
     solmol.assign_partial_charges(partial_charge_method="gasteiger")
-    solvent = ExtendedSolventComponent(
-        solvent_molecule=SmallMoleculeComponent.from_openff(solmol)
-    )
+    solvent = ExtendedSolventComponent(solvent_molecule=SmallMoleculeComponent.from_openff(solmol))
 
     with pytest.raises(ValueError, match="single conformer"):
         interchange_packmol_creation(
@@ -442,15 +437,11 @@ def test_nonwater_solvent_short(smc_components_benzene_named, smiles):
 
     if smiles == "c1ccccc1":
         # solvent == ligand
-        assert solvent_offmol.is_isomorphic_with(
-            list(smc_components_benzene_named.values())[0]
-        )
+        assert solvent_offmol.is_isomorphic_with(list(smc_components_benzene_named.values())[0])
         assert interchange.topology.n_unique_molecules == 1
     else:
         assert interchange.topology.n_unique_molecules == 2
-        assert solvent_offmol.is_isomorphic_with(
-            list(interchange.topology.unique_molecules)[1]
-        )
+        assert solvent_offmol.is_isomorphic_with(list(interchange.topology.unique_molecules)[1])
     assert interchange.topology.n_molecules == 101
 
 
@@ -876,9 +867,7 @@ def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
         assert interchange.topology.n_unique_molecules == 1
     else:
         assert interchange.topology.n_unique_molecules == 2
-        assert solvent_offmol.is_isomorphic_with(
-            list(interchange.topology.unique_molecules)[1]
-        )
+        assert solvent_offmol.is_isomorphic_with(list(interchange.topology.unique_molecules)[1])
     assert interchange.topology.n_molecules == 1001
 
 
@@ -970,7 +959,7 @@ class TestVacuumUnamedBenzene(BaseSystemTests):
 
     def test_positions(self, interchange_system, num_particles):
         inter, _ = interchange_system
-        assert len((to_openmm_positions(inter))) == num_particles
+        assert len(to_openmm_positions(inter)) == num_particles
 
     def test_system_nonbonded(self, nonbonds):
         # One nonbonded force
@@ -1057,9 +1046,7 @@ class TestSolventOPC3UnamedBenzene(TestVacuumUnamedBenzene):
 
         assert len(comp_resids) == 2
         assert list(comp_resids)[0] == ExtendedSolventComponent()
-        assert list(comp_resids)[1] == next(
-            iter(request.getfixturevalue(self.smc_comps))
-        )
+        assert list(comp_resids)[1] == next(iter(request.getfixturevalue(self.smc_comps)))
         assert_equal(list(comp_resids.values())[0], [i for i in range(1, num_residues)])
         assert_equal(list(comp_resids.values())[1], [0])
 
@@ -1074,9 +1061,7 @@ class TestSolventOPC3UnamedBenzene(TestVacuumUnamedBenzene):
             c, s, e = nonbonds[0].getParticleParameters(index)
             assert from_openmm(c) == -0.89517 * unit.elementary_charge
             assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(
-                3.1742703509365926
-            )
+            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
@@ -1150,9 +1135,7 @@ class TestSolventOPC3NamedChargedAssignedBenzene(TestSolventOPC3UnamedBenzene):
             c, s, e = nonbonds[0].getParticleParameters(index)
             assert from_openmm(c) == water_off_named_charged.partial_charges[0]
             assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(
-                3.1742703509365926
-            )
+            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
