@@ -18,7 +18,8 @@ from openfe.protocols.openmm_afe.equil_afe_settings import (
     AbsoluteSolvationSettings,
     AlchemicalSettings,
 )
-from openfe.protocols.openmm_utils.omm_settings import (  # isort: skip
+# isort: off
+from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
     IntegratorSettings,
     MDOutputSettings,
@@ -28,6 +29,7 @@ from openfe.protocols.openmm_utils.omm_settings import (  # isort: skip
     OpenFFPartialChargeSettings,
     OpenMMEngineSettings,
 )
+# isort: on
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
 from openff.models.types import ArrayQuantity, FloatQuantity
 from openff.units import unit
