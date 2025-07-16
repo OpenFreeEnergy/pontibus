@@ -16,6 +16,10 @@ from gufe import (
 from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.protocols.openmm_utils import charge_generation
+from openfe.protocols.openmm_utils.omm_settings import (
+    IntegratorSettings,
+    OpenFFPartialChargeSettings,
+)
 from openfe.utils import log_system_probe, without_oechem_backend
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
@@ -26,10 +30,6 @@ from openmmtools.alchemy import (
 )
 
 from pontibus.components import ExtendedSolventComponent
-from openfe.protocols.openmm_utils.omm_settings import (
-    IntegratorSettings,
-    OpenFFPartialChargeSettings,
-)
 from pontibus.protocols.solvation.settings import PackmolSolvationSettings
 from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,

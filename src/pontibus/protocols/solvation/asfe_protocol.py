@@ -11,8 +11,8 @@ from openfe.protocols.openmm_afe import (
     AbsoluteSolvationProtocol,
     AbsoluteSolvationProtocolResult,
 )
-from openfe.protocols.openmm_utils import settings_validation, system_validation
 from openfe.protocols.openmm_afe.equil_afe_settings import LambdaSettings
+from openfe.protocols.openmm_utils import settings_validation, system_validation
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
     MDOutputSettings,
@@ -22,7 +22,6 @@ from openfe.protocols.openmm_utils.omm_settings import (
     OpenFFPartialChargeSettings,
     OpenMMEngineSettings,
 )
-
 from openff.units import unit
 
 from pontibus.protocols.solvation.base import BaseASFEUnit

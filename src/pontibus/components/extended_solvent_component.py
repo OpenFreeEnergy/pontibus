@@ -4,7 +4,7 @@
 
 from gufe import SmallMoleculeComponent, SolventComponent
 from openfe.utils import without_oechem_backend
-from openff.units import unit, Quantity
+from openff.units import Quantity, unit
 
 from pontibus.utils.molecules import WATER
 
