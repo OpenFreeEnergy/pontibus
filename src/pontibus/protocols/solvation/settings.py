@@ -212,6 +212,17 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         return values
 
     @root_validator
+    def check_target_density_and_box_shape(cls, values):
+        target_density = values.get("target_density")
+        box_shape = values.get("box_shape")
+
+        if not (target_density is None) == (box_shape is None):
+            msg = "``target_density`` and ``box_shape`` must both be defined"
+            raise ValueError(msg)
+
+        return values
+
+    @root_validator
     def check_solvent_padding_or_box_vectors(cls, values):
         box_vectors = values.get("box_vectors")
         padding = values.get("solvent_padding")

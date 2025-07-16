@@ -139,7 +139,7 @@ def _check_and_deduplicate_charged_mols(
         )
         raise ValueError(errmsg)
 
-    unique_mols = []
+    unique_mols: list[OFFMolecule] = []
 
     for moli in molecules:
         isomorphic_mols = [molj for molj in unique_mols if moli.is_isomorphic_with(molj)]
@@ -314,7 +314,7 @@ def _get_comp_resnames(
         wmsg = f"Setting component {comp} residue name to {off_resname}"
         logger.warning(wmsg)
         _set_offmol_resname(offmol, off_resname)
-        comp_resnames[off_resname] = [comp, []]
+        comp_resnames[off_resname] = (comp, [])
 
     return comp_resnames
 
@@ -342,10 +342,11 @@ def _solvate_system(
       The solvated Topology.
     """
     # Pick up the user selected box shape
-    box_shape = {
-        "cube": UNIT_CUBE,
-        "dodecahedron": RHOMBIC_DODECAHEDRON,
-    }[solvation_settings.box_shape.lower()]
+    if solvation_settings.box_shape is not None:
+        box_shape = {
+            "cube": UNIT_CUBE,
+            "dodecahedron": RHOMBIC_DODECAHEDRON,
+        }[solvation_settings.box_shape.lower()]
 
     # Create the topology
     if solvation_settings.number_of_solvent_molecules is not None:

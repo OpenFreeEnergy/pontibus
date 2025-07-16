@@ -4,7 +4,7 @@
 
 from gufe import SmallMoleculeComponent, SolventComponent
 from openfe.utils import without_oechem_backend
-from openff.units import unit
+from openff.units import unit, Quantity
 
 from pontibus.utils.molecules import WATER
 
@@ -19,7 +19,7 @@ class ExtendedSolventComponent(SolventComponent):
         positive_ion: str = "Na+",
         negative_ion: str = "Cl-",
         neutralize: bool = False,
-        ion_concentration: unit.Quantity = 0.0 * unit.molar,
+        ion_concentration: Quantity = 0.0 * unit.molar,
     ):
         """
         Parameters
@@ -34,7 +34,7 @@ class ExtendedSolventComponent(SolventComponent):
         neutralize : bool, optional
           if the net charge on the chemical state is neutralized by the ions in
           this solvent component.  Default `True`
-        ion_concentration : openff-units.unit.Quantity, optional
+        ion_concentration : openff.units.Quantity, optional
           ionic concentration required, default 0.15 * unit.molar
           this must be supplied with units, e.g. "1.5 * unit.molar"
 
