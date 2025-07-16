@@ -1,14 +1,15 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
+import json
+
 import pytest
 from gufe import SmallMoleculeComponent
-from gufe.tokenization import JSON_HANDLER
 from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
+from gufe.tokenization import JSON_HANDLER
+from numpy.testing import assert_allclose
 from openff.toolkit import Molecule
 from openff.units import unit
-from numpy.testing import assert_allclose
-import json
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
 from pontibus.utils.molecules import WATER
@@ -24,9 +25,7 @@ def CO_offmol():
 
 @pytest.fixture
 def CO_component(CO_offmol):
-    s = ExtendedSolventComponent(
-        solvent_molecule=SmallMoleculeComponent.from_openff(CO_offmol)
-    )
+    s = ExtendedSolventComponent(solvent_molecule=SmallMoleculeComponent.from_openff(CO_offmol))
     return s
 
 
@@ -95,9 +94,7 @@ def test_json_serializable_eq(CO_component, CO_offmol):
 
 
 def test_keyedchain_json_serializable_eq(CO_component, CO_offmol):
-    CO_component_json = json.dumps(
-        CO_component.to_keyed_chain(), cls=JSON_HANDLER.encoder
-    )
+    CO_component_json = json.dumps(CO_component.to_keyed_chain(), cls=JSON_HANDLER.encoder)
     CO_component_keyed_chain = json.loads(CO_component_json, cls=JSON_HANDLER.decoder)
 
     s2 = ExtendedSolventComponent.from_keyed_chain(CO_component_keyed_chain)
@@ -135,7 +132,6 @@ def test_shallow_dict_roundtrip_eq():
 
 
 class TestSolventComponent(GufeTokenizableTestsMixin):
-
     cls = ExtendedSolventComponent
     key = "ExtendedSolventComponent-f297bd89a615557b2b94d241eff240ce"
     repr = "ExtendedSolventComponent(name=[H][O][H], Na+, Cl-)"

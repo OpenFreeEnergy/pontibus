@@ -1,9 +1,8 @@
 import gzip
 from importlib import resources
 
-import pytest
-
 import gufe
+import pytest
 
 
 @pytest.fixture

@@ -1,20 +1,10 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-from typing import Union
 
 from gufe import SmallMoleculeComponent, SolventComponent
-from gufe.tokenization import (
-    TOKENIZABLE_CLASS_REGISTRY,
-    TOKENIZABLE_REGISTRY,
-    GufeKey,
-    GufeTokenizable,
-    _from_dict,
-    is_gufe_key_dict,
-    modify_dependencies,
-)
-from openff.units import unit
 from openfe.utils import without_oechem_backend
+from openff.units import unit
 
 from pontibus.utils.molecules import WATER
 
@@ -77,7 +67,7 @@ class ExtendedSolventComponent(SolventComponent):
         )
 
     @property
-    def solvent_molecule(self) -> Union[str, SmallMoleculeComponent]:
+    def solvent_molecule(self) -> str | SmallMoleculeComponent:
         """SmallMoleculeComponent representation of the solvent molecules"""
         return self._solvent_molecule
 
