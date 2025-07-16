@@ -1,9 +1,8 @@
 import gzip
 from importlib import resources
 
-import pytest
-
 import gufe
+import pytest
 
 
 @pytest.fixture
@@ -21,10 +20,10 @@ def afe_solv_water_transformation_json() -> str:
     generated with devtools/gent-serialized-results.py
     """
     d = resources.files("pontibus.tests.data.solvation_protocol")
-    fname = "ASFEProtocol_water_json_results.gz"
+    file = d / "ASFEProtocol_water_json_results.gz"
 
-    with gzip.open((d / fname).as_posix(), "r") as f:
-        return f.read().decode()
+    with gzip.open(file.as_posix(), "r") as f:  # type: ignore
+        return f.read().decode()  # type: ignore
 
 
 @pytest.fixture
@@ -35,7 +34,7 @@ def afe_solv_octanol_transformation_json() -> str:
     generated with devtools/gent-serialized-results.py
     """
     d = resources.files("pontibus.tests.data.solvation_protocol")
-    fname = "ASFEProtocol_octanol_json_results.gz"
+    file = d / "ASFEProtocol_octanol_json_results.gz"
 
-    with gzip.open((d / fname).as_posix(), "r") as f:
-        return f.read().decode()
+    with gzip.open(file.as_posix(), "r") as f:  # type: ignore
+        return f.read().decode()  # type: ignore

@@ -2,33 +2,34 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import uuid
-from typing import Optional, Union
 
 import gufe
 import numpy as np
 from gufe import ChemicalSystem, SolventComponent
+from gufe.settings import ThermoSettings
 from openfe.protocols.openmm_afe import (
     AbsoluteSolvationProtocol,
     AbsoluteSolvationProtocolResult,
 )
+from openfe.protocols.openmm_afe.equil_afe_settings import LambdaSettings
 from openfe.protocols.openmm_utils import settings_validation, system_validation
-from openff.units import unit
-
-from pontibus.protocols.solvation.base import BaseASFEUnit
-from pontibus.protocols.solvation.settings import (
-    ASFESettings,
-    ExperimentalAlchemicalSettings,
+from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
-    InterchangeFFSettings,
-    LambdaSettings,
     MDOutputSettings,
     MDSimulationSettings,
     MultiStateOutputSettings,
     MultiStateSimulationSettings,
     OpenFFPartialChargeSettings,
     OpenMMEngineSettings,
+)
+from openff.units import unit
+
+from pontibus.protocols.solvation.base import BaseASFEUnit
+from pontibus.protocols.solvation.settings import (
+    ASFESettings,
+    ExperimentalAlchemicalSettings,
+    InterchangeFFSettings,
     PackmolSolvationSettings,
-    ThermoSettings,
 )
 
 
@@ -209,10 +210,8 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         self,
         stateA: ChemicalSystem,
         stateB: ChemicalSystem,
-        mapping: Optional[
-            Union[gufe.ComponentMapping, list[gufe.ComponentMapping]]
-        ] = None,
-        extends: Optional[gufe.ProtocolDAGResult] = None,
+        mapping: gufe.ComponentMapping | list[gufe.ComponentMapping] | None = None,
+        extends: gufe.ProtocolDAGResult | None = None,
     ) -> list[gufe.ProtocolUnit]:
         # TODO: extensions
         if extends:  # pragma: no-cover
@@ -235,9 +234,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         )
 
         # Check nonbond & solvent compatibility
-        solv_nonbonded_method = (
-            self.settings.solvent_forcefield_settings.nonbonded_method
-        )
+        solv_nonbonded_method = self.settings.solvent_forcefield_settings.nonbonded_method
         vac_nonbonded_method = self.settings.vacuum_forcefield_settings.nonbonded_method
         # Use the more complete system validation solvent checks
         self._validate_solvent(stateA, solv_nonbonded_method)
@@ -251,9 +248,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
             raise ValueError(errmsg)
 
         # Check vacuum equilibration MD settings is 0 ns
-        nvt_time = (
-            self.settings.vacuum_equil_simulation_settings.equilibration_length_nvt
-        )
+        nvt_time = self.settings.vacuum_equil_simulation_settings.equilibration_length_nvt
         if nvt_time is not None:
             if not np.allclose(nvt_time, 0 * unit.nanosecond):
                 errmsg = "NVT equilibration cannot be run in vacuum simulation"
@@ -271,10 +266,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 alchemical_components=alchem_comps,
                 generation=0,
                 repeat_id=int(uuid.uuid4()),
-                name=(
-                    f"Absolute Solvation, {alchname} solvent leg: "
-                    f"repeat {i} generation 0"
-                ),
+                name=(f"Absolute Solvation, {alchname} solvent leg: repeat {i} generation 0"),
             )
             for i in range(self.settings.protocol_repeats)
         ]
@@ -287,10 +279,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 alchemical_components=alchem_comps,
                 generation=0,
                 repeat_id=int(uuid.uuid4()),
-                name=(
-                    f"Absolute Solvation, {alchname} vacuum leg: "
-                    f"repeat {i} generation 0"
-                ),
+                name=(f"Absolute Solvation, {alchname} vacuum leg: repeat {i} generation 0"),
             )
             for i in range(self.settings.protocol_repeats)
         ]
@@ -369,9 +358,7 @@ class ASFEVacuumUnit(BaseASFEUnit):
         settings["lambda_settings"] = prot_settings.lambda_settings
         settings["engine_settings"] = prot_settings.vacuum_engine_settings
         settings["integrator_settings"] = prot_settings.integrator_settings
-        settings["equil_simulation_settings"] = (
-            prot_settings.vacuum_equil_simulation_settings
-        )
+        settings["equil_simulation_settings"] = prot_settings.vacuum_equil_simulation_settings
         settings["equil_output_settings"] = prot_settings.vacuum_equil_output_settings
         settings["simulation_settings"] = prot_settings.vacuum_simulation_settings
         settings["output_settings"] = prot_settings.vacuum_output_settings
@@ -451,9 +438,7 @@ class ASFESolventUnit(BaseASFEUnit):
         settings["lambda_settings"] = prot_settings.lambda_settings
         settings["engine_settings"] = prot_settings.solvent_engine_settings
         settings["integrator_settings"] = prot_settings.integrator_settings
-        settings["equil_simulation_settings"] = (
-            prot_settings.solvent_equil_simulation_settings
-        )
+        settings["equil_simulation_settings"] = prot_settings.solvent_equil_simulation_settings
         settings["equil_output_settings"] = prot_settings.solvent_equil_output_settings
         settings["simulation_settings"] = prot_settings.solvent_simulation_settings
         settings["output_settings"] = prot_settings.solvent_output_settings

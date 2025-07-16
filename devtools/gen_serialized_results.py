@@ -14,14 +14,13 @@ import tempfile
 import gufe
 import openfe
 from gufe.tokenization import JSON_HANDLER
-from kartograf import KartografAtomMapper
-from kartograf.atom_aligner import align_mol_shape
 from openff.toolkit import AmberToolsToolkitWrapper, Molecule, RDKitToolkitWrapper
 from openff.toolkit.utils.toolkit_registry import (
     ToolkitRegistry,
     toolkit_registry_manager,
 )
 from openff.units import unit
+
 from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation import ASFEProtocol
 
@@ -57,9 +56,7 @@ def execute_and_serialize(dag, protocol, simname):
         "estimate": protres.get_estimate(),
         "uncertainty": protres.get_uncertainty(),
         "protocol_result": protres.to_dict(),
-        "unit_results": {
-            unit.key: unit.to_keyed_dict() for unit in dagres.protocol_unit_results
-        },
+        "unit_results": {unit.key: unit.to_keyed_dict() for unit in dagres.protocol_unit_results},
     }
 
     with gzip.open(f"{simname}_json_results.gz", "wt") as zipfile:
@@ -68,18 +65,12 @@ def execute_and_serialize(dag, protocol, simname):
 
 def generate_ahfe_settings():
     settings = ASFEProtocol.default_settings()
-    settings.solvent_equil_simulation_settings.equilibration_length_nvt = (
-        10 * unit.picosecond
-    )
-    settings.solvent_equil_simulation_settings.equilibration_length = (
-        10 * unit.picosecond
-    )
+    settings.solvent_equil_simulation_settings.equilibration_length_nvt = 10 * unit.picosecond
+    settings.solvent_equil_simulation_settings.equilibration_length = 10 * unit.picosecond
     settings.solvent_equil_simulation_settings.production_length = 10 * unit.picosecond
     settings.solvent_simulation_settings.equilibration_length = 10 * unit.picosecond
     settings.solvent_simulation_settings.production_length = 500 * unit.picosecond
-    settings.vacuum_equil_simulation_settings.equilibration_length = (
-        10 * unit.picosecond
-    )
+    settings.vacuum_equil_simulation_settings.equilibration_length = 10 * unit.picosecond
     settings.vacuum_equil_simulation_settings.production_length = 10 * unit.picosecond
     settings.vacuum_simulation_settings.equilibration_length = 10 * unit.picosecond
     settings.vacuum_simulation_settings.production_length = 500 * unit.picosecond

@@ -10,28 +10,21 @@ See Also
 --------
 openfe.protocols.openmm_afe.AbsoluteSolvationProtocol
 """
-from typing import Literal, Optional
 
-from gufe.settings import BaseForceFieldSettings, ThermoSettings
+from typing import Literal
+
+from gufe.settings import BaseForceFieldSettings
 from openfe.protocols.openmm_afe.equil_afe_settings import (
     AbsoluteSolvationSettings,
     AlchemicalSettings,
-    LambdaSettings,
 )
 from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
-    IntegratorSettings,
-    MDOutputSettings,
-    MDSimulationSettings,
-    MultiStateOutputSettings,
-    MultiStateSimulationSettings,
-    OpenFFPartialChargeSettings,
-    OpenMMEngineSettings,
 )
-from openff.models.types import FloatQuantity, ArrayQuantity
-from openff.units import unit
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
-from pydantic.v1 import validator, root_validator
+from openff.models.types import ArrayQuantity, FloatQuantity
+from openff.units import unit
+from pydantic.v1 import root_validator, validator
 
 
 class ExperimentalAlchemicalSettings(AlchemicalSettings):
@@ -68,13 +61,13 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     NoCutoff are allowed. Default PME.
     """
 
-    nonbonded_cutoff: FloatQuantity["nanometer"] = 0.9 * unit.nanometer
+    nonbonded_cutoff: FloatQuantity["nanometer"] = 0.9 * unit.nanometer  # noqa: F821
     """
     Cutoff value for short range nonbonded interactions.
     Default 1.0 * unit.nanometer.
     """
 
-    switch_width: FloatQuantity["nanometer"] = 0.1 * unit.nanometer
+    switch_width: FloatQuantity["nanometer"] = 0.1 * unit.nanometer  # noqa: F821
     """
     The width over which the VdW switching function is applied.
     Default 0.1 * unit.nanometer.
@@ -92,9 +85,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     def is_positive_distance(cls, v):
         # these are time units, not simulation steps
         if not v.is_compatible_with(unit.nanometer):
-            raise ValueError(
-                "nonbonded_cutoff must be in distance units " "(i.e. nanometers)"
-            )
+            raise ValueError("nonbonded_cutoff must be in distance units (i.e. nanometers)")
         if v < 0:
             errmsg = "nonbonded_cutoff must be a positive value"
             raise ValueError(errmsg)
@@ -111,7 +102,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
       Interchange's ``solvate_topology_nonwater``.
     """
 
-    number_of_solvent_molecules: Optional[int] = None
+    number_of_solvent_molecules: int | None = None
     """
     The number of solvent molecules to add.
 
@@ -120,7 +111,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined alongside ``solvent_padding``.
     """
 
-    box_vectors: Optional[ArrayQuantity["nanometer"]] = None
+    box_vectors: ArrayQuantity["nanometer"] | None = None  # noqa: F821
     """
     Simulation box vectors.
 
@@ -130,7 +121,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * If defined, ``number_of_solvent_molecules`` must be defined.
     """
 
-    solvent_padding: Optional[FloatQuantity["nanometer"]] = 1.2 * unit.nanometer
+    solvent_padding: FloatQuantity["nanometer"] | None = 1.2 * unit.nanometer  # noqa: F821
     """
     Minimum distance from any solute bounding sphere to the edge of the box.
 
@@ -139,7 +130,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined if ``number_of_solvent_molecules`` is defined.
     """
 
-    box_shape: Optional[Literal["cube", "dodecahedron"]] = "cube"
+    box_shape: Literal["cube", "dodecahedron"] | None = "cube"
     """
     The shape of the periodic box to create.
     """
@@ -158,14 +149,14 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     be set using the approach defined in ``partial_charge_settings``.
     """
 
-    packing_tolerance: FloatQuantity["angstrom"] = 2.0 * unit.angstrom
+    packing_tolerance: FloatQuantity["angstrom"] = 2.0 * unit.angstrom  # noqa: F821
     """
     Packmol setting; minimum spacing between molecules in units of distance.
     2.0 A is recommended when packing proteins, but can go as low as 0.5 A
     to help with convergence.
     """
 
-    target_density: Optional[FloatQuantity["grams / mL"]] = 0.95 * unit.grams / unit.mL
+    target_density: FloatQuantity["grams / mL"] | None = 0.95 * unit.grams / unit.mL  # noqa: F821
     """
     Target mass density for the solvated system in units compatible with g / mL.
     Generally a ``target_density`` value of 0.95 * unit.grams / unit.mL is
@@ -204,10 +195,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         padding = values.get("solvent_padding")
 
         if not (num_solvent is None) ^ (padding is None):
-            msg = (
-                "Only one of ``number_solvent_molecules`` or "
-                "``solvent_padding`` can be defined"
-            )
+            msg = "Only one of ``number_solvent_molecules`` or ``solvent_padding`` can be defined"
             raise ValueError(msg)
 
         return values
@@ -218,7 +206,18 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         box_vectors = values.get("box_vectors")
 
         if not (target_density is None) ^ (box_vectors is None):
-            msg = "Only one of ``target_density`` or " "``box_vectors`` can be defined"
+            msg = "Only one of ``target_density`` or ``box_vectors`` can be defined"
+            raise ValueError(msg)
+
+        return values
+
+    @root_validator
+    def check_target_density_and_box_shape(cls, values):
+        target_density = values.get("target_density")
+        box_shape = values.get("box_shape")
+
+        if not (target_density is None) == (box_shape is None):
+            msg = "``target_density`` and ``box_shape`` must both be defined"
             raise ValueError(msg)
 
         return values
@@ -228,10 +227,8 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         box_vectors = values.get("box_vectors")
         padding = values.get("solvent_padding")
 
-        if not (box_vectors is None) and (padding is None):
-            msg = (
-                "Only one of ``box_vectors`` or ``solvent_padding`` " "can be defined."
-            )
+        if box_vectors is not None and (padding is None):
+            msg = "Only one of ``box_vectors`` or ``solvent_padding`` can be defined."
             raise ValueError(msg)
 
         return values

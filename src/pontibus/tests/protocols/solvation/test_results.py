@@ -90,10 +90,7 @@ class TestWaterProtocolResult:
         data.outputs["forward_and_reverse_energies"] = None
 
         # now fetch the analysis results and expect a warning
-        wmsg = (
-            "were found in the forward and reverse dictionaries "
-            f"of the repeats of the {key}"
-        )
+        wmsg = f"were found in the forward and reverse dictionaries of the repeats of the {key}"
         with pytest.warns(UserWarning, match=wmsg):
             protocolresult.get_forward_and_reverse_energy_analysis()
 
