@@ -6,28 +6,31 @@ import uuid
 import gufe
 import numpy as np
 from gufe import ChemicalSystem, SolventComponent
+from gufe.settings import ThermoSettings
 from openfe.protocols.openmm_afe import (
     AbsoluteSolvationProtocol,
     AbsoluteSolvationProtocolResult,
 )
 from openfe.protocols.openmm_utils import settings_validation, system_validation
-from openff.units import unit
-
-from pontibus.protocols.solvation.base import BaseASFEUnit
-from pontibus.protocols.solvation.settings import (
-    ASFESettings,
-    ExperimentalAlchemicalSettings,
+from openfe.protocols.openmm_afe.equil_afe_settings import LambdaSettings
+from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
-    InterchangeFFSettings,
-    LambdaSettings,
     MDOutputSettings,
     MDSimulationSettings,
     MultiStateOutputSettings,
     MultiStateSimulationSettings,
     OpenFFPartialChargeSettings,
     OpenMMEngineSettings,
+)
+
+from openff.units import unit
+
+from pontibus.protocols.solvation.base import BaseASFEUnit
+from pontibus.protocols.solvation.settings import (
+    ASFESettings,
+    ExperimentalAlchemicalSettings,
+    InterchangeFFSettings,
     PackmolSolvationSettings,
-    ThermoSettings,
 )
 
 

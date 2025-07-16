@@ -26,11 +26,11 @@ from openmmtools.alchemy import (
 )
 
 from pontibus.components import ExtendedSolventComponent
-from pontibus.protocols.solvation.settings import (
+from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
     OpenFFPartialChargeSettings,
-    PackmolSolvationSettings,
 )
+from pontibus.protocols.solvation.settings import PackmolSolvationSettings
 from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )

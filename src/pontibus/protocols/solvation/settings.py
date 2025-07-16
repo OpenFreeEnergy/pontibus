@@ -13,24 +13,14 @@ openfe.protocols.openmm_afe.AbsoluteSolvationProtocol
 
 from typing import Literal
 
-# isort: off
-from gufe.settings import BaseForceFieldSettings, ThermoSettings
+from gufe.settings import BaseForceFieldSettings
 from openfe.protocols.openmm_afe.equil_afe_settings import (
     AbsoluteSolvationSettings,
     AlchemicalSettings,
-    LambdaSettings,
 )
 from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
-    IntegratorSettings,
-    MDOutputSettings,
-    MDSimulationSettings,
-    MultiStateOutputSettings,
-    MultiStateSimulationSettings,
-    OpenFFPartialChargeSettings,
-    OpenMMEngineSettings,
 )
-# isort: on
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
 from openff.models.types import ArrayQuantity, FloatQuantity
 from openff.units import unit
