@@ -39,3 +39,8 @@ where = ['src']
 
 [tool.setuptools.package-data]
 pontibus = ["**/*.pdb", "**/*.sdf", "**/*.gz"]
+
+[tool.mypy]
+files = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true

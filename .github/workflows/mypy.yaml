@@ -45,4 +45,4 @@ jobs:
           micromamba list
 
       - name: "Lint with mypy"
-        run: mypy src
+        run: mypy
