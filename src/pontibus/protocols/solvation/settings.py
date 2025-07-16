@@ -13,12 +13,13 @@ openfe.protocols.openmm_afe.AbsoluteSolvationProtocol
 
 from typing import Literal
 
-from gufe.settings import BaseForceFieldSettings
+# isort: off
+from gufe.settings import BaseForceFieldSettings, ThermoSettings
 from openfe.protocols.openmm_afe.equil_afe_settings import (
     AbsoluteSolvationSettings,
     AlchemicalSettings,
+    LambdaSettings,
 )
-# isort: off
 from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
     IntegratorSettings,
