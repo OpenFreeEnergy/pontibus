@@ -72,7 +72,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         """
         # Get the solvent offmol
         if isinstance(solvent_component, ExtendedSolventComponent):
-            solvent_offmol = solvent_component.solvent_molecule.to_openff()
+            solvent_offmol = solvent_component.solvent_molecule.to_openff()  # type: ignore[union-attr]
         else:
             # If not, we create the solvent from smiles
             # We generate a single conformer to avoid packing issues
