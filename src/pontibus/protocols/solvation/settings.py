@@ -14,6 +14,7 @@ openfe.protocols.openmm_afe.AbsoluteSolvationProtocol
 from typing import Literal
 
 from gufe.settings import BaseForceFieldSettings
+from gufe.vendor.openff.models.types import ArrayQuantity, FloatQuantity
 from openfe.protocols.openmm_afe.equil_afe_settings import (
     AbsoluteSolvationSettings,
     AlchemicalSettings,
@@ -22,10 +23,6 @@ from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
 )
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
-from gufe.vendor.openff.models.types import (
-    ArrayQuantity,
-    FloatQuantity
-)
 from openff.units import unit
 from pydantic.v1 import root_validator, validator
 
