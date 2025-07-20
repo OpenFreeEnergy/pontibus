@@ -116,7 +116,7 @@ class SlowTests:
 # allow for optional slow tests
 # See: https://docs.pytest.org/en/latest/example/simple.html
 def pytest_addoption(parser):
-    parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
+    parser.addoption("--slow", action="store_true", default=False, help="run slow tests")
     parser.addoption(
         "--gpu",
         action="store_true",
