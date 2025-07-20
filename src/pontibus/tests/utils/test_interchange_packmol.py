@@ -445,7 +445,7 @@ def test_nonwater_solvent_short(smc_components_benzene_named, smiles):
     assert interchange.topology.n_molecules == 101
 
 
-@pytest.mark.slow
+@pytest.mark.cpuvslow
 @pytest.mark.parametrize(
     "solvent_smiles, solute_smiles",
     [
