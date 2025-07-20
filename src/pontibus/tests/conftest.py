@@ -127,7 +127,7 @@ def pytest_addoption(parser):
         "--cpuvslow",
         action="store_true",
         default=False,
-        hlep="run very slow CPU tests"
+        help="run very slow CPU tests"
     )
 
 
