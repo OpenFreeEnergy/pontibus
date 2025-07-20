@@ -3,13 +3,11 @@ on:
   pull_request:
     branches:
       - main
-      - develop
     paths-ignore:
       - "docs/*"
   push:
     branches:
       - main
-      - develop
   schedule:
     # At 07:00 UTC on Monday and Thursday
     - cron: "0 7 * * *"
@@ -70,7 +68,7 @@ jobs:
       - name: "Run tests"
         env:
           # For now, disable these as they are too slow to run on gh ci
-          #PONTIBUS_SLOW_TESTS: ${{ fromJSON('{"false":"false","true":"true"}')[github.event_name != 'pull_request'] }}
+          PONTIBUS_SLOW_TESTS: ${{ fromJSON('{"false":"false","true":"true"}')[github.event_name != 'pull_request'] }}
           DUECREDIT_ENABLE: 'yes'
         run: |
           pytest -n logical -v --cov=pontibus --cov-report=xml --durations=10
