@@ -124,10 +124,7 @@ def pytest_addoption(parser):
         help="run GPU tests",
     )
     parser.addoption(
-        "--cpuvslow",
-        action="store_true",
-        default=False,
-        help="run very slow CPU tests"
+        "--cpuvslow", action="store_true", default=False, help="run very slow CPU tests"
     )
 
 
