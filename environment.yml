@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.0
+  - gufe >=1.5
   - openff-toolkit >0.16.0
   - openff-interchange >=0.4
   - openff-nagl-base >=0.3.3
@@ -23,8 +23,8 @@ dependencies:
   - cinnabar ~=0.4.0
   - click
   - typing-extensions
-  - openmm >=8.0.0,!=8.1.0,<8.2.0
-  - openmmtools
+  - openmm >=8.0.0,!=8.1.0,<8.4.0
+  - openmmtools >=0.25.0
   - openmmforcefields
   - plugcli
   - tqdm
@@ -32,8 +32,6 @@ dependencies:
   - pytest
   - pytest-cov
   - pytest-xdist
-  - mypy
-  - nbval
   # docs
   - pip:
     - git+https://github.com/OpenFreeEnergy/openfe@main
