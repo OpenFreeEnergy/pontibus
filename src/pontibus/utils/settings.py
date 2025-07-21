@@ -57,17 +57,14 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     def allowed_nonbonded(cls, v):
         # TODO: switch to literal?
         if v.lower() not in ["pme", "nocutoff"]:
-            errmsg = "Only PME and NoCutoff are allowed nonbonded_methods"
+            errmsg = "Only PME and NoCutoff are allowed nonbonded methods"
             raise ValueError(errmsg)
         return v
 
-    @validator("nonbonded_cutoff", "switch_width")
-    def is_positive_distance(cls, v):
-        # these are time units, not simulation steps
-        if not v.is_compatible_with(unit.nanometer):
-            raise ValueError("nonbonded_cutoff must be in distance units (i.e. nanometers)")
-        if v < 0:
-            errmsg = "nonbonded_cutoff must be a positive value"
+    @validator("hydrogen_mass", "nonbonded_cutoff", "switch_width")
+    def is_positive(cls, v):
+        if v <= 0:
+            errmsg = f"must be a positive value"
             raise ValueError(errmsg)
         return v
 
@@ -207,7 +204,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         box_vectors = values.get("box_vectors")
         padding = values.get("solvent_padding")
 
-        if box_vectors is not None and (padding is None):
+        if not (box_vectors is None) ^ (padding is None):
             msg = "Only one of ``box_vectors`` or ``solvent_padding`` can be defined."
             raise ValueError(msg)
 
