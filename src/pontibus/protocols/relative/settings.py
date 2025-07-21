@@ -10,9 +10,11 @@ See Also
 --------
 pontibus.protocols.relative.HybridTopProtocol
 """
+
 from openfe.protocols.openmm_rfe.equil_rfe_settings import (
     RelativeHybridTopologyProtocolSettings,
 )
+
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,

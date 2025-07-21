@@ -17,37 +17,31 @@ the Perses toolkit (https://github.com/choderalab/perses).
 """
 
 import uuid
-from openff.units import unit
-from gufe import (
-    ChemicalSystem,
-    ComponentMapping,
-    ProtocolDAGResult,
-    ProtocolUnit
-)
+
+from gufe import ChemicalSystem, ComponentMapping, ProtocolDAGResult, ProtocolUnit
 from gufe.settings import ThermoSettings
-from openfe.protocols.openmm_utils.omm_settings import (
-    IntegratorSettings,
-    MultiStateSimulationSettings,
-    MultiStateOutputSettings,
-    OpenMMEngineSettings,
-    OpenFFPartialChargeSettings,
-)
-from openfe.protocols.openmm_utils import system_validation
-from openfe.protocols.openmm_rfe.equil_rfe_settings import (
-    LambdaSettings,
-    AlchemicalSettings,
-)
 from openfe.protocols.openmm_rfe.equil_rfe_methods import (
     RelativeHybridTopologyProtocol,
     RelativeHybridTopologyProtocolResult,
     _validate_alchemical_components,
 )
-from pontibus.protocols.relative.settings import HybridTopProtocolSettings
-from pontibus.utils.settings import (
-    InterchangeFFSettings,
-    PackmolSolvationSettings
+from openfe.protocols.openmm_rfe.equil_rfe_settings import (
+    AlchemicalSettings,
+    LambdaSettings,
 )
+from openfe.protocols.openmm_utils import system_validation
+from openfe.protocols.openmm_utils.omm_settings import (
+    IntegratorSettings,
+    MultiStateOutputSettings,
+    MultiStateSimulationSettings,
+    OpenFFPartialChargeSettings,
+    OpenMMEngineSettings,
+)
+from openff.units import unit
+
 from pontibus.protocols.relative.hybridtop_units import HybridTopProtocolUnit
+from pontibus.protocols.relative.settings import HybridTopProtocolSettings
+from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings
 
 
 class HybridTopProtocolResult(RelativeHybridTopologyProtocolResult):
@@ -72,6 +66,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
     :class:`pontibus.protocols.relative.HybridTopResult`
     :class:`pontibus.protocols.relative.HybridTopProtocolUnit`
     """
+
     results_cls = HybridTopProtocolResult
     _settings_cls = HybridTopProtocolSettings
     _settings: HybridTopProtocolSettings
@@ -96,7 +91,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
             ),
             partial_charge_settings=OpenFFPartialChargeSettings(),
             solvation_settings=PackmolSolvationSettings(),
-            alchemical_settings=AlchemicalSettings(softcore_LJ='gapsys'),
+            alchemical_settings=AlchemicalSettings(softcore_LJ="gapsys"),
             lambda_settings=LambdaSettings(),
             simulation_settings=MultiStateSimulationSettings(
                 equilibration_length=1.0 * unit.nanosecond,
@@ -118,9 +113,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
             raise NotImplementedError("Can't extend simulations yet")
 
         # Get alchemical components & validate them + mapping
-        alchem_comps = system_validation.get_alchemical_components(
-            stateA, stateB
-        )
+        alchem_comps = system_validation.get_alchemical_components(stateA, stateB)
         _validate_alchemical_components(alchem_comps, mapping)
         ligandmapping = mapping[0] if isinstance(mapping, list) else mapping  # type: ignore
 
@@ -132,16 +125,21 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
         system_validation.validate_protein(stateA)
 
         # actually create and return Units
-        Anames = ','.join(c.name for c in alchem_comps['stateA'])
-        Bnames = ','.join(c.name for c in alchem_comps['stateB'])
+        Anames = ",".join(c.name for c in alchem_comps["stateA"])
+        Bnames = ",".join(c.name for c in alchem_comps["stateB"])
         # our DAG has no dependencies, so just list units
         n_repeats = self.settings.protocol_repeats
-        units = [HybridTopProtocolUnit(
-            protocol=self,
-            stateA=stateA, stateB=stateB,
-            ligandmapping=ligandmapping,  # type: ignore
-            generation=0, repeat_id=int(uuid.uuid4()),
-            name=f'{Anames} to {Bnames} repeat {i} generation 0')
-            for i in range(n_repeats)]
+        units = [
+            HybridTopProtocolUnit(
+                protocol=self,
+                stateA=stateA,
+                stateB=stateB,
+                ligandmapping=ligandmapping,  # type: ignore
+                generation=0,
+                repeat_id=int(uuid.uuid4()),
+                name=f"{Anames} to {Bnames} repeat {i} generation 0",
+            )
+            for i in range(n_repeats)
+        ]
 
         return units
