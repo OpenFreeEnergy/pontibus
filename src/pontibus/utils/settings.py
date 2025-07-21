@@ -64,7 +64,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     @validator("hydrogen_mass", "nonbonded_cutoff", "switch_width")
     def is_positive(cls, v):
         if v <= 0:
-            errmsg = f"must be a positive value"
+            errmsg = "must be a positive value"
             raise ValueError(errmsg)
         return v
 
