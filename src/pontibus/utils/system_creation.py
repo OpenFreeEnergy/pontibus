@@ -19,7 +19,7 @@ from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units import unit as offunit
 
-from pontibus.protocols.solvation.settings import (
+from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
