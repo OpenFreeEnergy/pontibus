@@ -21,7 +21,7 @@ from openfe.protocols.openmm_rfe.equil_rfe_methods import(
 )
 
 
-class HybridTopologyProtocolResult(RelativeHybridTopologyProtocolResult):
+class HybridTopProtocolResult(RelativeHybridTopologyProtocolResult):
     """
     Results class for the HybridTopologyProtocol class.
     Inherits from
