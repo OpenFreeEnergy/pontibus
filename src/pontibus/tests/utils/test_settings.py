@@ -1,11 +1,12 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_equal
-from openff.units import unit
 from openff.interchange.components._packmol import UNIT_CUBE
+from openff.units import unit
+
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
