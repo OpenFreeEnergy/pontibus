@@ -204,7 +204,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         box_vectors = values.get("box_vectors")
         padding = values.get("solvent_padding")
 
-        if not (box_vectors is None) ^ (padding is None):
+        if (box_vectors is not None) and (padding is not None):
             msg = "Only one of ``box_vectors`` or ``solvent_padding`` can be defined."
             raise ValueError(msg)
 
