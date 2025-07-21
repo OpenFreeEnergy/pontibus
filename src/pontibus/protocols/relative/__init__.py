@@ -8,8 +8,8 @@ from .hybridtop_protocol import (
     HybridTopProtocol,
     HybridTopProtocolResult,
 )
-from .settings import HybridTopProtocolSettings
 from .hybridtop_units import HybridTopProtocolUnit
+from .settings import HybridTopProtocolSettings
 
 __all__ = [
     "HybridTopProtocol",

@@ -5,10 +5,11 @@
 Reusable methods for pontibus Protocols.
 """
 
-from openff.toolkit import Molecule as OFFMolecule
 from openfe import SolventComponent
 from openfe.protocols.openmm_utils import charge_generation
 from openfe.protocols.openmm_utils.omm_settings import OpenFFPartialChargeSettings
+from openff.toolkit import Molecule as OFFMolecule
+
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
 from pontibus.utils.settings import PackmolSolvationSettings
 

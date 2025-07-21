@@ -1,17 +1,18 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-import pytest
 import mdtraj as mdt
 import numpy as np
+import openfe
+import pytest
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
-from rdkit import Chem
-import openfe
-from openmmtools.multistate import MultiStateSampler
-from pontibus.protocols.relative import HybridTopProtocol
 from openmm import NonbondedForce
 from openmm import unit as omm_unit
+from openmmtools.multistate import MultiStateSampler
+from rdkit import Chem
+
+from pontibus.protocols.relative import HybridTopProtocol
 
 
 def test_create_default_settings():

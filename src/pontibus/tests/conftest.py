@@ -9,8 +9,8 @@ import gufe
 import openfe
 import pytest
 from gufe import SmallMoleculeComponent
-from rdkit import Chem
 from openff.units import unit
+from rdkit import Chem
 
 
 class SlowTests:

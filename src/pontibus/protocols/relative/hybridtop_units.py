@@ -4,51 +4,53 @@
 ProtocolUnit implementations for the HybridTopProtocol.
 """
 
-from typing import Any
+import os
 import pathlib
+from itertools import chain
+from typing import Any
+
+import mdtraj
 import numpy as np
 import openmmtools
-from openmmtools import multistate
-import os
-from openff.toolkit import Molecule as OFFMolecule
-from openff.toolkit import Topology
-from openff.units import unit
-from openff.units.openmm import to_openmm, from_openmm
-from openff.interchange.interop.openmm import to_openmm_positions
-from gufe.settings import ThermoSettings
 from gufe import SmallMoleculeComponent
-from openfe.protocols.openmm_utils import (
-    settings_validation,
-    system_validation,
-    multistate_analysis,
-    omm_compute,
-)
-import mdtraj
-from openfe.utils import without_oechem_backend
+from gufe.settings import ThermoSettings
+from openfe.protocols.openmm_rfe import _rfe_utils
 from openfe.protocols.openmm_rfe.equil_rfe_methods import (
     RelativeHybridTopologyProtocolUnit,
     _get_alchemical_charge_difference,
-)
-from openfe.protocols.openmm_rfe import _rfe_utils
-from openfe.protocols.openmm_utils.omm_settings import (
-    IntegratorSettings,
-    MultiStateOutputSettings,
-    MultiStateSimulationSettings,
-    BasePartialChargeSettings,
 )
 from openfe.protocols.openmm_rfe.equil_rfe_settings import (
     AlchemicalSettings,
     LambdaSettings,
 )
-from pontibus.protocols.relative.settings import HybridTopProtocolSettings
-from pontibus.utils.system_creation import (
-    interchange_packmol_creation,
-    _get_force_field,
-    _check_and_deduplicate_charged_mols,
+from openfe.protocols.openmm_utils import (
+    multistate_analysis,
+    omm_compute,
+    settings_validation,
+    system_validation,
 )
-from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings
-from itertools import chain
+from openfe.protocols.openmm_utils.omm_settings import (
+    BasePartialChargeSettings,
+    IntegratorSettings,
+    MultiStateOutputSettings,
+    MultiStateSimulationSettings,
+)
+from openfe.utils import without_oechem_backend
+from openff.interchange.interop.openmm import to_openmm_positions
+from openff.toolkit import Molecule as OFFMolecule
+from openff.toolkit import Topology
+from openff.units import unit
+from openff.units.openmm import from_openmm, to_openmm
+from openmmtools import multistate
+
+from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
+from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings
+from pontibus.utils.system_creation import (
+    _check_and_deduplicate_charged_mols,
+    _get_force_field,
+    interchange_packmol_creation,
+)
 
 
 class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
