@@ -223,8 +223,8 @@ def _validate_components(
 
         # Can't neutralize with anything but Na Cl
         if solvent_component.neutralize:
-            pos = solvent_component.positive_ion
-            neg = solvent_component.negative_ion
+            pos = solvent_component.positive_ion.upper()
+            neg = solvent_component.negative_ion.upper()
 
             if pos != "NA+" or neg != "CL-":
                 errmsg = f"Can only neutralize with NaCl, got {pos} / {neg}"
@@ -311,6 +311,14 @@ def _get_comp_resnames(
             offmol_resname = "SOL"
             _set_offmol_resname(solvent_offmol, offmol_resname)
         comp_resnames[offmol_resname] = (solvent_component, [])
+        if solvent_component.neutralize:
+            if offmol_resname in ["NA+", "CL-"]:
+                errmsg = "Solvent resname is set to NA+ or CL-"
+                raise ValueError(errmsg)
+
+            # Add in extra entries for NA and CL
+            comp_resnames["NA+"] = (solvent_component, [])
+            comp_resnames["CL-"] = (solvent_component, [])
 
     # A store of residue names to replace residue names if they aren't unique
     resnames_store = ["".join(i) for i in product(ascii_uppercase, repeat=3)]
@@ -411,7 +419,7 @@ def _solvate_system(
         )
     else:
         if neutralize:
-            return solvate_topology(
+            topology = solvate_topology(
                 topology=solute_topology,
                 nacl_conc=ion_concentration.to("mole / liter"),
                 target_density=solvation_settings.target_density,
@@ -419,6 +427,30 @@ def _solvate_system(
                 box_shape=box_shape,
                 tolerance=solvation_settings.packing_tolerance,
             )
+            # This method uses internal representation of molecules
+            # So we need to re-assign resnames
+            molecules = [m for m in topology.molecules]
+            na = OFFMolecule.from_smiles("[Na+]")
+            cl = OFFMolecule.from_smiles("[Cl-]")
+            for mol in molecules:
+                if _get_offmol_resname(mol) is not None:
+                    continue
+
+                if mol.is_isomorphic_with(solvent_offmol):
+                    _set_offmol_resname(
+                        mol,
+                        _get_offmol_resname(solvent_offmol)
+                    )
+
+                if mol.is_isomorphic_with(na):
+                    _set_offmol_resname(mol, "NA+")
+
+                if mol.is_isomorphic_with(cl):
+                    _set_offmol_resname(mol, "CL-")
+
+            named_top = Topology.from_molecules(molecules=molecules)
+            named_top.box_vectors = topology.box_vectors
+            return named_top
         else:
             return solvate_topology_nonwater(
                 topology=solute_topology,
@@ -516,7 +548,10 @@ def interchange_packmol_creation(
     comp_resids = {}
     for entry in comp_resnames.values():
         comp = entry[0]
-        comp_resids[comp] = np.array(entry[1])
+        if comp in comp_resids:
+            comp_resids[comp] = np.append(comp_resids[comp], np.array(entry[1]))
+        else:
+            comp_resids[comp] = np.array(entry[1])
 
     # Run validation checks on inputs to Interchange
     # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
