@@ -13,16 +13,19 @@ from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
     pack_box,
+    solvate_topology,
     solvate_topology_nonwater,
 )
 from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import unit as offunit
+from openff.units import unit, Quantity
 
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
+from pontibus.utils.molecules import WATER
+
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +190,9 @@ def _validate_components(
     ------
     ValueError
       If there is a protein_component.
-      If the solvent_component requests counterions.
+      If the solvent_component requests counterions for non-water solvent.
+      If the solvent component requests counterions without neutralizing.
+      If the counterions are not Na+ and Cl-.
       If we have a solvent_component but no solvent_offmol.
       If the solvent_component and solvent_offmol are not isomorphic.
       If the solvent_offmol doesn't have one conformer.
@@ -200,15 +205,30 @@ def _validate_components(
         )
         raise ValueError(errmsg)
 
-    # TODO: work out ways to deal with the addition of counterions
     if solvent_component is not None:
-        if solvent_component.neutralize or solvent_component.ion_concentration > 0 * offunit.molar:
-            errmsg = "Adding counterions using packmol solvation is currently not supported"
-            raise ValueError(errmsg)
-
         if solvent_offmol is None:
             errmsg = "A solvent offmol must be passed to solvate a system!"
             raise ValueError(errmsg)
+
+        # Check we're not trying to neutralize with non-water solvent
+        if not solvent_offmol.is_isomorphic_with(WATER):
+            if solvent_component.neutralize or solvent_component.ion_concentration > 0 * unit.molar:
+                errmsg = "Counterions are currently not supported for non-water solvent"
+                raise ValueError(errmsg)
+
+        # We can't add ions without neutralizing but we can neutralize without ion conc
+        if (not solvent_component.neutralize) and solvent_component.ion_concentration > 0 * unit.molar:
+            errmsg = "Cannot add ions without neutralizing"
+            raise ValueError(errmsg)
+
+        # Can't neutralize with anything but Na Cl
+        if solvent_component.neutralize:
+            pos = solvent_component.positive_ion
+            neg = solvent_component.negative_ion
+
+            if pos != "NA+" or neg != "CL-":
+                errmsg = f"Can only neutralize with NaCl, got {pos} / {neg}"
+                raise ValueError(errmsg)
 
         # Check that the component matches the offmol
         if not solvent_offmol.is_isomorphic_with(OFFMolecule.from_smiles(solvent_component.smiles)):
@@ -319,6 +339,8 @@ def _solvate_system(
     solute_topology: Topology,
     solvent_offmol: OFFMolecule,
     solvation_settings: PackmolSolvationSettings,
+    neutralize: bool,
+    ion_concentration: Quantity,
 ) -> Topology:
     """
     Solvate solute Topology using the Interchange packmol interface.
@@ -331,12 +353,41 @@ def _solvate_system(
       An OpenFF Molecule representing the solvent.
     solvation_settings : PackmolSolvationSettings
       Settings for how to solvate the system.
+    neutralize : bool
+      Whether or not the system should be neutralized. Note
+      that this can only happen if ``number_of_solvent_molecules``
+      is not defined in ``solvation_settings`` and the ``solvent_offmol``
+      is water.
+    ion_concentration : Quantity
+      The concentration of NaCl to add to the system when
+      neutralizing. Note that this is ignored if neutralize
+      if False. Must be compatible with mole / liter.
 
     Returns
     -------
     Topology
       The solvated Topology.
+
+    Raises
+    ------
+    ValueError
+      If ``neutralize`` is ``True`` and ``number_of_solvent_molecules`` is
+      defined.
+      If ``neutralize`` is ``True`` and ``solvent_offmol`` is not water.
+      if ``ion_concentration`` is not compatible with mole / liter.
     """
+    # Doubling up on some validation mainly for my own sanity later
+    if neutralize:
+        if not solvent_offmol.is_isomorphic_with(WATER):
+            errmsg = "Cannot neutralize a system with non-water solvent"
+            raise ValueError(errmsg)
+        if solvation_settings.number_of_solvent_molecules is not None:
+            errmsg = "Cannot neutralize a system where the number of waters are explicitly defined"
+            raise ValueError(errmsg)
+        if not ion_concentration.is_compatible_with("mole / liter"):
+            errmsg = f"{ion_concentration} is not compatible with mole / liter"
+            raise ValueError(errmsg)
+
     # Pick up the user selected box shape
     if solvation_settings.box_shape is not None:
         box_shape = {
@@ -359,14 +410,24 @@ def _solvate_system(
             retain_working_files=False,
         )
     else:
-        return solvate_topology_nonwater(
-            topology=solute_topology,
-            solvent=solvent_offmol,
-            target_density=solvation_settings.target_density,
-            padding=solvation_settings.solvent_padding,
-            box_shape=box_shape,
-            tolerance=solvation_settings.packing_tolerance,
-        )
+        if neutralize:
+            return solvate_topology(
+                topology=solute_topology,
+                nacl_conc=ion_concentration.to("mole / liter"),
+                target_density=solvation_settings.target_density,
+                padding=solvation_settings.solvent_padding,
+                box_shape=box_shape,
+                tolerance=solvation_settings.packing_tolerance,
+            )
+        else:
+            return solvate_topology_nonwater(
+                topology=solute_topology,
+                solvent=solvent_offmol,
+                target_density=solvation_settings.target_density,
+                padding=solvation_settings.solvent_padding,
+                box_shape=box_shape,
+                tolerance=solvation_settings.packing_tolerance,
+            )
 
 
 def interchange_packmol_creation(
@@ -433,9 +494,11 @@ def interchange_packmol_creation(
             _check_library_charges(force_field, solvent_offmol)
 
         topology = _solvate_system(
-            topology,
-            solvent_offmol,
-            solvation_settings,
+            solute_topology=topology,
+            solvent_offmol=solvent_offmol,
+            solvation_settings=solvation_settings,
+            neutralize=solvent_component.neutralize,
+            ion_concentration=solvent_component.ion_concentration,
         )
 
     # TODO: maybe make this a method

@@ -165,8 +165,13 @@ def test_protein_component_fail(smc_components_benzene_named, T4_protein_compone
         [True, 0.1 * unit.molar],
     ],
 )
-def test_wrong_solventcomp_settings(neutralize, ion_conc, smc_components_benzene_named):
-    with pytest.raises(ValueError, match="Adding counterions"):
+def test_wrong_solventcomp_settings_nonwater(
+    neutralize,
+    ion_conc,
+    smc_components_benzene_named,
+    methanol
+):
+    with pytest.raises(ValueError, match="Counterions are currently not"):
         interchange_packmol_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
@@ -175,8 +180,9 @@ def test_wrong_solventcomp_settings(neutralize, ion_conc, smc_components_benzene
             solvent_component=ExtendedSolventComponent(
                 neutralize=neutralize,
                 ion_concentration=ion_conc,
+                solvent_molecule=SmallMoleculeComponent.from_openff(methanol),
             ),
-            solvent_offmol=None,
+            solvent_offmol=methanol,
         )
 
 
