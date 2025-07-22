@@ -24,7 +24,7 @@ from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.molecules import WATER
+from pontibus.utils.molecules import offmol_water
 
 
 logger = logging.getLogger(__name__)
@@ -211,7 +211,7 @@ def _validate_components(
             raise ValueError(errmsg)
 
         # Check we're not trying to neutralize with non-water solvent
-        if not solvent_offmol.is_isomorphic_with(WATER):
+        if not solvent_offmol.is_isomorphic_with(offmol_water):
             if solvent_component.neutralize or solvent_component.ion_concentration > 0 * unit.molar:
                 errmsg = "Counterions are currently not supported for non-water solvent"
                 raise ValueError(errmsg)
@@ -378,7 +378,7 @@ def _solvate_system(
     """
     # Doubling up on some validation mainly for my own sanity later
     if neutralize:
-        if not solvent_offmol.is_isomorphic_with(WATER):
+        if not solvent_offmol.is_isomorphic_with(offmol_water):
             errmsg = "Cannot neutralize a system with non-water solvent"
             raise ValueError(errmsg)
         if solvation_settings.number_of_solvent_molecules is not None:

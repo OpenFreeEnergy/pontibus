@@ -8,7 +8,7 @@ import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
 from numpy.testing import assert_allclose, assert_equal
 from openff.interchange.interop.openmm import to_openmm_positions
-from openff.toolkit import ForceField, Molecule
+from openff.toolkit import ForceField, Molecule, Topology
 from openff.units import unit
 from openff.units.openmm import from_openmm, to_openmm
 from openmm import (
@@ -30,6 +30,7 @@ from pontibus.utils.system_creation import (
     _get_force_field,
     _get_offmol_resname,
     _set_offmol_resname,
+    _solvate_system,
     interchange_packmol_creation,
 )
 
@@ -183,6 +184,93 @@ def test_wrong_solventcomp_settings_nonwater(
                 solvent_molecule=SmallMoleculeComponent.from_openff(methanol),
             ),
             solvent_offmol=methanol,
+        )
+
+
+def test_not_neutralize_but_ion_conc(
+    smc_components_benzene_named,
+    water_off,
+):
+    with pytest.raises(ValueError, match="Cannot add ions without"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components_benzene_named,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(
+                neutralize=False,
+                ion_concentration=0.1 * unit.molar,
+            ),
+            solvent_offmol=water_off,
+        )
+
+
+@pytest.mark.parametrize(
+    "pos, neg",
+    [
+        ["Na+", "F-"],
+        ["K+", "Cl-"],
+        ["K+", "F-"]
+    ]
+)
+def test_bad_ions(
+    smc_components_benzene_named,
+    water_off,
+    pos,
+    neg,
+):
+    with pytest.raises(ValueError, match="Can only neutralize with NaCl"):
+        interchange_packmol_creation(
+            ffsettings=InterchangeFFSettings(),
+            solvation_settings=PackmolSolvationSettings(),
+            smc_components=smc_components_benzene_named,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(
+                neutralize=True,
+                ion_concentration=0 * unit.molar,
+                positive_ion=pos,
+                negative_ion=neg,
+            ),
+            solvent_offmol=water_off,
+        )
+
+
+def test_solvate_system_neutralize_nonwater(methanol):
+    msg = "Cannot neutralize a system with non-water solvent"
+    with pytest.raises(ValueError, match=msg):
+        _solvate_system(
+            solute_topology=Topology(),
+            solvent_offmol=methanol,
+            solvation_settings=PackmolSolvationSettings(),
+            neutralize=True,
+            ion_concentration=0.1 * unit.molar,
+        )
+
+
+def test_solvate_system_neutralize_num_sol_defined(water_off):
+    msg = "Cannot neutralize a system where the number of waters"
+    with pytest.raises(ValueError, match=msg):
+        _solvate_system(
+            solute_topology=Topology(),
+            solvent_offmol=water_off,
+            solvation_settings=PackmolSolvationSettings(
+                number_of_solvent_molecules=100,
+                solvent_padding=None,
+            ),
+            neutralize=True,
+            ion_concentration=0.1 * unit.molar,
+        )
+
+
+def test_solvate_system_neutralize_bad_conc(water_off):
+    msg = "is not compatible with mole / liter"
+    with pytest.raises(ValueError, match=msg):
+        _solvate_system(
+            solute_topology=Topology(),
+            solvent_offmol=water_off,
+            solvation_settings=PackmolSolvationSettings(),
+            neutralize=True,
+            ion_concentration=0.1 * unit.nm,
         )
 
 
