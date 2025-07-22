@@ -18,14 +18,13 @@ from openff.interchange.components._packmol import (
 )
 from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import unit, Quantity
+from openff.units import Quantity, unit
 
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
 from pontibus.utils.molecules import offmol_water
-
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +216,9 @@ def _validate_components(
                 raise ValueError(errmsg)
 
         # We can't add ions without neutralizing but we can neutralize without ion conc
-        if (not solvent_component.neutralize) and solvent_component.ion_concentration > 0 * unit.molar:
+        if (
+            not solvent_component.neutralize
+        ) and solvent_component.ion_concentration > 0 * unit.molar:
             errmsg = "Cannot add ions without neutralizing"
             raise ValueError(errmsg)
 
@@ -437,10 +438,7 @@ def _solvate_system(
                     continue
 
                 if mol.is_isomorphic_with(solvent_offmol):
-                    _set_offmol_resname(
-                        mol,
-                        _get_offmol_resname(solvent_offmol)
-                    )
+                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))
 
                 if mol.is_isomorphic_with(na):
                     _set_offmol_resname(mol, "NA+")

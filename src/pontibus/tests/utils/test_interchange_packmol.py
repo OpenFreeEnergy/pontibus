@@ -52,9 +52,9 @@ def smc_components_benzene_named(benzene_modifications):
 
 @pytest.fixture(scope="module")
 def smc_components_acetic_acid():
-    mol = Molecule.from_smiles('CC(=O)[O-]')
+    mol = Molecule.from_smiles("CC(=O)[O-]")
     mol.generate_conformers(n_conformers=1)
-    mol.assign_partial_charges(partial_charge_method='gasteiger')
+    mol.assign_partial_charges(partial_charge_method="gasteiger")
     return {SmallMoleculeComponent.from_openff(mol): mol}
 
 
@@ -175,10 +175,7 @@ def test_protein_component_fail(smc_components_benzene_named, T4_protein_compone
     ],
 )
 def test_wrong_solventcomp_settings_nonwater(
-    neutralize,
-    ion_conc,
-    smc_components_benzene_named,
-    methanol
+    neutralize, ion_conc, smc_components_benzene_named, methanol
 ):
     with pytest.raises(ValueError, match="Counterions are currently not"):
         interchange_packmol_creation(
@@ -213,14 +210,7 @@ def test_not_neutralize_but_ion_conc(
         )
 
 
-@pytest.mark.parametrize(
-    "pos, neg",
-    [
-        ["Na+", "F-"],
-        ["K+", "Cl-"],
-        ["K+", "F-"]
-    ]
-)
+@pytest.mark.parametrize("pos, neg", [["Na+", "F-"], ["K+", "Cl-"], ["K+", "F-"]])
 def test_bad_ions(
     smc_components_benzene_named,
     water_off,
@@ -1274,7 +1264,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
 
         return interchange, comp_resids
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def num_bonds(self):
         return 3
 
@@ -1282,7 +1272,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
     def num_angles(self):
         return 9
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def num_dih(self):
         return 15
 
@@ -1325,7 +1315,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
     def test_solvent_resnames(self, omm_topology):
         for i, res in enumerate(list(omm_topology.residues())[1:]):
             assert res.index == res.id == i + 1
-            assert res.name in [self.solvent_resname, 'NA+', 'CL-']
+            assert res.name in [self.solvent_resname, "NA+", "CL-"]
 
     def test_solvent_nonbond_parameters(self, nonbonds, num_particles, num_waters):
         for index in range(7, 7 + num_waters, 3):
@@ -1345,7 +1335,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
             assert s1 == s2
             assert e2 == e2
 
-        for index in range(7 + (num_waters*3), num_particles):
+        for index in range(7 + (num_waters * 3), num_particles):
             c, s, e = nonbonds[0].getParticleParameters(index)
 
             charge = from_openmm(c)
