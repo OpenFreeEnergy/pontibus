@@ -27,10 +27,10 @@ from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
     _check_library_charges,
+    _get_comp_resnames,
     _get_force_field,
     _get_offmol_resname,
     _set_offmol_resname,
-    _get_comp_resnames,
     _solvate_system,
     interchange_packmol_creation,
 )
@@ -242,9 +242,7 @@ def test_resname_solvent_ion_clash(smc_components_benzene_named, resname):
     errmsg = "Solvent resname is set to"
     with pytest.raises(ValueError, match=errmsg):
         _get_comp_resnames(
-            smc_components_benzene_named,
-            ExtendedSolventComponent(neutralize=True),
-            solv_off
+            smc_components_benzene_named, ExtendedSolventComponent(neutralize=True), solv_off
         )
 
 
