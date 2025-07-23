@@ -1277,10 +1277,6 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
         return 15
 
     @pytest.fixture(scope="class")
-    def num_particles(self):
-        return 7707
-
-    @pytest.fixture(scope="class")
     def num_pos_ions(self):
         return 8
 
