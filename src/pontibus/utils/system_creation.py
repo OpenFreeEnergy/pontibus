@@ -438,7 +438,7 @@ def _solvate_system(
                     continue
 
                 if mol.is_isomorphic_with(solvent_offmol):
-                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))
+                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))  # type: ignore[arg-type]
 
                 if mol.is_isomorphic_with(na):
                     _set_offmol_resname(mol, "NA+")
@@ -543,7 +543,7 @@ def interchange_packmol_creation(
         comp_resnames[resname][1].append(molecule_index)  # type: ignore[index]
 
     # Now create the component_resids dictionary properly
-    comp_resids = {}
+    comp_resids: dict[Component, npt.NDArray] = {}
     for entry in comp_resnames.values():
         comp = entry[0]
         if comp in comp_resids:
