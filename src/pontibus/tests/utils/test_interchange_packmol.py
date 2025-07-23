@@ -30,6 +30,7 @@ from pontibus.utils.system_creation import (
     _get_force_field,
     _get_offmol_resname,
     _set_offmol_resname,
+    _get_comp_resnames,
     _solvate_system,
     interchange_packmol_creation,
 )
@@ -230,6 +231,20 @@ def test_bad_ions(
                 negative_ion=neg,
             ),
             solvent_offmol=water_off,
+        )
+
+
+@pytest.mark.parametrize("resname", ["NA+", "CL-"])
+def test_resname_solvent_ion_clash(smc_components_benzene_named, resname):
+    solv_off = WATER.to_openff()
+    _set_offmol_resname(solv_off, resname)
+
+    errmsg = "Solvent resname is set to"
+    with pytest.raises(ValueError, match=errmsg):
+        _get_comp_resnames(
+            smc_components_benzene_named,
+            ExtendedSolventComponent(neutralize=True),
+            solv_off
         )
 
 
