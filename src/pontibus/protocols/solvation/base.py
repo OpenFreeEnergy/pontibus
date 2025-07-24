@@ -33,6 +33,7 @@ from pontibus.utils.experimental_absolute_factory import (
 )
 from pontibus.utils.protocol_utils import _get_and_charge_solvent_offmol
 from pontibus.utils.system_creation import interchange_packmol_creation
+from pontibus.utils.system_manipulation import adjust_system
 
 logger = logging.getLogger(__name__)
 
@@ -143,13 +144,6 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
 
-        # Pull out the CMMotionRemover
-        # TODO: add test that checks the number of forces
-        for idx in reversed(range(omm_system.getNumForces())):
-            force = omm_system.getForce(idx)
-            if isinstance(force, openmm.CMMotionRemover):
-                omm_system.removeForce(idx)
-
         # Add a barostat if needed
         if solvent_component is not None:
             barostat = openmm.MonteCarloBarostat(
@@ -157,7 +151,14 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 to_openmm(settings["thermo_settings"].temperature),
                 settings["integrator_settings"].barostat_frequency.m,
             )
-            omm_system.addForce(barostat)
+        else:
+            barostat = None
+
+        adjust_system(
+            system=omm_system,
+            remove_forces=openmm.CMMotionRemover,
+            add_forces=barostat
+        )
 
         positions = to_openmm_positions(interchange, include_virtual_sites=True)
 

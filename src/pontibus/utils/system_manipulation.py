@@ -2,6 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import numpy as np
+from openmm import System, Force, CMMotionRemover
 from openff.toolkit import Molecule, Topology, ForceField
 from openff.interchange import Interchange
 from pontibus.utils.system_creation import _check_and_deduplicate_charged_mols
@@ -11,12 +12,48 @@ from pontibus.utils.molecule_utils import (
 )
 
 
+def adjust_system(
+    system: System,
+    remove_forces: Force | list[Force] | None = list[CMMotionRemover],
+    add_forces: Force | list[Force] | None = None,
+) -> None:
+    """
+    Adjust a System by removing and adding forces as necessary.
+
+    Parameters
+    ----------
+    system : System
+      The OpenMM System to adjust
+    remove_forces : list[Force] | None
+      The forces to remove from the System, if present.
+    add_forces : list[Force] | None
+      The forces to add to the system.
+    """
+    def _adjust_inputs(var):
+        if var is not None:
+            return list(var)
+        else:
+            return []
+
+    remove_forces = _adjust_inputs(remove_forces)
+    add_forces = _adjust_inputs(add_forces)
+
+    for entry in remove_forces:
+        for idx in reversed(range(system.getNumForces())):
+            force = system.getForce(idx)
+            if isinstance(force, entry):
+                system.removeForce(idx)
+
+    for force in add_forces:
+        system.addForce(force)
+
+
 def copy_interchange_with_replacement(
-        interchange: Interchange,
-        del_mol: Molecule,
-        insert_mol: Molecule,
-        force_field: ForceField,
-        charged_molecules: list[Molecule] | None,
+    interchange: Interchange,
+    del_mol: Molecule,
+    insert_mol: Molecule,
+    force_field: ForceField,
+    charged_molecules: list[Molecule] | None,
 ) -> Interchange:
     """
     Copy an Interchange deleting one Molecule and appending another.
