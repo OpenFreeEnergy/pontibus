@@ -16,6 +16,7 @@ import numpy as np
 import openmmtools
 from gufe import SmallMoleculeComponent, SolventComponent
 from gufe.settings import ThermoSettings
+from gufe.vendor.openff.models.types import ArrayQuantity
 from openfe.protocols.openmm_rfe import _rfe_utils
 from openfe.protocols.openmm_rfe.equil_rfe_methods import (
     RelativeHybridTopologyProtocolUnit,
@@ -71,8 +72,8 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
     @staticmethod
     def _check_position_overlap(
         mapping: dict[str, dict[int, int]],
-        positionsA: Quantity,
-        positionsB: Quantity,
+        positionsA: ArrayQuantity,
+        positionsB: ArrayQuantity,
         threshold: Quantity = 1.0 * unit.angstrom,
     ):
         """

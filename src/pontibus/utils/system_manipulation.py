@@ -116,7 +116,9 @@ def copy_interchange_with_replacement(
 
     new_topology = Topology.from_molecules(mols)
     new_topology.box_vectors = interchange.topology.box_vectors
-    charged_molecules = _check_and_deduplicate_charged_mols(charged_molecules)
+
+    if charged_molecules is not None:
+        charged_molecules = _check_and_deduplicate_charged_mols(charged_molecules)
 
     new_interchange = force_field.create_interchange(
         topology=new_topology,
