@@ -6,7 +6,7 @@ import mdtraj as mdt
 import pytest
 from gufe import ChemicalSystem
 from openff.units import unit
-from openff.units.openmm import ensure_quantity
+from openff.units.openmm import ensure_quantity, from_openmm
 from openmm import (
     CustomBondForce,
     CustomNonbondedForce,
@@ -90,6 +90,8 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
     s = ASFEProtocol.default_settings()
     s.protocol_repeats = 1
     s.solvent_output_settings.output_indices = "resname AAA"
+    # Set a random barostat frequency to make sure it goes all the way
+    s.integrator_settings.barostat_frequency = 125
     s.alchemical_settings.experimental = experimental
 
     protocol = ASFEProtocol(
@@ -147,6 +149,13 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
         assert_force_num(system, HarmonicAngleForce, 1)
         assert_force_num(system, PeriodicTorsionForce, 1)
         assert_force_num(system, MonteCarloBarostat, 1)
+
+        # Check the initial barostat made it all the way through
+        for force in system.getForces():
+            if isinstance(force, MonteCarloBarostat):
+                assert force.getFrequency() == 125
+                assert from_openmm(force.getDefaultPressure()) == s.thermo_settings.pressure
+                assert from_openmm(force.getDefaultTemperature()) == s.thermo_settings.temperature
 
         # Check the nonbonded force is PME
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
