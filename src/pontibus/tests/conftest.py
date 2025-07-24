@@ -216,7 +216,7 @@ def toluene_system(benzene_modifications):
         {
             "ligand": benzene_modifications["toluene"],
             "solvent": openfe.SolventComponent(
-                positive_ion="Na", negative_ion="Cl", ion_concentration=0 * unit.molar
+                positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
             ),
         },
     )
@@ -228,7 +228,7 @@ def toluene_complex_system(benzene_modifications, T4_protein_component):
         {
             "ligand": benzene_modifications["toluene"],
             "solvent": openfe.SolventComponent(
-                positive_ion="Na", negative_ion="Cl", ion_concentration=0 * unit.molar
+                positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
             ),
             "protein": T4_protein_component,
         }

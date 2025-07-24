@@ -7,7 +7,7 @@ import openfe
 import pytest
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
-from openmm import NonbondedForce
+from openmm import NonbondedForce, MonteCarloBarostat
 from openmm import unit as omm_unit
 from openmmtools.multistate import MultiStateSampler
 from rdkit import Chem
