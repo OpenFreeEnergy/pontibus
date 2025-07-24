@@ -23,6 +23,7 @@ from openfe.protocols.openmm_utils.omm_settings import (
 from openfe.utils import log_system_probe, without_oechem_backend
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
+from openff.units.openmm import to_openmm
 from openmm import app
 from openmmtools.alchemy import (
     AbsoluteAlchemicalFactory,
@@ -203,6 +204,15 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             force = omm_system.getForce(idx)
             if isinstance(force, openmm.CMMotionRemover):
                 omm_system.removeForce(idx)
+
+        # Add a barostat if needed
+        if solvent_component is not None:
+            barostat = openmm.MonteCarloBarostat(
+                to_openmm(settings["thermo_settings"].pressure),
+                to_openmm(settings["thermo_settings"].temperature),
+                settings["integrator_settings"].barostat_frequency.m,
+            )
+            omm_system.addForce(barostat)
 
         positions = to_openmm_positions(interchange, include_virtual_sites=True)
 
