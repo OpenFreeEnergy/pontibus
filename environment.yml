@@ -36,4 +36,4 @@ dependencies:
   - pip:
     - git+https://github.com/OpenFreeEnergy/openfe@main
     - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@a45f3edd5bc3e973c1a01b577c71efa1b62a65d6
-    - git+https://https://github.com/openforcefield/openff-interchange@sltcap
+    - git+https://github.com/openforcefield/openff-interchange@sltcap
