@@ -1291,7 +1291,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 8
+        return 7
 
     @pytest.fixture(scope="class")
     def num_neg_ions(self):
@@ -1358,7 +1358,6 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
                 assert from_openmm(e).m == pytest.approx(2.68724395648)
                 assert from_openmm(s).m_as(unit.angstroms) == pytest.approx(4.108824888)
 
-    @pytest.mark.xfail
     def test_system_total_charge(self, nonbonds, omm_system):
         total_charge = 0.0
         for i in range(omm_system.getNumParticles()):
