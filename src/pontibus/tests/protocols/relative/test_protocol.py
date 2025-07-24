@@ -204,7 +204,7 @@ def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mappi
     settings = HybridTopProtocol.default_settings()
     settings.simulation_settings.sampler_method = method
     settings.protocol_repeats = 1
-    settings.output_settings.output_indices = "resname UNK"
+    settings.output_settings.output_indices = "resname AAA"
 
     protocol = HybridTopProtocol(
         settings=settings,

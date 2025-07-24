@@ -9,10 +9,12 @@ import pathlib
 from itertools import chain
 from typing import Any
 
+import warnings
+import logging
 import mdtraj
 import numpy as np
 import openmmtools
-from gufe import SmallMoleculeComponent
+from gufe import SmallMoleculeComponent, SolventComponent
 from gufe.settings import ThermoSettings
 from openfe.protocols.openmm_rfe import _rfe_utils
 from openfe.protocols.openmm_rfe.equil_rfe_methods import (
@@ -36,24 +38,109 @@ from openfe.protocols.openmm_utils.omm_settings import (
     MultiStateSimulationSettings,
 )
 from openfe.utils import without_oechem_backend
+from openff.interchange import Interchange
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
-from openff.toolkit import Topology
-from openff.units import unit
+from openff.units import unit, Quantity
 from openff.units.openmm import from_openmm, to_openmm
 from openmmtools import multistate
+from openmm import unit as omm_unit
+from openmm import System, MonteCarloBarostat, CMMotionRemover
+from openmm.app import Topology
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
-from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings
+from pontibus.utils.settings import (
+    InterchangeFFSettings,
+    PackmolSolvationSettings,
+)
 from pontibus.utils.system_creation import (
     _get_force_field,
     interchange_packmol_creation,
 )
-from pontibus.utils.system_manipulation import copy_interchange_with_replacement
+from pontibus.utils.system_manipulation import (
+    copy_interchange_with_replacement,
+    adjust_system,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
+    @staticmethod
+    def _check_position_overlap(
+        mapping: dict[str, dict[int, int]],
+        positionsA: Quantity,
+        positionsB: Quantity,
+        threshold: Quantity = 1.0 * unit.angstrom,
+    ):
+        """
+        Sanity check the overlap in positions.
+
+        Parameters
+        ----------
+        mapping : dict[str, dict[int, int]]
+          The system mappings between the two sets of positions.
+        positionsA : openff.units.Quantity
+          The system A positions.
+        positionsB : openff.units.Quantity
+          The system B positions.
+        tolerance : openff.units.Quantity
+          The maximum deivation allowed before an error or warning is raised.
+
+        Raises
+        ------
+        ValueError
+          If any env atoms deviate by more than the threshold.
+        UserWarning
+          If any core atoms deviate by more than the threshold.
+        """
+        # Check env mappings
+        for key, val in mapping['old_to_new_env_atom_map'].items():
+            if np.any(np.abs(positionsB[val] - positionsA[key]) > threshold):
+                msg = f"env mapping {key} : {val} deviates by more than {threshold}"
+                raise ValueError(msg)
+
+        # Check core mappings
+        for key, val in mapping['old_to_new_core_atom_map'].items():
+            if np.any(np.abs(positionsB[val] - positionsA[key]) > threshold):
+                msg = f"core mapping {key} : {val} deviates by more than {threshold}"
+                warnings.warn(msg)
+                logging.warning(msg)
+
+    @staticmethod
+    def _get_barostat(
+        solvent_component: SolventComponent | None,
+        thermo_settings: ThermoSettings,
+        integrator_settings: IntegratorSettings,
+    ) -> MonteCarloBarostat | None:
+        """
+        Helper to get a barostat for the system.
+
+        Parameters
+        ----------
+        solvent_component: SolventComponent | None
+          The system's SolventComponent, if there is one.
+        thermo_settings : ThermoSettings
+          The thermodynamic settings.
+        integrator_settings : IntegratorSettings
+          The integrator settings
+
+        Returns
+        -------
+        MonteCarloBarostat | None
+          None is there is no solvent, a MonteCarloBarostat otherwise.
+        """
+        if solvent_component is None:
+            return None
+
+        return MonteCarloBarostat(
+            to_openmm(thermo_settings.pressure),
+            to_openmm(thermo_settings.temperature),
+            integrator_settings.barostat_frequency.m
+        )
+
     @staticmethod
     def _get_interchanges(
         small_mols,
@@ -111,6 +198,49 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         }
 
         return interA, interB, alchem_resids
+
+    def _get_omm_objects(
+        self,
+        interchange: Interchange,
+        forcefield_settings: InterchangeFFSettings,
+        thermo_settings: ThermoSettings,
+        integrator_settings: IntegratorSettings,
+        solvent_component: SolventComponent | None,
+    ) -> tuple[Topology, omm_unit.Quantity, System]:
+        """
+        Helper method to extract OpenMM objects from an Interchange object.
+
+        Parameters
+        ----------
+        interchange : Interchange
+          The Interchange object to get OpenMM objects from.
+        forcefield_settings : InterchangeFFSettings
+          The force field settings
+        thermo_settings : ThermoSettings
+          The thermodynamic parameter settings.
+        integrator_settings : IntegratorSettings
+          The integrator settings.
+        solvent_component : SolventComponent | None
+          The SolventComponent, if there is one.
+        """
+        topology = interchange.to_openmm_topology(collate=True)
+        positions = to_openmm_positions(
+            interchange,
+            include_virtual_sites=True,
+        )
+        system = interchange.to_openmm_system(
+            hydrogen_mass=forcefield_settings.hydrogen_mass
+        )
+        adjust_system(
+            system=system,
+            remove_forces=CMMotionRemover,
+            add_forces=self._get_barostat(
+                solvent_component=solvent_component,
+                thermo_settings=thermo_settings,
+                integrator_settings=integrator_settings,
+            ),
+        )
+        return topology, positions, system
 
     def run(
         self, *, dry=False, verbose=True, scratch_basepath=None, shared_basepath=None
@@ -225,7 +355,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
 
         self._assign_partial_charges(charge_settings, off_small_mols)
 
-        # Get stateA and stateB intercahnges
+        # Get stateA and stateB interchanges
         stateA_interchange, stateB_interchange, alchem_resids = self._get_interchanges(
             off_small_mols,
             protein_comp,
@@ -236,21 +366,19 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         )
 
         # get topology & positions
-        stateA_topology = stateA_interchange.to_openmm_topology(collate=True)
-        stateA_positions = to_openmm_positions(
-            stateA_interchange,
-            include_virtual_sites=True,
+        stateA_topology, stateA_positions, stateA_system = self._get_omm_objects(
+            interchange=stateA_interchange,
+            forcefield_settings=forcefield_settings,
+            thermo_settings=thermo_settings,
+            integrator_settings=integrator_settings,
+            solvent_component=solvent_comp
         )
-        stateA_system = stateA_interchange.to_openmm_system(
-            hydrogen_mass=forcefield_settings.hydrogen_mass
-        )
-        stateB_topology = stateB_interchange.to_openmm_topology(collate=True)
-        stateB_positions = to_openmm_positions(
-            stateB_interchange,
-            include_virtual_sites=True,
-        )
-        stateB_system = stateB_interchange.to_openmm_system(
-            hydrogen_mass=forcefield_settings.hydrogen_mass
+        stateB_topology, stateB_positions, stateB_system = self._get_omm_objects(
+            interchange=stateB_interchange,
+            forcefield_settings=forcefield_settings,
+            thermo_settings=thermo_settings,
+            integrator_settings=integrator_settings,
+            solvent_component=solvent_comp
         )
 
         #  c. Define correspondence mappings between the two systems
@@ -264,6 +392,13 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             alchem_resids["stateB"],
             # These are non-optional settings for this method
             fix_constraints=True,
+        )
+
+        # Sanity check the mappings looking at position overlaps
+        self._check_position_overlap(
+            ligand_mappings,
+            from_openmm(stateA_positions),
+            from_openmm(stateB_positions),
         )
 
         # d. if a charge correction is necessary, select alchemical waters
@@ -283,15 +418,6 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
                 charge_difference,
                 solvent_comp,
             )
-
-        #  e. Finally get the positions
-        # stateB_positions = _rfe_utils.topologyhelpers.set_and_check_new_positions(
-        #    ligand_mappings,
-        #    stateA_topology,
-        #    stateB_topology,
-        #    old_positions=ensure_quantity(stateA_positions, 'openmm'),
-        #    insert_positions=ensure_quantity(off_small_mols['stateB'][0][1].conformers[0], 'openmm'),
-        # )
 
         # 3. Create the hybrid topology
         hybrid_factory = _rfe_utils.relative.HybridTopologyFactory(

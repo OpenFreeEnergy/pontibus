@@ -107,7 +107,7 @@ def test_get_and_set_offmol_resname(CN_molecule, caplog):
 
     with caplog.at_level(logging.WARNING):
         assert _get_offmol_resname(CN_off) is None
-    assert "Inconsistent residue name" in caplog.text
+    assert "Inconsistent metadata residue_name" in caplog.text
 
 
 def test_check_library_charges_pass(water_off):

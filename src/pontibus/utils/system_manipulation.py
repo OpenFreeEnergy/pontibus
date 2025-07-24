@@ -31,7 +31,9 @@ def adjust_system(
     """
     def _adjust_inputs(var):
         if var is not None:
-            return list(var)
+            if isinstance(var, list):
+                return var
+            return [var]
         else:
             return []
 
