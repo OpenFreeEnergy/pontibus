@@ -115,7 +115,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
         # Get alchemical components & validate them + mapping
         alchem_comps = system_validation.get_alchemical_components(stateA, stateB)
         _validate_alchemical_components(alchem_comps, mapping)
-        ligandmapping = mapping[0] if isinstance(mapping, list) else mapping  # type: ignore
+        ligandmapping = mapping[0] if isinstance(mapping, list) else mapping
 
         # Validate solvent component
         nonbond = self.settings.forcefield_settings.nonbonded_method
@@ -134,7 +134,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
                 protocol=self,
                 stateA=stateA,
                 stateB=stateB,
-                ligandmapping=ligandmapping,  # type: ignore
+                ligandmapping=ligandmapping,
                 generation=0,
                 repeat_id=int(uuid.uuid4()),
                 name=f"{Anames} to {Bnames} repeat {i} generation 0",

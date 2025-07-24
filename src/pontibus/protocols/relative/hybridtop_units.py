@@ -47,10 +47,10 @@ from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
 from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings
 from pontibus.utils.system_creation import (
-    _check_and_deduplicate_charged_mols,
     _get_force_field,
     interchange_packmol_creation,
 )
+from pontibus.utils.system_manipulation import copy_interchange_with_replacement
 
 
 class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
@@ -87,45 +87,27 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
                 solvent_offmol=solvent_offmol,
             )
 
-        # We assume a single alchemical component, which this Protocol asserts
-        molA = small_mols["stateA"][0][1]
-        molB = small_mols["stateB"][0][1]
+        # Get a list of the charged molecules to create stateB
+        stateB_charged_mols = [
+            pair[1]
+            for pair in chain(small_mols["stateB"], small_mols["both"])
+        ]
+        if solvent_component is not None and solvation_settings.assign_solvent_charges:
+            stateB_charged_mols.append(solvent_offmol)
 
-        # Get the molA idx
-        molA_idx = None
-        for idx, mol in enumerate(interA.topology._molecules):
-            if mol.is_isomorphic_with(molA):
-                if np.allclose(mol.conformers[0], molA.conformers[0]):
-                    if molA_idx is not None:
-                        raise ValueError("equality clash with molA")
-                    molA_idx = idx
-                    molA_resnum = mol.atoms[0].metadata["residue_number"]
-
-        if molA_idx is None:
-            raise ValueError("Could not find alchemical molecule A in system creation")
-
-        # Set molB residue number to molA
-        for atom in molB.atoms:
-            atom.metadata["residue_number"] = molA_resnum
-
-        top_mols = [m for m in interA.topology.molecules]
-        top_mols.pop(molA_idx)
-        top_mols.append(molB)
-
-        ff = _get_force_field(forcefield_settings)
-        charged_mols = _check_and_deduplicate_charged_mols(
-            molecules=[m for m in top_mols if m.partial_charges is not None]
-        )
-
-        interB = ff.create_interchange(
-            topology=Topology.from_molecules(top_mols),
-            charge_from_molecules=charged_mols,
+        # Set the stateB interchange
+        interB = copy_interchange_with_replacement(
+            interchange=interA,
+            del_mol=small_mols["stateA"][0][1],
+            insert_mol=small_mols["stateB"][0][1],
+            force_field=_get_force_field(forcefield_settings),
+            charged_molecules=stateB_charged_mols,
         )
 
         # Fetch the alchemical resids for each state from the comp_resids
         alchem_resids = {
             "stateA": comp_residsA[small_mols["stateA"][0][0]],
-            "stateB": np.array([len(interB.topology._molecules) - 1], dtype=int),
+            "stateB": np.array([interB.topology.n_molecules - 1], dtype=int),
         }
 
         return interA, interB, alchem_resids
