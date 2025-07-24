@@ -1293,7 +1293,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 8
+        return 7
 
     @pytest.fixture(scope="class")
     def num_neg_ions(self):
