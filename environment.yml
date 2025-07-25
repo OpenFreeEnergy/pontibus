@@ -26,7 +26,7 @@ dependencies:
   - openmm >=8.0.0,!=8.1.0,<8.4.0
   - openmmtools >=0.25.0
   - openmmforcefields
-  - openfe-anallysis >=0.3.1
+  - openfe-analysis >=0.3.1
   - plugcli
   - tqdm
   # Testing deps
