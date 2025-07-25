@@ -109,7 +109,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
         mapping: ComponentMapping | list[ComponentMapping] | None,
         extends: ProtocolDAGResult | None,
     ) -> list[ProtocolUnit]:
-        if extends:
+        if extends:  # pragma: no cover
             raise NotImplementedError("Can't extend simulations yet")
 
         # Get alchemical components & validate them + mapping

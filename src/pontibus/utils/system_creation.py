@@ -25,88 +25,13 @@ from pontibus.utils.settings import (
     PackmolSolvationSettings,
 )
 from pontibus.utils.molecules import offmol_water
+from pontibus.utils.molecule_utils import (
+    _set_offmol_resname,
+    _get_offmol_resname,
+    _check_library_charges,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def _set_offmol_resname(
-    offmol: OFFMolecule,
-    resname: str,
-) -> None:
-    """
-    Helper method to set offmol residue names
-
-    Parameters
-    ----------
-    offmol : openff.toolkit.Molecule
-      Molecule to assign a residue name to.
-    resname : str
-      Residue name to be set.
-
-    Returns
-    -------
-    None
-    """
-    for a in offmol.atoms:
-        a.metadata["residue_name"] = resname
-
-
-def _get_offmol_resname(offmol: OFFMolecule) -> str | None:
-    """
-    Helper method to get an offmol's residue name and make sure it is
-    consistent across all atoms in the Molecule.
-
-    Parameters
-    ----------
-    offmol : openff.toolkit.Molecule
-      Molecule to get the residue name from.
-
-    Returns
-    -------
-    resname : Optional[str]
-      Residue name of the molecule. ``None`` if the Molecule
-      does not have a residue name, or if the residue name is
-      inconsistent across all the atoms.
-    """
-    resname: str | None = None
-    for a in offmol.atoms:
-        if resname is None:
-            try:
-                resname = a.metadata["residue_name"]
-            except KeyError:
-                return None
-
-        if resname != a.metadata["residue_name"]:
-            wmsg = f"Inconsistent residue name in OFFMol: {offmol} "
-            logger.warning(wmsg)
-            return None
-
-    return resname
-
-
-def _check_library_charges(
-    force_field: ForceField,
-    offmol: OFFMolecule,
-) -> None:
-    """
-    Check that library charges exists for an input molecule.
-
-    force_field : openff.toolkit.ForceField
-      Force Field object with library charges.
-    offmol : openff.toolkit.Molecule
-      Molecule to check for matching library charges.
-
-    Raises
-    ------
-    ValueError
-      If no library charges are found for the molecule.
-    """
-    handler = force_field.get_parameter_handler("LibraryCharges")
-    matches = handler.find_matches(offmol.to_topology())
-
-    if len(matches) == 0:
-        errmsg = f"No library charges found for {offmol}"
-        raise ValueError(errmsg)
 
 
 def _check_and_deduplicate_charged_mols(
