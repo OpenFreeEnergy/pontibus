@@ -67,7 +67,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
     :class:`pontibus.protocols.relative.HybridTopProtocolUnit`
     """
 
-    results_cls = HybridTopProtocolResult
+    result_cls = HybridTopProtocolResult
     _settings_cls = HybridTopProtocolSettings
     _settings: HybridTopProtocolSettings
 
