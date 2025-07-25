@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.5
+  - gufe >=1.6
   - openff-toolkit >0.16.0
   - openff-interchange >=0.4
   - openff-nagl-base >=0.3.3
@@ -20,7 +20,7 @@ dependencies:
   - pydantic >=2.0
   - pyyaml
   - coverage
-  - cinnabar ~=0.4.0
+  - cinnabar ~=0.5.0
   - click
   - typing-extensions
   - openmm >=8.0.0,!=8.1.0,<8.4.0
