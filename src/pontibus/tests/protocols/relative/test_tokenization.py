@@ -21,31 +21,53 @@ def protocol():
 
 
 @pytest.fixture
-def solvent_protocol_unit(protocol, benzene_modifications):
-    pus = protocol.create(
-        stateA=openfe.ChemicalSystem(
-            {
-                "ligand": benzene_modifications["benzene"],
-                "solvent": SolventComponent(),
-            }
-        ),
-        stateB=openfe.ChemicalSystem({"solvent": SolventComponent()}),
-        mapping=None,
+def vacuum_protocol():
+    settings = HybridTopProtocol.default_settings()
+    settings.forcefield_settings.nonbonded_method = 'nocutoff'
+    return HybridTopProtocol(settings=settings)
+
+
+@pytest.fixture
+def vacuum_protocol_unit(
+    vacuum_protocol,
+    benzene_to_toluene_mapping,
+    benzene_vacuum_system,
+    toluene_vacuum_system
+):
+    pus = vacuum_protocol.create(
+        stateA=benzene_vacuum_system,
+        stateB=toluene_vacuum_system,
+        mapping=benzene_to_toluene_mapping,
     )
     return list(pus.protocol_units)[0]
 
 
 @pytest.fixture
-def protocol_result(afe_solv_water_transformation_json):
-    d = json.loads(afe_solv_water_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder)
-    pr = ASFEProtocolResult.from_dict(d["protocol_result"])
+def solvent_protocol_unit(
+    protocol,
+    benzene_to_toluene_mapping,
+    benzene_system,
+    toluene_system
+):
+    pus = protocol.create(
+        stateA=benzene_system,
+        stateB=toluene_system,
+        mapping=benzene_to_toluene_mapping,
+    )
+    return list(pus.protocol_units)[0]
+
+
+@pytest.fixture
+def protocol_result(rfe_solv_transformation_json):
+    d = json.loads(rfe_solv_transformation_json, cls=gufe.tokenization.JSON_HANDLER.decoder)
+    pr = HybridTopProtocolResult.from_dict(d["protocol_result"])
     return pr
 
 
 class TestProtocol(GufeTokenizableTestsMixin):
-    cls = ASFEProtocol
+    cls = HybridTopProtocol
     key = None
-    repr = "ASFEProtocol-"
+    repr = "HybridTopProtocol-"
 
     @pytest.fixture()
     def instance(self, protocol):
@@ -60,8 +82,8 @@ class TestProtocol(GufeTokenizableTestsMixin):
 
 
 class TestSolventUnit(GufeTokenizableTestsMixin):
-    cls = ASFESolventUnit
-    repr = "ASFESolventUnit(Absolute Solvation, benzene solvent leg"
+    cls = HybridTopProtocolUnit
+    repr = "HybridTopProtocolUnit("
     key = None
 
     @pytest.fixture()
@@ -80,8 +102,8 @@ class TestSolventUnit(GufeTokenizableTestsMixin):
 
 
 class TestVacuumUnit(GufeTokenizableTestsMixin):
-    cls = ASFEVacuumUnit
-    repr = "ASFEVacuumUnit(Absolute Solvation, benzene vacuum leg"
+    cls = HybridTopProtocolUnit
+    repr = "HybridTopProtocolUnit("
     key = None
 
     @pytest.fixture()
@@ -100,9 +122,9 @@ class TestVacuumUnit(GufeTokenizableTestsMixin):
 
 
 class TestProtocolResult(GufeTokenizableTestsMixin):
-    cls = ASFEProtocolResult
+    cls = HybridTopProtocolResult
     key = None
-    repr = "ASFEProtocolResult-"
+    repr = "HybridTopProtocolResult-"
 
     @pytest.fixture()
     def instance(self, protocol_result):
