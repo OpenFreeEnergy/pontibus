@@ -505,7 +505,8 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             traj = mdtraj.Trajectory(
                 hybrid_factory.hybrid_positions[selection_indices, :],
                 hybrid_factory.hybrid_topology.subset(selection_indices),
-            ).save_pdb(
+            )
+            traj.save_pdb(
                 shared_basepath / output_settings.output_structure,
                 bfactors=bfactors,
             )
