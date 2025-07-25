@@ -23,12 +23,12 @@ from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.molecules import WATER
 from pontibus.utils.molecule_utils import (
-    _set_offmol_resname,
-    _get_offmol_resname,
     _check_library_charges,
+    _get_offmol_resname,
+    _set_offmol_resname,
 )
+from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
     _get_comp_resnames,

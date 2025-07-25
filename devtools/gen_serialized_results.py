@@ -14,18 +14,18 @@ import tempfile
 import gufe
 import openfe
 from gufe.tokenization import JSON_HANDLER
+from kartograf import KartografAtomMapper
+from kartograf.atom_aligner import align_mol_shape
 from openff.toolkit import AmberToolsToolkitWrapper, Molecule, RDKitToolkitWrapper
 from openff.toolkit.utils.toolkit_registry import (
     ToolkitRegistry,
     toolkit_registry_manager,
 )
 from openff.units import unit
-from kartograf.atom_aligner import align_mol_shape
-from kartograf import KartografAtomMapper
 
 from pontibus.components import ExtendedSolventComponent
-from pontibus.protocols.solvation import ASFEProtocol
 from pontibus.protocols.relative import HybridTopProtocol
+from pontibus.protocols.solvation import ASFEProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -130,15 +130,15 @@ def generate_rfe_inputs(molA, molB):
     return mapping, molA, a_molB
 
 
-def generate_hybridtop_rfe_vacuum_json(molA,molB):
+def generate_hybridtop_rfe_vacuum_json(molA, molB):
     settings = generate_rfe_settings()
     settings.forcefield_settings.nonbonded_method = "nocutoff"
     protocol = HybridTopProtocol(settings=settings)
 
     mapping, molA, molB = generate_rfe_inputs(molA, molB)
 
-    systemA = openfe.ChemicalSystem({'ligand': molA})
-    systemB = openfe.ChemicalSystem({'ligand': molB})
+    systemA = openfe.ChemicalSystem({"ligand": molA})
+    systemB = openfe.ChemicalSystem({"ligand": molB})
 
     dag = protocol.create(
         stateA=systemA,
@@ -149,14 +149,14 @@ def generate_hybridtop_rfe_vacuum_json(molA,molB):
     execute_and_serialize(dag, protocol, "HybridTopProtocol_vacuum")
 
 
-def generate_hybridtop_rfe_solvent_json(molA,molB):
+def generate_hybridtop_rfe_solvent_json(molA, molB):
     settings = generate_rfe_settings()
     protocol = HybridTopProtocol(settings=settings)
 
     mapping, molA, molB = generate_rfe_inputs(molA, molB)
 
-    systemA = openfe.ChemicalSystem({'ligand': molA, 'solvent': openfe.SolventComponent()})
-    systemB = openfe.ChemicalSystem({'ligand': molB, 'solvent': openfe.SolventComponent()})
+    systemA = openfe.ChemicalSystem({"ligand": molA, "solvent": openfe.SolventComponent()})
+    systemB = openfe.ChemicalSystem({"ligand": molB, "solvent": openfe.SolventComponent()})
 
     dag = protocol.create(
         stateA=systemA,

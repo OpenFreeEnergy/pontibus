@@ -154,11 +154,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         else:
             barostat = None
 
-        adjust_system(
-            system=omm_system,
-            remove_forces=openmm.CMMotionRemover,
-            add_forces=barostat
-        )
+        adjust_system(system=omm_system, remove_forces=openmm.CMMotionRemover, add_forces=barostat)
 
         positions = to_openmm_positions(interchange, include_virtual_sites=True)
 

@@ -3,8 +3,6 @@
 import json
 
 import gufe
-import openfe
-from openfe import SolventComponent
 import pytest
 from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
 
@@ -23,16 +21,13 @@ def protocol():
 @pytest.fixture
 def vacuum_protocol():
     settings = HybridTopProtocol.default_settings()
-    settings.forcefield_settings.nonbonded_method = 'nocutoff'
+    settings.forcefield_settings.nonbonded_method = "nocutoff"
     return HybridTopProtocol(settings=settings)
 
 
 @pytest.fixture
 def vacuum_protocol_unit(
-    vacuum_protocol,
-    benzene_to_toluene_mapping,
-    benzene_vacuum_system,
-    toluene_vacuum_system
+    vacuum_protocol, benzene_to_toluene_mapping, benzene_vacuum_system, toluene_vacuum_system
 ):
     pus = vacuum_protocol.create(
         stateA=benzene_vacuum_system,
@@ -43,12 +38,7 @@ def vacuum_protocol_unit(
 
 
 @pytest.fixture
-def solvent_protocol_unit(
-    protocol,
-    benzene_to_toluene_mapping,
-    benzene_system,
-    toluene_system
-):
+def solvent_protocol_unit(protocol, benzene_to_toluene_mapping, benzene_system, toluene_system):
     pus = protocol.create(
         stateA=benzene_system,
         stateB=toluene_system,

@@ -4,13 +4,13 @@
 ProtocolUnit implementations for the HybridTopProtocol.
 """
 
+import logging
 import os
 import pathlib
+import warnings
 from itertools import chain
 from typing import Any
 
-import warnings
-import logging
 import mdtraj
 import numpy as np
 import openmmtools
@@ -42,12 +42,12 @@ from openfe.utils import without_oechem_backend
 from openff.interchange import Interchange
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import unit, Quantity
+from openff.units import Quantity, unit
 from openff.units.openmm import from_openmm, to_openmm
-from openmmtools import multistate
+from openmm import CMMotionRemover, MonteCarloBarostat, System
 from openmm import unit as omm_unit
-from openmm import System, MonteCarloBarostat, CMMotionRemover
 from openmm.app import Topology
+from openmmtools import multistate
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
@@ -60,10 +60,9 @@ from pontibus.utils.system_creation import (
     interchange_packmol_creation,
 )
 from pontibus.utils.system_manipulation import (
-    copy_interchange_with_replacement,
     adjust_system,
+    copy_interchange_with_replacement,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -98,13 +97,13 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
           If any core atoms deviate by more than the threshold.
         """
         # Check env mappings
-        for key, val in mapping['old_to_new_env_atom_map'].items():
+        for key, val in mapping["old_to_new_env_atom_map"].items():
             if np.any(np.abs(positionsB[val] - positionsA[key]) > threshold):
                 msg = f"env mapping {key} : {val} deviates by more than {threshold}"
                 raise ValueError(msg)
 
         # Check core mappings
-        for key, val in mapping['old_to_new_core_atom_map'].items():
+        for key, val in mapping["old_to_new_core_atom_map"].items():
             if np.any(np.abs(positionsB[val] - positionsA[key]) > threshold):
                 msg = f"core mapping {key} : {val} deviates by more than {threshold}"
                 warnings.warn(msg)
@@ -139,7 +138,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         return MonteCarloBarostat(
             to_openmm(thermo_settings.pressure),
             to_openmm(thermo_settings.temperature),
-            integrator_settings.barostat_frequency.m
+            integrator_settings.barostat_frequency.m,
         )
 
     @staticmethod
@@ -176,10 +175,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             )
 
         # Get a list of the charged molecules to create stateB
-        stateB_charged_mols = [
-            pair[1]
-            for pair in chain(small_mols["stateB"], small_mols["both"])
-        ]
+        stateB_charged_mols = [pair[1] for pair in chain(small_mols["stateB"], small_mols["both"])]
         if solvent_component is not None and solvation_settings.assign_solvent_charges:
             stateB_charged_mols.append(solvent_offmol)
 
@@ -229,9 +225,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             interchange,
             include_virtual_sites=True,
         )
-        system = interchange.to_openmm_system(
-            hydrogen_mass=forcefield_settings.hydrogen_mass
-        )
+        system = interchange.to_openmm_system(hydrogen_mass=forcefield_settings.hydrogen_mass)
         adjust_system(
             system=system,
             remove_forces=CMMotionRemover,
@@ -372,14 +366,14 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             forcefield_settings=forcefield_settings,
             thermo_settings=thermo_settings,
             integrator_settings=integrator_settings,
-            solvent_component=solvent_comp
+            solvent_component=solvent_comp,
         )
         stateB_topology, stateB_positions, stateB_system = self._get_omm_objects(
             interchange=stateB_interchange,
             forcefield_settings=forcefield_settings,
             thermo_settings=thermo_settings,
             integrator_settings=integrator_settings,
-            solvent_component=solvent_comp
+            solvent_component=solvent_comp,
         )
 
         #  c. Define correspondence mappings between the two systems

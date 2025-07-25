@@ -2,9 +2,9 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import logging
 from typing import Any
+
 from openff.toolkit import ForceField
 from openff.toolkit import Molecule as OFFMolecule
-
 
 logger = logging.getLogger(__name__)
 

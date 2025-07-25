@@ -2,14 +2,15 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import numpy as np
-from openmm import System, Force, CMMotionRemover
-from openff.toolkit import Molecule, Topology, ForceField
 from openff.interchange import Interchange
-from pontibus.utils.system_creation import _check_and_deduplicate_charged_mols
+from openff.toolkit import ForceField, Molecule, Topology
+from openmm import CMMotionRemover, Force, System
+
 from pontibus.utils.molecule_utils import (
     _get_offmol_metadata,
     _set_offmol_metadata,
 )
+from pontibus.utils.system_creation import _check_and_deduplicate_charged_mols
 
 
 def adjust_system(
@@ -29,6 +30,7 @@ def adjust_system(
     add_forces : list[Force] | None
       The forces to add to the system.
     """
+
     def _adjust_inputs(var):
         if var is not None:
             if isinstance(var, list):

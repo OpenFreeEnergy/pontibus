@@ -1,7 +1,6 @@
 import gzip
 from importlib import resources
 
-import gufe
 import pytest
 
 
