@@ -42,7 +42,7 @@ def adjust_system(
     remove_force_types = _adjust_inputs(remove_force_types)
     add_forces = _adjust_inputs(add_forces)
 
-    for entry in remove_force_types:
+    for entry in remove_force_types:  # type: ignore[union-attr]
         for idx in reversed(range(system.getNumForces())):
             force = system.getForce(idx)
             if isinstance(force, entry):
