@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _set_offmol_metadata(
     offmol: OFFMolecule,
     key: Any,
-    val: Any,
+    val: Any | None,
 ) -> None:
     """
     Set a given metadata entry for a whole Molecule.
@@ -26,8 +26,12 @@ def _set_offmol_metadata(
     val : Any
       The value to set the metadata entry to.
     """
-    for a in offmol.atoms:
-        a.metadata[key] = val
+    if val is None:
+        for a in offmol.atoms:
+            a.metadata.pop(key, None)
+    else:
+        for a in offmol.atoms:
+            a.metadata[key] = val
 
 
 def _get_offmol_metadata(offmol: OFFMolecule, key: Any) -> Any | None:
@@ -67,7 +71,7 @@ def _get_offmol_metadata(offmol: OFFMolecule, key: Any) -> Any | None:
 
 def _set_offmol_resname(
     offmol: OFFMolecule,
-    resname: str,
+    resname: str | None,
 ) -> None:
     """
     Helper method to set offmol residue names
@@ -76,8 +80,8 @@ def _set_offmol_resname(
     ----------
     offmol : openff.toolkit.Molecule
       Molecule to assign a residue name to.
-    resname : str
-      Residue name to be set.
+    resname : str | None
+      Residue name to be set. Set to None to clear it.
 
     Returns
     -------
