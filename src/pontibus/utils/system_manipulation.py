@@ -4,7 +4,7 @@
 import numpy as np
 from openff.interchange import Interchange
 from openff.toolkit import ForceField, Molecule, Topology
-from openmm import CMMotionRemover, Force, System
+from openmm import Force, System
 
 from pontibus.utils.molecule_utils import (
     _get_offmol_metadata,
@@ -15,7 +15,7 @@ from pontibus.utils.system_creation import _check_and_deduplicate_charged_mols
 
 def adjust_system(
     system: System,
-    remove_forces: Force | list[Force] | None = list[CMMotionRemover],
+    remove_force_types: type | list[type] | None = None,
     add_forces: Force | list[Force] | None = None,
 ) -> None:
     """
@@ -25,8 +25,8 @@ def adjust_system(
     ----------
     system : System
       The OpenMM System to adjust
-    remove_forces : list[Force] | None
-      The forces to remove from the System, if present.
+    remove_force_types : type | list[type] | None
+      The force types to remove from the System, if present.
     add_forces : list[Force] | None
       The forces to add to the system.
     """
@@ -39,10 +39,10 @@ def adjust_system(
         else:
             return []
 
-    remove_forces = _adjust_inputs(remove_forces)
+    remove_force_types = _adjust_inputs(remove_force_types)
     add_forces = _adjust_inputs(add_forces)
 
-    for entry in remove_forces:
+    for entry in remove_force_types:
         for idx in reversed(range(system.getNumForces())):
             force = system.getForce(idx)
             if isinstance(force, entry):

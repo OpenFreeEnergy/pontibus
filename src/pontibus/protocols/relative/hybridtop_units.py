@@ -228,7 +228,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         system = interchange.to_openmm_system(hydrogen_mass=forcefield_settings.hydrogen_mass)
         adjust_system(
             system=system,
-            remove_forces=CMMotionRemover,
+            remove_force_types=CMMotionRemover,
             add_forces=self._get_barostat(
                 solvent_component=solvent_component,
                 thermo_settings=thermo_settings,
