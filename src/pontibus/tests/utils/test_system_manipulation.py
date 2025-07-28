@@ -71,7 +71,7 @@ def test_copy_no_conformers(forcefield):
     inter = Interchange.from_smirnoff(forcefield, topology)
 
     with pytest.raises(ValueError, match="molecules need conformers"):
-        inter_new = copy_interchange_with_replacement(
+        _ = copy_interchange_with_replacement(
             interchange=inter,
             del_mol=m1,
             insert_mol=m2,
@@ -85,7 +85,7 @@ def test_copy_equality_clash(forcefield, insert_molecule, del_molecule):
     inter = Interchange.from_smirnoff(forcefield, topology)
 
     with pytest.raises(ValueError, match="equality clash"):
-        inter_new = copy_interchange_with_replacement(
+        _ = copy_interchange_with_replacement(
             interchange=inter,
             del_mol=del_molecule,
             insert_mol=insert_molecule,
@@ -101,7 +101,7 @@ def test_copy_no_del_match(forcefield, insert_molecule, del_molecule):
     inter = Interchange.from_smirnoff(forcefield, topology)
 
     with pytest.raises(ValueError, match="matching del_mol in input"):
-        inter_new = copy_interchange_with_replacement(
+        _ = copy_interchange_with_replacement(
             interchange=inter,
             del_mol=fake_del_mol,
             insert_mol=insert_molecule,
@@ -118,7 +118,6 @@ def test_copy_full(forcefield):
     m2 = Molecule.from_smiles("CCCO")
     m2.generate_conformers(n_conformers=1)
     m2.assign_partial_charges(partial_charge_method="gasteiger")
-    water = Molecule.from_smiles("O")
 
     # Solvate m1
     solvated_top = solvate_topology(Topology.from_molecules([m1]))
