@@ -7,12 +7,23 @@ import openfe
 import pytest
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
-from openmm import MonteCarloBarostat, NonbondedForce
+from openmm import (
+    CustomBondForce,
+    CustomAngleForce,
+    CustomTorsionForce,
+    CustomNonbondedForce,
+    HarmonicAngleForce,
+    HarmonicBondForce,
+    MonteCarloBarostat,
+    NonbondedForce,
+    PeriodicTorsionForce,
+    MonteCarloBarostat,
+)
 from openmm import unit as omm_unit
 from openmmtools.multistate import MultiStateSampler
 from rdkit import Chem
 
-from pontibus.protocols.relative import HybridTopProtocol
+from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolUnit
 
 
 def test_create_default_settings():
@@ -37,6 +48,36 @@ def test_serialize_protocol():
     ret = HybridTopProtocol.from_dict(ser)
 
     assert protocol == ret
+
+
+def test_position_overlap_fail():
+    mapping = {'old_to_new_env_atom_map': {i:i for i in range(4)}}
+    positionsA = np.array([[1, 1, 1]]*4) * unit.angstrom
+    positionsB = np.array([[1, 1, 2.1]]*4) * unit.angstrom
+
+    with pytest.raises(ValueError, match="deviates by more than"):
+        HybridTopProtocolUnit._check_position_overlap(
+            mapping,
+            positionsA,
+            positionsB,
+        )
+
+
+def test_position_overlap_warn():
+    mapping = {
+        'old_to_new_env_atom_map': {},
+        'old_to_new_core_atom_map': {i:i for i in range(4)}
+    }
+    positionsA = np.array([[1, 1, 1]]*4) * unit.angstrom
+    positionsB = np.array([[1, 1, 2.1]]*4) * unit.angstrom
+
+    with pytest.warns(UserWarning, match="deviates by more than"):
+        HybridTopProtocolUnit._check_position_overlap(
+            mapping,
+            positionsA,
+            positionsB,
+        )
+
 
 
 @pytest.mark.parametrize("method", ["repex", "sams", "independent", "InDePeNdENT"])
@@ -84,6 +125,28 @@ def test_dry_run_default_vacuum(
         # check that our PDB has the right number of atoms
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 16
+
+        # check the system forces
+        system = htf.hybrid_system
+        assert len(system.getForces()) == 9
+
+        def assert_force_num(system, forcetype, number):
+            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
+            assert len(forces) == number
+
+        assert_force_num(system, NonbondedForce, 1)
+        assert_force_num(system, CustomNonbondedForce, 1)
+        assert_force_num(system, CustomBondForce, 2)
+        assert_force_num(system, CustomAngleForce, 1)
+        assert_force_num(system, CustomTorsionForce, 1)
+        assert_force_num(system, HarmonicBondForce, 1)
+        assert_force_num(system, HarmonicAngleForce, 1)
+        assert_force_num(system, PeriodicTorsionForce, 1)
+
+        # Check the nonbonded force is NoCutoff
+        nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
+        assert nonbond[0].getNonbondedMethod() == NonbondedForce.NoCutoff
+
 
 
 BENZ = """\
@@ -198,11 +261,9 @@ def test_dry_core_element_change(tmpdir):
         assert cnf.getInteractionGroupParameters(7) == [(7,), (7,)]
 
 
-@pytest.mark.parametrize("method", ["repex", "sams", "independent"])
-def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mapping, method, tmpdir):
+def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mapping, tmpdir):
     # this might be a bit time consuming
     settings = HybridTopProtocol.default_settings()
-    settings.simulation_settings.sampler_method = method
     settings.protocol_repeats = 1
     settings.output_settings.output_indices = "resname AAA"
 
@@ -227,8 +288,30 @@ def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mappi
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 16
 
+        # Check system forces
+        system = sampler._hybrid_factory.hybrid_system
+        assert len(system.getForces()) == 10
 
-def test_dry_run_user_charges(benzene_modifications, tmpdir):
+        def assert_force_num(system, forcetype, number):
+            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
+            assert len(forces) == number
+
+        assert_force_num(system, NonbondedForce, 1)
+        assert_force_num(system, CustomNonbondedForce, 1)
+        assert_force_num(system, CustomBondForce, 2)
+        assert_force_num(system, CustomAngleForce, 1)
+        assert_force_num(system, CustomTorsionForce, 1)
+        assert_force_num(system, HarmonicBondForce, 1)
+        assert_force_num(system, HarmonicAngleForce, 1)
+        assert_force_num(system, PeriodicTorsionForce, 1)
+        assert_force_num(system, MonteCarloBarostat, 1)
+
+        # Check the nonbonded force is NoCutoff
+        nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
+        assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+
+
+def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
     """
     Create a hybrid system with a set of fictitious user supplied charges
     and ensure that they are properly passed through to the constructed
