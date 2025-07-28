@@ -23,14 +23,16 @@ from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
+from pontibus.utils.molecule_utils import (
+    _check_library_charges,
+    _get_offmol_resname,
+    _set_offmol_resname,
+)
 from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
-    _check_library_charges,
     _get_comp_resnames,
     _get_force_field,
-    _get_offmol_resname,
-    _set_offmol_resname,
     _solvate_system,
     interchange_packmol_creation,
 )
@@ -105,7 +107,7 @@ def test_get_and_set_offmol_resname(CN_molecule, caplog):
 
     with caplog.at_level(logging.WARNING):
         assert _get_offmol_resname(CN_off) is None
-    assert "Inconsistent residue name" in caplog.text
+    assert "Inconsistent metadata residue_name" in caplog.text
 
 
 def test_check_library_charges_pass(water_off):

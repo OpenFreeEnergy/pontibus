@@ -6,8 +6,10 @@ import os
 from importlib import resources
 
 import gufe
+import openfe
 import pytest
 from gufe import SmallMoleculeComponent
+from openff.units import unit
 from rdkit import Chem
 
 
@@ -138,8 +140,19 @@ def pytest_configure(config):
 @pytest.fixture(scope="session")
 def benzene_modifications():
     files = {}
-    with importlib.resources.files("openfe.tests.data") as d:
+    with importlib.resources.files("pontibus.tests.data") as d:
         fn = str(d / "benzene_modifications.sdf")
+        supp = Chem.SDMolSupplier(str(fn), removeHs=False)
+        for rdmol in supp:
+            files[rdmol.GetProp("_Name")] = SmallMoleculeComponent(rdmol)
+    return files
+
+
+@pytest.fixture(scope="session")
+def benzene_modifications_charged():
+    files = {}
+    with importlib.resources.files("pontibus.tests.data") as d:
+        fn = str(d / "benzene_modifications_charged.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
         for rdmol in supp:
             files[rdmol.GetProp("_Name")] = SmallMoleculeComponent(rdmol)
@@ -167,3 +180,77 @@ def T4_protein_component():
         comp = gufe.ProteinComponent.from_pdb_file(fn, name="T4_protein")
 
     return comp
+
+
+@pytest.fixture
+def benzene_vacuum_system(benzene_modifications_charged):
+    return openfe.ChemicalSystem(
+        {"ligand": benzene_modifications_charged["benzene"]},
+    )
+
+
+@pytest.fixture(scope="session")
+def benzene_system(benzene_modifications_charged):
+    return openfe.ChemicalSystem(
+        {
+            "ligand": benzene_modifications_charged["benzene"],
+            "solvent": openfe.SolventComponent(
+                positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
+            ),
+        },
+    )
+
+
+@pytest.fixture
+def benzene_complex_system(benzene_modifications_charged, T4_protein_component):
+    return openfe.ChemicalSystem(
+        {
+            "ligand": benzene_modifications_charged["benzene"],
+            "solvent": openfe.SolventComponent(
+                positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
+            ),
+            "protein": T4_protein_component,
+        }
+    )
+
+
+@pytest.fixture
+def toluene_vacuum_system(benzene_modifications_charged):
+    return openfe.ChemicalSystem(
+        {"ligand": benzene_modifications_charged["toluene"]},
+    )
+
+
+@pytest.fixture(scope="session")
+def toluene_system(benzene_modifications_charged):
+    return openfe.ChemicalSystem(
+        {
+            "ligand": benzene_modifications_charged["toluene"],
+            "solvent": openfe.SolventComponent(
+                positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
+            ),
+        },
+    )
+
+
+@pytest.fixture
+def toluene_complex_system(benzene_modifications_charged, T4_protein_component):
+    return openfe.ChemicalSystem(
+        {
+            "ligand": benzene_modifications_charged["toluene"],
+            "solvent": openfe.SolventComponent(
+                positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
+            ),
+            "protein": T4_protein_component,
+        }
+    )
+
+
+@pytest.fixture(scope="session")
+def benzene_to_toluene_mapping(benzene_modifications_charged):
+    mapper = openfe.setup.LomapAtomMapper(element_change=False)
+
+    molA = benzene_modifications_charged["benzene"]
+    molB = benzene_modifications_charged["toluene"]
+
+    return next(mapper.suggest_mappings(molA, molB))

@@ -66,7 +66,6 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
         assert not vac_sampler.is_periodic
 
         system = vac_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
-        print(system.getForces())
         assert len(system.getForces()) == 12
 
         def assert_force_num(system, forcetype, number):
