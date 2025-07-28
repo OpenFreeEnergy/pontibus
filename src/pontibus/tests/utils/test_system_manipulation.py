@@ -3,18 +3,19 @@
 
 import pytest
 from numpy.testing import assert_allclose
-from openmm import System, CMMotionRemover, MonteCarloBarostat
-from openmm import unit as omm_unit
-from openff.toolkit import Molecule, ForceField, Topology
 from openff.interchange import Interchange
 from openff.interchange.components._packmol import solvate_topology
+from openff.toolkit import ForceField, Molecule, Topology
+from openmm import CMMotionRemover, MonteCarloBarostat, System
+from openmm import unit as omm_unit
+
+from pontibus.utils.molecule_utils import (
+    _get_offmol_metadata,
+    _set_offmol_metadata,
+)
 from pontibus.utils.system_manipulation import (
     adjust_system,
     copy_interchange_with_replacement,
-)
-from pontibus.utils.molecule_utils import (
-    _set_offmol_metadata,
-    _get_offmol_metadata,
 )
 
 
@@ -44,28 +45,28 @@ def test_adjust_forces_add_comm_and_barostat():
     assert system.getNumForces() == 2
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def forcefield():
-    return ForceField('openff-2.2.1.offxml')
+    return ForceField("openff-2.2.1.offxml")
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def insert_molecule():
-    m = Molecule.from_smiles('CCCC')
+    m = Molecule.from_smiles("CCCC")
     m.generate_conformers(n_conformers=1)
     return m
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def del_molecule():
-    m = Molecule.from_smiles('CCO')
+    m = Molecule.from_smiles("CCO")
     m.generate_conformers(n_conformers=1)
     return m
 
 
 def test_copy_no_conformers(forcefield):
-    m1 = Molecule.from_smiles('C')
-    m2 = Molecule.from_smiles('O')
+    m1 = Molecule.from_smiles("C")
+    m2 = Molecule.from_smiles("O")
     topology = Topology.from_molecules([m1])
     inter = Interchange.from_smirnoff(forcefield, topology)
 
@@ -75,7 +76,7 @@ def test_copy_no_conformers(forcefield):
             del_mol=m1,
             insert_mol=m2,
             force_field=forcefield,
-            charged_molecules=None
+            charged_molecules=None,
         )
 
 
@@ -89,12 +90,12 @@ def test_copy_equality_clash(forcefield, insert_molecule, del_molecule):
             del_mol=del_molecule,
             insert_mol=insert_molecule,
             force_field=forcefield,
-            charged_molecules=None
+            charged_molecules=None,
         )
 
 
 def test_copy_no_del_match(forcefield, insert_molecule, del_molecule):
-    fake_del_mol = Molecule.from_smiles('C')
+    fake_del_mol = Molecule.from_smiles("C")
     fake_del_mol.generate_conformers(n_conformers=1)
     topology = Topology.from_molecules([del_molecule])
     inter = Interchange.from_smirnoff(forcefield, topology)
@@ -105,19 +106,19 @@ def test_copy_no_del_match(forcefield, insert_molecule, del_molecule):
             del_mol=fake_del_mol,
             insert_mol=insert_molecule,
             force_field=forcefield,
-            charged_molecules=None
+            charged_molecules=None,
         )
 
 
 def test_copy_full(forcefield):
-    m1 = Molecule.from_smiles('CCCC')
+    m1 = Molecule.from_smiles("CCCC")
     m1.generate_conformers(n_conformers=1)
-    m1.assign_partial_charges(partial_charge_method='gasteiger')
-    _set_offmol_metadata(m1, 'residue_number', 999)
-    m2 = Molecule.from_smiles('CCCO')
+    m1.assign_partial_charges(partial_charge_method="gasteiger")
+    _set_offmol_metadata(m1, "residue_number", 999)
+    m2 = Molecule.from_smiles("CCCO")
     m2.generate_conformers(n_conformers=1)
-    m2.assign_partial_charges(partial_charge_method='gasteiger')
-    water = Molecule.from_smiles('O')
+    m2.assign_partial_charges(partial_charge_method="gasteiger")
+    water = Molecule.from_smiles("O")
 
     # Solvate m1
     solvated_top = solvate_topology(Topology.from_molecules([m1]))
@@ -126,24 +127,20 @@ def test_copy_full(forcefield):
     inter = Interchange.from_smirnoff(forcefield, solvated_top, charge_from_molecules=[m1])
 
     inter_new = copy_interchange_with_replacement(
-        interchange=inter,
-        del_mol=m1,
-        insert_mol=m2,
-        force_field=forcefield,
-        charged_molecules=[m2]
+        interchange=inter, del_mol=m1, insert_mol=m2, force_field=forcefield, charged_molecules=[m2]
     )
 
     assert inter.topology.n_molecules == inter_new.topology.n_molecules
     assert inter_new.topology.n_unique_molecules == 4
-    for idx in range(inter_new.topology.n_molecules-1):
+    for idx in range(inter_new.topology.n_molecules - 1):
         mol_new = inter_new.topology.molecule(idx)
-        mol_old = inter.topology.molecule(idx+1)
+        mol_old = inter.topology.molecule(idx + 1)
         assert mol_new.is_isomorphic_with(mol_old)
 
         assert_allclose(mol_new.conformers[0], mol_old.conformers[0])
 
-    insert_mol_new = inter_new.topology.molecule(inter_new.topology.n_molecules-1)
+    insert_mol_new = inter_new.topology.molecule(inter_new.topology.n_molecules - 1)
     assert insert_mol_new.is_isomorphic_with(m2)
     assert_allclose(m2.conformers[0], insert_mol_new.conformers[0])
     assert_allclose(m2.partial_charges, insert_mol_new.partial_charges)
-    assert _get_offmol_metadata(insert_mol_new, 'residue_number') == 999
+    assert _get_offmol_metadata(insert_mol_new, "residue_number") == 999

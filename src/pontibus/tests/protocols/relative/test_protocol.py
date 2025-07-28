@@ -8,16 +8,15 @@ import pytest
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
 from openmm import (
-    CustomBondForce,
     CustomAngleForce,
-    CustomTorsionForce,
+    CustomBondForce,
     CustomNonbondedForce,
+    CustomTorsionForce,
     HarmonicAngleForce,
     HarmonicBondForce,
     MonteCarloBarostat,
     NonbondedForce,
     PeriodicTorsionForce,
-    MonteCarloBarostat,
 )
 from openmm import unit as omm_unit
 from openmmtools.multistate import MultiStateSampler
@@ -51,9 +50,9 @@ def test_serialize_protocol():
 
 
 def test_position_overlap_fail():
-    mapping = {'old_to_new_env_atom_map': {i:i for i in range(4)}}
-    positionsA = np.array([[1, 1, 1]]*4) * unit.angstrom
-    positionsB = np.array([[1, 1, 2.1]]*4) * unit.angstrom
+    mapping = {"old_to_new_env_atom_map": {i: i for i in range(4)}}
+    positionsA = np.array([[1, 1, 1]] * 4) * unit.angstrom
+    positionsB = np.array([[1, 1, 2.1]] * 4) * unit.angstrom
 
     with pytest.raises(ValueError, match="deviates by more than"):
         HybridTopProtocolUnit._check_position_overlap(
@@ -64,12 +63,9 @@ def test_position_overlap_fail():
 
 
 def test_position_overlap_warn():
-    mapping = {
-        'old_to_new_env_atom_map': {},
-        'old_to_new_core_atom_map': {i:i for i in range(4)}
-    }
-    positionsA = np.array([[1, 1, 1]]*4) * unit.angstrom
-    positionsB = np.array([[1, 1, 2.1]]*4) * unit.angstrom
+    mapping = {"old_to_new_env_atom_map": {}, "old_to_new_core_atom_map": {i: i for i in range(4)}}
+    positionsA = np.array([[1, 1, 1]] * 4) * unit.angstrom
+    positionsB = np.array([[1, 1, 2.1]] * 4) * unit.angstrom
 
     with pytest.warns(UserWarning, match="deviates by more than"):
         HybridTopProtocolUnit._check_position_overlap(
@@ -77,7 +73,6 @@ def test_position_overlap_warn():
             positionsA,
             positionsB,
         )
-
 
 
 @pytest.mark.parametrize("method", ["repex", "sams", "independent", "InDePeNdENT"])
@@ -146,7 +141,6 @@ def test_dry_run_default_vacuum(
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.NoCutoff
-
 
 
 BENZ = """\
