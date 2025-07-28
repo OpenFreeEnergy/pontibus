@@ -3,6 +3,7 @@
 import logging
 from itertools import product
 from string import ascii_uppercase
+import tempfile
 from typing import Any
 
 import numpy as np
@@ -32,6 +33,31 @@ from pontibus.utils.settings import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _proteincomp_to_topology(
+    protein_component: ProteinComponent
+) -> Topology:
+    """
+    Convert a ProteinComponent to an OpenFF Topology via PDB serialization.
+
+    Parameters
+    ----------
+    protein_component : ProteinComponent
+      The ProteinComponent to convert.
+
+    Returns
+    -------
+    off_top : openff.toolkit.Topology
+      A Topology containing the protein.
+    """
+    # TODO: maybe switch to NamedTemporaryFile eventually?
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = f"{tmpdir}/tmp.pdb"
+        protein_component.to_pdb_file(filepath)
+        off_top = Topology.from_pdb(filepath)
+
+    return off_top
 
 
 def _check_and_deduplicate_charged_mols(

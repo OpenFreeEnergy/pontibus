@@ -17,6 +17,7 @@ from openmm import (
     NonbondedForce,
     PeriodicTorsionForce,
 )
+from rdkit import Chem
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
 from pontibus.protocols.solvation.settings import (
@@ -35,6 +36,7 @@ from pontibus.utils.system_creation import (
     _get_force_field,
     _solvate_system,
     interchange_packmol_creation,
+    _proteincomp_to_topology,
 )
 
 
@@ -87,6 +89,18 @@ def water_off_am1bcc():
     water = WATER.to_openff()
     water.assign_partial_charges(partial_charge_method="am1bcc")
     return water
+
+
+def test_convert_proteincomp(T4_protein_component):
+    # Get an OpenFF Toplogy by going through rdkit
+    rdmols = Chem.GetMolFrags(T4_protein_component.to_rdkit(), asMols=True, sanitizeFrags=False)
+    ofe_mol = Molecule.from_rdkit(rdmols[0], allow_undefined_stereo=True, hydrogens_are_explicit=True)
+    ofe_top = Topology.from_molecules([ofe_mol])
+    # The the OpenFF Topology with the tooling
+    off_top = _proteincomp_to_topology(T4_protein_component)
+
+    # light isormophic check
+    assert off_top.molecule(0).is_isomorphic_with(ofe_top.molecule(0), atom_stereochemistry_matching=False)
 
 
 def test_get_and_set_offmol_resname(CN_molecule, caplog):
