@@ -363,7 +363,7 @@ def _solvate_system(
                     continue
 
                 if mol.is_isomorphic_with(solvent_offmol):
-                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))  # type: ignore[arg-type]
+                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))
 
                 if mol.is_isomorphic_with(na):
                     _set_offmol_resname(mol, "NA+")
