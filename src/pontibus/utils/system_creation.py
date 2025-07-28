@@ -139,7 +139,6 @@ def _validate_components(
     Raises
     ------
     ValueError
-      If there is a protein_component.
       If the solvent_component requests counterions for non-water solvent.
       If the solvent component requests counterions without neutralizing.
       If the counterions are not Na+ and Cl-.
@@ -147,14 +146,6 @@ def _validate_components(
       If the solvent_component and solvent_offmol are not isomorphic.
       If the solvent_offmol doesn't have one conformer.
     """
-    # Adding protein components is not currently supported
-    if protein_component is not None:
-        errmsg = (
-            "Creation of systems solely with Interchange "
-            "using ProteinComponents is not currently supported"
-        )
-        raise ValueError(errmsg)
-
     if solvent_component is not None:
         if solvent_offmol is None:
             errmsg = "A solvent offmol must be passed to solvate a system!"
@@ -251,9 +242,6 @@ def _get_comp_resnames(
     """
     # Note: comp_resnames is dict[str, tuple[Component, list]] where the final
     # list is to append residues later on
-    # TODO: make this a method
-    # TODO: we should be able to rely on offmol equality in the same way that
-    # intechange does
     comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
 
     # If we have solvent, we set its residue name
