@@ -140,8 +140,19 @@ def pytest_configure(config):
 @pytest.fixture(scope="session")
 def benzene_modifications():
     files = {}
-    with importlib.resources.files("openfe.tests.data") as d:
+    with importlib.resources.files("pontibus.tests.data") as d:
         fn = str(d / "benzene_modifications.sdf")
+        supp = Chem.SDMolSupplier(str(fn), removeHs=False)
+        for rdmol in supp:
+            files[rdmol.GetProp("_Name")] = SmallMoleculeComponent(rdmol)
+    return files
+
+
+@pytest.fixture(scope="session")
+def benzene_modifications_charged():
+    files = {}
+    with importlib.resources.files("pontibus.tests.data") as d:
+        fn = str(d / "benzene_modifications_charged.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
         for rdmol in supp:
             files[rdmol.GetProp("_Name")] = SmallMoleculeComponent(rdmol)
@@ -172,17 +183,17 @@ def T4_protein_component():
 
 
 @pytest.fixture
-def benzene_vacuum_system(benzene_modifications):
+def benzene_vacuum_system(benzene_modifications_charged):
     return openfe.ChemicalSystem(
-        {"ligand": benzene_modifications["benzene"]},
+        {"ligand": benzene_modifications_charged["benzene"]},
     )
 
 
 @pytest.fixture(scope="session")
-def benzene_system(benzene_modifications):
+def benzene_system(benzene_modifications_charged):
     return openfe.ChemicalSystem(
         {
-            "ligand": benzene_modifications["benzene"],
+            "ligand": benzene_modifications_charged["benzene"],
             "solvent": openfe.SolventComponent(
                 positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
             ),
@@ -191,10 +202,10 @@ def benzene_system(benzene_modifications):
 
 
 @pytest.fixture
-def benzene_complex_system(benzene_modifications, T4_protein_component):
+def benzene_complex_system(benzene_modifications_charged, T4_protein_component):
     return openfe.ChemicalSystem(
         {
-            "ligand": benzene_modifications["benzene"],
+            "ligand": benzene_modifications_charged["benzene"],
             "solvent": openfe.SolventComponent(
                 positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
             ),
@@ -204,17 +215,17 @@ def benzene_complex_system(benzene_modifications, T4_protein_component):
 
 
 @pytest.fixture
-def toluene_vacuum_system(benzene_modifications):
+def toluene_vacuum_system(benzene_modifications_charged):
     return openfe.ChemicalSystem(
-        {"ligand": benzene_modifications["toluene"]},
+        {"ligand": benzene_modifications_charged["toluene"]},
     )
 
 
 @pytest.fixture(scope="session")
-def toluene_system(benzene_modifications):
+def toluene_system(benzene_modifications_charged):
     return openfe.ChemicalSystem(
         {
-            "ligand": benzene_modifications["toluene"],
+            "ligand": benzene_modifications_charged["toluene"],
             "solvent": openfe.SolventComponent(
                 positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
             ),
@@ -223,10 +234,10 @@ def toluene_system(benzene_modifications):
 
 
 @pytest.fixture
-def toluene_complex_system(benzene_modifications, T4_protein_component):
+def toluene_complex_system(benzene_modifications_charged, T4_protein_component):
     return openfe.ChemicalSystem(
         {
-            "ligand": benzene_modifications["toluene"],
+            "ligand": benzene_modifications_charged["toluene"],
             "solvent": openfe.SolventComponent(
                 positive_ion="Na", negative_ion="Cl", ion_concentration=0.15 * unit.molar
             ),
@@ -236,10 +247,10 @@ def toluene_complex_system(benzene_modifications, T4_protein_component):
 
 
 @pytest.fixture(scope="session")
-def benzene_to_toluene_mapping(benzene_modifications):
+def benzene_to_toluene_mapping(benzene_modifications_charged):
     mapper = openfe.setup.LomapAtomMapper(element_change=False)
 
-    molA = benzene_modifications["benzene"]
-    molB = benzene_modifications["toluene"]
+    molA = benzene_modifications_charged["benzene"]
+    molB = benzene_modifications_charged["toluene"]
 
     return next(mapper.suggest_mappings(molA, molB))
