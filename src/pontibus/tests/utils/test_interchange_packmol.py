@@ -32,7 +32,7 @@ from pontibus.utils.molecule_utils import (
 from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
-    _get_comp_resnames,
+    _assign_comp_resnames_and_keys,
     _get_force_field,
     _solvate_system,
     interchange_packmol_creation,
@@ -170,8 +170,8 @@ def test_check_charged_mols(water_off_am1bcc, water_off_named_charged):
         _check_and_deduplicate_charged_mols([water_off_am1bcc, water_off_named_charged])
 
 
-def test_protein_component_fail(smc_components_benzene_named, T4_protein_component):
-    errmsg = "ProteinComponents is not currently supported"
+def test_protein_component_nosolv_fail(smc_components_benzene_named, T4_protein_component):
+    errmsg = "Must have solvent to have a protein"
     with pytest.raises(ValueError, match=errmsg):
         interchange_packmol_creation(
             ffsettings=InterchangeFFSettings(),
@@ -257,8 +257,8 @@ def test_resname_solvent_ion_clash(smc_components_benzene_named, resname):
 
     errmsg = "Solvent resname is set to"
     with pytest.raises(ValueError, match=errmsg):
-        _get_comp_resnames(
-            smc_components_benzene_named, ExtendedSolventComponent(neutralize=True), solv_off
+        _assign_comp_resnames_and_keys(
+            smc_components_benzene_named, ExtendedSolventComponent(neutralize=True), solv_off, None, None
         )
 
 
@@ -1166,10 +1166,10 @@ class TestSolventOPC3UnamedBenzene(TestVacuumUnamedBenzene):
         _, comp_resids = interchange_system
 
         assert len(comp_resids) == 2
-        assert list(comp_resids)[0] == ExtendedSolventComponent()
-        assert list(comp_resids)[1] == next(iter(request.getfixturevalue(self.smc_comps)))
-        assert_equal(list(comp_resids.values())[0], [i for i in range(1, num_residues)])
-        assert_equal(list(comp_resids.values())[1], [0])
+        assert list(comp_resids)[0] == next(iter(request.getfixturevalue(self.smc_comps)))
+        assert list(comp_resids)[1] == ExtendedSolventComponent()
+        assert_equal(list(comp_resids.values())[0], [0])
+        assert_equal(list(comp_resids.values())[1], [i for i in range(1, num_residues)])
 
     def test_solvent_resnames(self, omm_topology):
         for i, res in enumerate(list(omm_topology.residues())[1:]):
@@ -1329,13 +1329,13 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
         _, comp_resids = interchange_system
 
         assert len(comp_resids) == 2
-        assert list(comp_resids)[0] == ExtendedSolventComponent(
+        assert list(comp_resids)[0] == next(iter(request.getfixturevalue(self.smc_comps)))
+        assert list(comp_resids)[1] == ExtendedSolventComponent(
             neutralize=True,
             ion_concentration=0.15 * unit.molar,
         )
-        assert list(comp_resids)[1] == next(iter(request.getfixturevalue(self.smc_comps)))
-        assert_equal(list(comp_resids.values())[0], [i for i in range(1, num_residues)])
-        assert_equal(list(comp_resids.values())[1], [0])
+        assert_equal(list(comp_resids.values())[0], [0])
+        assert_equal(list(comp_resids.values())[1], [i for i in range(1, num_residues)])
 
     def test_solvent_resnames(self, omm_topology):
         for i, res in enumerate(list(omm_topology.residues())[1:]):
