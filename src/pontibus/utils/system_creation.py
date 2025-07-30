@@ -25,6 +25,7 @@ from pontibus.utils.molecule_utils import (
     _get_offmol_resname,
     _set_offmol_resname,
     _set_offmol_metadata,
+    _get_num_residues,
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
@@ -464,7 +465,7 @@ def _post_process_topology(
     }
 
     # Do some checks and get a list of all existing chains
-    known_chains = {}
+    known_chains = set()
     for mol in mols:
         chain_truth = ['chain_id' in at.metadata for at in mol.atoms]
         resnum_truth = ['residue_number' in at.metadata for at in mol.atoms]
@@ -515,27 +516,7 @@ def _post_process_topology(
 
         # Get the number of residues this molecule spans        
         # let's duplicate the interchange behaviour
-        num_residx = 0
-        last_chain_id = None
-        last_resnum = None
-        last_resname = None
-        for at in mol.atoms:
-            at_resname = at.metadata['residue_name']
-            at_resnum = at.metadata['residue_number']
-            at_chain_id = at.metadata['chain_id']
-
-            if not all(
-                (
-                    (last_resname == at_resname),
-                    (last_resnum == at_resnum),
-                    (last_chain_id == at_chain_id),
-                )
-            ):
-                last_chain_id = at_chain_id
-                last_resnum = at_resnum
-                last_resname = at_resname
-
-                num_residx += 1
+        num_residx = _get_num_residues(mol)
 
         # update compkey_residx
         key = mol.properties['key']

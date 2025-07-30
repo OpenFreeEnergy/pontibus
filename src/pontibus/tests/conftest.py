@@ -254,3 +254,73 @@ def benzene_to_toluene_mapping(benzene_modifications_charged):
     molB = benzene_modifications_charged["toluene"]
 
     return next(mapper.suggest_mappings(molA, molB))
+
+
+@pytest.fixture(scope='session')
+def eg5_protein_pdb():
+    with resources.as_file(resources.files('pontibus.tests.data')) as d:
+        yield str(d / 'eg5_protein.pdb')
+
+
+@pytest.fixture(scope='session')
+def eg5_ligands_sdf():
+    with resources.as_file(resources.files('pontibus.tests.data')) as d:
+        yield str(d / 'eg5_ligands_charged.sdf')
+
+
+@pytest.fixture(scope='session')
+def eg5_cofactor_sdf():
+    with resources.as_file(resources.files('pontibus.tests.data')) as d:
+        yield str(d / 'eg5_cofactor_charged.sdf')
+
+
+@pytest.fixture(scope='session')
+def eg5_protein(eg5_protein_pdb) -> openfe.ProteinComponent:
+    return openfe.ProteinComponent.from_pdb_file(eg5_protein_pdb)
+
+
+@pytest.fixture(scope='session')
+def eg5_ligands(eg5_ligands_sdf) -> list[SmallMoleculeComponent]:
+    return [SmallMoleculeComponent(m)
+            for m in Chem.SDMolSupplier(eg5_ligands_sdf, removeHs=False)]
+
+
+@pytest.fixture(scope='session')
+def eg5_cofactor(eg5_cofactor_sdf) -> SmallMoleculeComponent:
+    return SmallMoleculeComponent.from_sdf_file(eg5_cofactor_sdf)
+
+
+@pytest.fixture(scope='session')
+def eg5_complex_systemA(eg5_protein, eg5_ligands, eg5_cofactor):
+    mol, _ = eg5_ligands
+    return openfe.ChemicalSystem(
+        {
+            'protein': eg5_protein,
+            'ligand': mol,
+            'cofactors': eg5_cofactor,
+            'solvent': openfe.SolventComponent(),
+        }
+    )
+
+
+@pytest.fixture(scope='session')
+def eg5_complex_systemB(eg5_protein, eg5_ligands, eg5_cofactor):
+    _, mol = eg5_ligands
+    return openfe.ChemicalSystem(
+        {
+            'protein': eg5_protein,
+            'ligand': mol,
+            'cofactors': eg5_cofactor,
+            'solvent': openfe.SolventComponent(),
+        }
+    )
+
+
+@pytest.fixture(scope="session")
+def eg5_ligands_mapping(benzene_modifications_charged, eg5_ligands):
+    mapper = openfe.setup.LomapAtomMapper(element_change=False)
+
+    molA, molB = eg5_ligands
+
+    return next(mapper.suggest_mappings(molA, molB))
+

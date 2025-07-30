@@ -436,3 +436,125 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
                 c_exp = toluene_rand_chg[new_i] - benzene_rand_chg[old_i]
                 np.testing.assert_allclose(c, benzene_rand_chg[old_i])
                 np.testing.assert_allclose(c_offsets[i], c_exp)
+
+
+@pytest.mark.slow
+def test_dry_run_complex(benzene_complex_system, toluene_complex_system,
+                         benzene_to_toluene_mapping, tmpdir):
+    # this will be very time consuming
+    settings = HybridTopProtocol.default_settings()
+    settings.protocol_repeats = 1
+    settings.output_settings.output_indices = 'protein or resname AAA'
+    settings.forcefield_settings.forcefields = ["openff-2.2.1.offxml", "ff14sb_off_impropers_0.0.3.offxml"]
+
+    protocol = HybridTopProtocol(settings=settings)
+    dag = protocol.create(
+        stateA=benzene_complex_system,
+        stateB=toluene_complex_system,
+        mapping=benzene_to_toluene_mapping,
+    )
+    dag_unit = list(dag.protocol_units)[0]
+
+    with tmpdir.as_cwd():
+        sampler = dag_unit.run(dry=True)['debug']['sampler']
+        assert isinstance(sampler, MultiStateSampler)
+        assert sampler.is_periodic
+        assert isinstance(sampler._thermodynamic_states[0].barostat,
+                          MonteCarloBarostat)
+        assert sampler._thermodynamic_states[1].pressure == 1 * omm_unit.bar
+
+        # Check we have the right number of atoms in the PDB
+        pdb = mdt.load_pdb('hybrid_system.pdb')
+        assert pdb.n_atoms == 2629
+
+        # Check system forces
+        system = sampler._hybrid_factory.hybrid_system
+        assert len(system.getForces()) == 10
+
+        def assert_force_num(system, forcetype, number):
+            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
+            assert len(forces) == number
+
+        assert_force_num(system, NonbondedForce, 1)
+        assert_force_num(system, CustomNonbondedForce, 1)
+        assert_force_num(system, CustomBondForce, 2)
+        assert_force_num(system, CustomAngleForce, 1)
+        assert_force_num(system, CustomTorsionForce, 1)
+        assert_force_num(system, HarmonicBondForce, 1)
+        assert_force_num(system, HarmonicAngleForce, 1)
+        assert_force_num(system, PeriodicTorsionForce, 1)
+        assert_force_num(system, MonteCarloBarostat, 1)
+
+        # Check the nonbonded force is NoCutoff
+        nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
+        assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+
+        # Check the unique, core & env atoms
+        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
+        assert len(sampler._hybrid_factory._unique_new_atoms) == 4
+        assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
+        assert len(sampler._hybrid_factory._env_old_to_new_map) == 52294
+
+
+@pytest.mark.slow
+def test_dry_run_complex_cofactor(
+    eg5_complex_systemA,
+    eg5_complex_systemB,
+    eg5_ligands_mapping,
+    tmpdir,
+):
+    # this will be very time consuming
+    settings = HybridTopProtocol.default_settings()
+    settings.protocol_repeats = 1
+    settings.output_settings.output_indices = 'protein or resname AAA'
+    settings.solvation_settings.box_shape = 'dodecahedron'
+    settings.solvation_settings.solvent_padding = 1.0 * unit.nanometer
+    settings.forcefield_settings.forcefields = ["openff-2.2.1.offxml", "ff14sb_off_impropers_0.0.3.offxml"]
+
+    protocol = HybridTopProtocol(settings=settings)
+    dag = protocol.create(
+        stateA=eg5_complex_systemA,
+        stateB=eg5_complex_systemB,
+        mapping=eg5_ligands_mapping,
+    )
+    dag_unit = list(dag.protocol_units)[0]
+
+    with tmpdir.as_cwd():
+        sampler = dag_unit.run(dry=True)['debug']['sampler']
+        assert isinstance(sampler, MultiStateSampler)
+        assert sampler.is_periodic
+        assert isinstance(sampler._thermodynamic_states[0].barostat,
+                          MonteCarloBarostat)
+        assert sampler._thermodynamic_states[1].pressure == 1 * omm_unit.bar
+
+        # Check we have the right number of atoms in the PDB
+        pdb = mdt.load_pdb('hybrid_system.pdb')
+        assert pdb.n_atoms == 5527
+
+        # Check system forces
+        system = sampler._hybrid_factory.hybrid_system
+        assert len(system.getForces()) == 10
+
+        def assert_force_num(system, forcetype, number):
+            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
+            assert len(forces) == number
+
+        assert_force_num(system, NonbondedForce, 1)
+        assert_force_num(system, CustomNonbondedForce, 1)
+        assert_force_num(system, CustomBondForce, 2)
+        assert_force_num(system, CustomAngleForce, 1)
+        assert_force_num(system, CustomTorsionForce, 1)
+        assert_force_num(system, HarmonicBondForce, 1)
+        assert_force_num(system, HarmonicAngleForce, 1)
+        assert_force_num(system, PeriodicTorsionForce, 1)
+        assert_force_num(system, MonteCarloBarostat, 1)
+
+        # Check the nonbonded force is NoCutoff
+        nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
+        assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+
+        # Check the unique, core & env atoms
+        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
+        assert len(sampler._hybrid_factory._unique_new_atoms) == 1
+        assert len(sampler._hybrid_factory._core_old_to_new_map) == 51
+        assert len(sampler._hybrid_factory._env_old_to_new_map) == 63440

@@ -133,3 +133,35 @@ def _check_library_charges(
     if len(matches) == 0:
         errmsg = f"No library charges found for {offmol}"
         raise ValueError(errmsg)
+
+
+def _get_num_residues(offmol: OFFMolecule) -> int:
+    """
+    Get the number of residues in a Molecule based
+    on how Interchange creates OpenMM Topology residues.
+    """
+
+    num_residx = 0
+    last_chain_id = None
+    last_resnum = None
+    last_resname = None
+
+    for at in offmol.atoms:
+        at_resname = at.metadata.get('residue_name', 'UNK')
+        at_resnum = at.metadata.get('residue_number', '0')
+        at_chain_id = at.metadata.get('chain_id', 'X')
+
+        if not all(
+            (
+                (last_resname == at_resname),
+                (last_resnum == at_resnum),
+                (last_chain_id == at_chain_id),
+            )
+        ):
+            last_chain_id = at_chain_id
+            last_resnum = at_resnum
+            last_resname = at_resname
+
+            num_residx += 1
+
+    return num_residx
