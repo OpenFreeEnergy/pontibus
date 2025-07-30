@@ -1472,15 +1472,15 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 7
+        return 41
 
     @pytest.fixture(scope="class")
     def num_neg_ions(self):
-        return 6
+        return 50
 
     @pytest.fixture(scope="class")
     def num_waters(self, num_residues, num_pos_ions, num_neg_ions):
-        return num_residues - (1 + num_neg_ions + num_pos_ions)
+        return num_residues - (1 + 164 + num_neg_ions + num_pos_ions)
 
     @pytest.fixture(scope='class')
     def num_protein_atoms(self):
@@ -1488,11 +1488,11 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
 
     @pytest.fixture(scope="class")
     def num_particles(self, num_waters, num_neg_ions, num_pos_ions):
-        return 7 + (3 * num_waters) + num_neg_ions + num_pos_ions + 2613
+        return 12 + 2613 + (3 * num_waters) + num_neg_ions + num_pos_ions
 
     @pytest.fixture(scope="class")
     def num_constraints(self, num_waters):
-        return 3 + (3 * num_waters)
+        return 6 + 1319 + (3 * num_waters)
 
     def test_system_total_charge(self, nonbonds, omm_system):
         total_charge = 0.0
@@ -1515,11 +1515,39 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
         # solvent
         assert_equal(list(comp_resids.values())[2], [i for i in range(165, num_residues)])
 
-    def test_solvent_resnames(self, omm_topology):
+    def test_solvent_resnames(self, omm_topology, num_pos_ions, num_neg_ions, num_waters):
+        counts = {
+            self.solvent_resname: 0,
+            'NA+': 0,
+            'CL-': 0,
+        }
         for i, res in enumerate(list(omm_topology.residues())[165:]):
             assert res.index == i + 165
             assert res.id == i + 2  # 2 because solute + protein first
-            assert res.name in [self.solvent_resname, "NA+", "CL-"]
+            counts[res.name] += 1
+
+        assert counts[self.solvent_resname] == num_waters
+        assert counts['NA+'] == num_pos_ions
+        assert counts['CL-'] == num_neg_ions
+
+    def test_solvent_nonbond_parameters(self, nonbonds, num_protein_atoms, num_waters):
+        solute_count = 12 + num_protein_atoms
+        for index in range(solute_count, solute_count + num_waters, 3):
+            # oxygen
+            c, s, e = nonbonds[0].getParticleParameters(index)
+            assert from_openmm(c) == -0.89517 * unit.elementary_charge
+            assert from_openmm(e).m == pytest.approx(0.683690704)
+            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+
+            # hydrogens
+            c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
+            c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
+            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
+            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
+            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1 == c2
+            assert s1 == s2
+            assert e2 == e2
 
 # def test_setcharge_coc_solvent(smc_components_benzene):
 #    ...
