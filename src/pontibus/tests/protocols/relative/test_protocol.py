@@ -141,6 +141,12 @@ def test_dry_run_default_vacuum(
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.NoCutoff
+        # Check switch distances
+        assert nonbond[0].getUseSwitchingFunction()
+        assert nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
+        custom_nonbond = [f for f in system.getForces() if isinstance(f, CustomNonbondedForce)]
+        assert custom_nonbond[0].getUseSwitchingFunction()
+        assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
 
 BENZ = """\
@@ -303,6 +309,12 @@ def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mappi
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+        # Check switch distances
+        assert nonbond[0].getUseSwitchingFunction()
+        assert nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
+        custom_nonbond = [f for f in system.getForces() if isinstance(f, CustomNonbondedForce)]
+        assert custom_nonbond[0].getUseSwitchingFunction()
+        assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
 
 def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
@@ -491,6 +503,12 @@ def test_dry_run_complex(
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+        # Check switch distances
+        assert nonbond[0].getUseSwitchingFunction()
+        assert nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
+        custom_nonbond = [f for f in system.getForces() if isinstance(f, CustomNonbondedForce)]
+        assert custom_nonbond[0].getUseSwitchingFunction()
+        assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
@@ -499,7 +517,7 @@ def test_dry_run_complex(
         assert len(sampler._hybrid_factory._env_old_to_new_map) == 52294
 
 
-@pytest.mark.slow
+@pytest.mark.cpuvslow
 def test_dry_run_complex_cofactor(
     eg5_complex_systemA,
     eg5_complex_systemB,
@@ -557,6 +575,12 @@ def test_dry_run_complex_cofactor(
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+        # Check switch distances
+        assert nonbond[0].getUseSwitchingFunction()
+        assert nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
+        custom_nonbond = [f for f in system.getForces() if isinstance(f, CustomNonbondedForce)]
+        assert custom_nonbond[0].getUseSwitchingFunction()
+        assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
