@@ -12,6 +12,8 @@ from gufe import SmallMoleculeComponent
 from openff.units import unit
 from rdkit import Chem
 
+from pontibus.utils.system_creation import _proteincomp_to_topology
+
 
 class SlowTests:
     """Plugin for handling fixtures that skips slow tests
@@ -180,6 +182,11 @@ def T4_protein_component():
         comp = gufe.ProteinComponent.from_pdb_file(fn, name="T4_protein")
 
     return comp
+
+
+@pytest.fixture(scope="session")
+def T4_protein_offtop(T4_protein_component):
+    return _proteincomp_to_topology(T4_protein_component)
 
 
 @pytest.fixture

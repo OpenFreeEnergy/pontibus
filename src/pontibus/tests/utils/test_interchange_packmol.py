@@ -2,6 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
+import copy
 
 import numpy as np
 import pytest
@@ -25,7 +26,6 @@ from pontibus.protocols.solvation.settings import (
     PackmolSolvationSettings,
 )
 from pontibus.utils.molecule_utils import (
-    _check_library_charges,
     _get_offmol_resname,
     _set_offmol_resname,
 )
@@ -73,7 +73,8 @@ def methanol():
 
 @pytest.fixture(scope="module")
 def water_off():
-    return WATER.to_openff()
+    m = WATER.to_openff()
+    return m
 
 
 @pytest.fixture(scope="module")
@@ -126,17 +127,6 @@ def test_get_and_set_offmol_resname(CN_molecule, caplog):
     with caplog.at_level(logging.WARNING):
         assert _get_offmol_resname(CN_off) is None
     assert "Inconsistent metadata residue_name" in caplog.text
-
-
-def test_check_library_charges_pass(water_off):
-    ff = ForceField("opc.offxml")
-    _check_library_charges(ff, water_off)
-
-
-def test_check_library_charges_fail(methanol):
-    ff = ForceField("openff-2.0.0.offxml")
-    with pytest.raises(ValueError, match="No library charges"):
-        _check_library_charges(ff, methanol)
 
 
 def test_check_charged_mols_pass(methanol):
@@ -267,6 +257,47 @@ def test_resname_solvent_ion_clash(smc_components_benzene_named, resname):
             solv_off,
             None,
             None,
+        )
+
+
+def test_comp_resnames_and_keys(
+    smc_components_benzene_named,
+    water_off,
+    T4_protein_component,
+    T4_protein_offtop
+):
+    protmol = copy.deepcopy(T4_protein_offtop.molecule(0))
+
+    _assign_comp_resnames_and_keys(
+            smc_components=smc_components_benzene_named,
+            solvent_component=SolventComponent(),
+            solvent_offmol=water_off,
+            protein_component=T4_protein_component,
+            protein_molecules=[protmol],
+    )
+
+    assert water_off.properties['key'] == SolventComponent().key
+    assert protmol.properties['key'] == T4_protein_component.key
+    for key, val in smc_components_benzene_named.items():
+        assert val.properties['key'] == key.key
+
+
+def test_comp_resnames_and_keys_missing_prot_residueinfo(
+    smc_components_benzene_named,
+    water_off,
+    T4_protein_component,
+    T4_protein_offtop
+):
+    protmol = copy.deepcopy(T4_protein_offtop.molecule(0))
+    protmol.atoms[0].metadata.pop("residue_name")
+
+    with pytest.raises(ValueError, match="missing residue info"):
+        _assign_comp_resnames_and_keys(
+            smc_components=smc_components_benzene_named,
+            solvent_component=SolventComponent(),
+            solvent_offmol=water_off,
+            protein_component=T4_protein_component,
+            protein_molecules=[protmol],
         )
 
 
