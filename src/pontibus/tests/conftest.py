@@ -264,40 +264,40 @@ def benzene_to_toluene_mapping(benzene_modifications_charged):
 
 
 @pytest.fixture(scope="session")
-def eg5_protein_pdb():
+def eg5_protein_pdb():  # pragma: no cover
     with resources.as_file(resources.files("pontibus.tests.data")) as d:
         yield str(d / "eg5_protein.pdb")
 
 
 @pytest.fixture(scope="session")
-def eg5_ligands_sdf():
+def eg5_ligands_sdf():  # pragma: no cover
     with resources.as_file(resources.files("pontibus.tests.data")) as d:
         yield str(d / "eg5_ligands_charged.sdf")
 
 
 @pytest.fixture(scope="session")
-def eg5_cofactor_sdf():
+def eg5_cofactor_sdf():  # pragma: no cover
     with resources.as_file(resources.files("pontibus.tests.data")) as d:
         yield str(d / "eg5_cofactor_charged.sdf")
 
 
 @pytest.fixture(scope="session")
-def eg5_protein(eg5_protein_pdb) -> openfe.ProteinComponent:
+def eg5_protein(eg5_protein_pdb) -> openfe.ProteinComponent:  # pragma: no cover
     return openfe.ProteinComponent.from_pdb_file(eg5_protein_pdb)
 
 
 @pytest.fixture(scope="session")
-def eg5_ligands(eg5_ligands_sdf) -> list[SmallMoleculeComponent]:
+def eg5_ligands(eg5_ligands_sdf) -> list[SmallMoleculeComponent]:  # pragma: no cover
     return [SmallMoleculeComponent(m) for m in Chem.SDMolSupplier(eg5_ligands_sdf, removeHs=False)]
 
 
 @pytest.fixture(scope="session")
-def eg5_cofactor(eg5_cofactor_sdf) -> SmallMoleculeComponent:
+def eg5_cofactor(eg5_cofactor_sdf) -> SmallMoleculeComponent:  # pragma: no cover
     return SmallMoleculeComponent.from_sdf_file(eg5_cofactor_sdf)
 
 
 @pytest.fixture(scope="session")
-def eg5_complex_systemA(eg5_protein, eg5_ligands, eg5_cofactor):
+def eg5_complex_systemA(eg5_protein, eg5_ligands, eg5_cofactor):  # pragma: no cover
     mol, _ = eg5_ligands
     return openfe.ChemicalSystem(
         {
@@ -310,7 +310,7 @@ def eg5_complex_systemA(eg5_protein, eg5_ligands, eg5_cofactor):
 
 
 @pytest.fixture(scope="session")
-def eg5_complex_systemB(eg5_protein, eg5_ligands, eg5_cofactor):
+def eg5_complex_systemB(eg5_protein, eg5_ligands, eg5_cofactor):  # pragma: no cover
     _, mol = eg5_ligands
     return openfe.ChemicalSystem(
         {
@@ -323,7 +323,7 @@ def eg5_complex_systemB(eg5_protein, eg5_ligands, eg5_cofactor):
 
 
 @pytest.fixture(scope="session")
-def eg5_ligands_mapping(benzene_modifications_charged, eg5_ligands):
+def eg5_ligands_mapping(benzene_modifications_charged, eg5_ligands):  # pragma: no cover
     mapper = openfe.setup.LomapAtomMapper(element_change=False)
 
     molA, molB = eg5_ligands
