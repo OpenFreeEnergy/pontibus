@@ -245,7 +245,7 @@ def _assign_comp_resnames_and_keys(
     # If we have solvent, we set its residue name
     if solvent_component is not None:
         # Assign the key
-        solvent_offmol.properties['key'] = str(solvent_component.key)
+        solvent_offmol.properties['key'] = str(solvent_component.key)  # type: ignore[union-attr]
 
         # Assign the resname if necessary
         offmol_resname = _get_offmol_resname(solvent_offmol)
@@ -286,7 +286,7 @@ def _assign_comp_resnames_and_keys(
 
     if protein_component is not None:
         # Assign the key and check that everything has a resname
-        for mol in protein_molecules:
+        for mol in protein_molecules:  # type: ignore[union-attr]
             mol.properties['key'] = str(protein_component.key)
 
             for at in mol.atoms:

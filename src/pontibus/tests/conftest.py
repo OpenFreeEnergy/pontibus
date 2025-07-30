@@ -36,7 +36,7 @@ class SlowTests:
     -----------------------
 
     To add these fixtures simply add a `@pytest.mark.gpu` or
-    `@pytest.mark.slow` or `@pytest.mark.cpuslow`
+    `@pytest.mark.slow` or `@pytest.mark.cpuvslow`
     decorator to the relevant function or class.
 
 

@@ -438,9 +438,13 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
                 np.testing.assert_allclose(c_offsets[i], c_exp)
 
 
-@pytest.mark.slow
-def test_dry_run_complex(benzene_complex_system, toluene_complex_system,
-                         benzene_to_toluene_mapping, tmpdir):
+@pytest.mark.cpuvslow
+def test_dry_run_complex(
+    benzene_complex_system,
+    toluene_complex_system,
+    benzene_to_toluene_mapping,
+    tmpdir
+):  # pragma: no cover
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
     settings.protocol_repeats = 1
@@ -502,7 +506,7 @@ def test_dry_run_complex_cofactor(
     eg5_complex_systemB,
     eg5_ligands_mapping,
     tmpdir,
-):
+):  # pragma: no cover
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
     settings.protocol_repeats = 1
