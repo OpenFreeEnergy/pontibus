@@ -51,6 +51,7 @@ from openmmtools import multistate
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
+from pontibus.utils.molecule_utils import _get_num_residues
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
@@ -180,18 +181,27 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             stateB_charged_mols.append(solvent_offmol)
 
         # Set the stateB interchange
-        interB = copy_interchange_with_replacement(
-            interchange=interA,
-            del_mol=small_mols["stateA"][0][1],
-            insert_mol=small_mols["stateB"][0][1],
-            force_field=_get_force_field(forcefield_settings),
-            charged_molecules=stateB_charged_mols,
+        with without_oechem_backend():
+            interB = copy_interchange_with_replacement(
+                interchange=interA,
+                del_mol=small_mols["stateA"][0][1],
+                insert_mol=small_mols["stateB"][0][1],
+                force_field=_get_force_field(forcefield_settings),
+                charged_molecules=stateB_charged_mols,
+            )
+
+        # stateB alchemical resid is the last N residues of the omm topology
+        # where N is the number of residues in that molecule
+        last_residx = interB.to_openmm_topology(collate=True).getNumResidues() - 1
+        alchemB_nresids = _get_num_residues(interB.topology.molecule(-1))
+        alchemB_resids = np.array(
+            [r for r in range(last_residx, last_residx - alchemB_nresids, -1)], dtype=int
         )
 
         # Fetch the alchemical resids for each state from the comp_resids
         alchem_resids = {
             "stateA": comp_residsA[small_mols["stateA"][0][0]],
-            "stateB": np.array([interB.topology.n_molecules - 1], dtype=int),
+            "stateB": alchemB_resids,
         }
 
         return interA, interB, alchem_resids
