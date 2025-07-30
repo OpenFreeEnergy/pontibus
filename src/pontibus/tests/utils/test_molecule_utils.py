@@ -2,13 +2,14 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import pytest
-from openff.toolkit import Molecule, ForceField
-from pontibus.utils.molecules import WATER
+from openff.toolkit import ForceField, Molecule
+
 from pontibus.utils.molecule_utils import (
     _check_library_charges,
     _get_num_residues,
     _set_offmol_metadata,
 )
+from pontibus.utils.molecules import WATER
 
 
 @pytest.fixture(scope="module")
@@ -39,9 +40,7 @@ def test_num_residues_base(water_off):
     assert _get_num_residues(water_off) == 1
 
 
-@pytest.mark.parametrize(
-     "property", ["chain_id", "residue_name", "residue_number"]
-)
+@pytest.mark.parametrize("property", ["chain_id", "residue_name", "residue_number"])
 def test_num_residues_splitprop(property):
     m = Molecule.from_smiles("C")
     _set_offmol_metadata(m, property, "A")

@@ -1,8 +1,8 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-import logging
 import copy
+import logging
 
 import numpy as np
 import pytest
@@ -261,32 +261,26 @@ def test_resname_solvent_ion_clash(smc_components_benzene_named, resname):
 
 
 def test_comp_resnames_and_keys(
-    smc_components_benzene_named,
-    water_off,
-    T4_protein_component,
-    T4_protein_offtop
+    smc_components_benzene_named, water_off, T4_protein_component, T4_protein_offtop
 ):
     protmol = copy.deepcopy(T4_protein_offtop.molecule(0))
 
     _assign_comp_resnames_and_keys(
-            smc_components=smc_components_benzene_named,
-            solvent_component=SolventComponent(),
-            solvent_offmol=water_off,
-            protein_component=T4_protein_component,
-            protein_molecules=[protmol],
+        smc_components=smc_components_benzene_named,
+        solvent_component=SolventComponent(),
+        solvent_offmol=water_off,
+        protein_component=T4_protein_component,
+        protein_molecules=[protmol],
     )
 
-    assert water_off.properties['key'] == SolventComponent().key
-    assert protmol.properties['key'] == T4_protein_component.key
+    assert water_off.properties["key"] == SolventComponent().key
+    assert protmol.properties["key"] == T4_protein_component.key
     for key, val in smc_components_benzene_named.items():
-        assert val.properties['key'] == key.key
+        assert val.properties["key"] == key.key
 
 
 def test_comp_resnames_and_keys_missing_prot_residueinfo(
-    smc_components_benzene_named,
-    water_off,
-    T4_protein_component,
-    T4_protein_offtop
+    smc_components_benzene_named, water_off, T4_protein_component, T4_protein_offtop
 ):
     protmol = copy.deepcopy(T4_protein_offtop.molecule(0))
     protmol.atoms[0].metadata.pop("residue_name")
