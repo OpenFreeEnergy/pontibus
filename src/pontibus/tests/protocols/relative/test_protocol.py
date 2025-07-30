@@ -440,16 +440,16 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
 
 @pytest.mark.cpuvslow
 def test_dry_run_complex(
-    benzene_complex_system,
-    toluene_complex_system,
-    benzene_to_toluene_mapping,
-    tmpdir
+    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, tmpdir
 ):  # pragma: no cover
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
     settings.protocol_repeats = 1
-    settings.output_settings.output_indices = 'protein or resname AAA'
-    settings.forcefield_settings.forcefields = ["openff-2.2.1.offxml", "ff14sb_off_impropers_0.0.3.offxml"]
+    settings.output_settings.output_indices = "protein or resname AAA"
+    settings.forcefield_settings.forcefields = [
+        "openff-2.2.1.offxml",
+        "ff14sb_off_impropers_0.0.3.offxml",
+    ]
 
     protocol = HybridTopProtocol(settings=settings)
     dag = protocol.create(
@@ -460,15 +460,14 @@ def test_dry_run_complex(
     dag_unit = list(dag.protocol_units)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)['debug']['sampler']
+        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert sampler.is_periodic
-        assert isinstance(sampler._thermodynamic_states[0].barostat,
-                          MonteCarloBarostat)
+        assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
         assert sampler._thermodynamic_states[1].pressure == 1 * omm_unit.bar
 
         # Check we have the right number of atoms in the PDB
-        pdb = mdt.load_pdb('hybrid_system.pdb')
+        pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 2629
 
         # Check system forces
@@ -510,10 +509,13 @@ def test_dry_run_complex_cofactor(
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
     settings.protocol_repeats = 1
-    settings.output_settings.output_indices = 'protein or resname AAA'
-    settings.solvation_settings.box_shape = 'dodecahedron'
+    settings.output_settings.output_indices = "protein or resname AAA"
+    settings.solvation_settings.box_shape = "dodecahedron"
     settings.solvation_settings.solvent_padding = 1.0 * unit.nanometer
-    settings.forcefield_settings.forcefields = ["openff-2.2.1.offxml", "ff14sb_off_impropers_0.0.3.offxml"]
+    settings.forcefield_settings.forcefields = [
+        "openff-2.2.1.offxml",
+        "ff14sb_off_impropers_0.0.3.offxml",
+    ]
 
     protocol = HybridTopProtocol(settings=settings)
     dag = protocol.create(
@@ -524,15 +526,14 @@ def test_dry_run_complex_cofactor(
     dag_unit = list(dag.protocol_units)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)['debug']['sampler']
+        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert sampler.is_periodic
-        assert isinstance(sampler._thermodynamic_states[0].barostat,
-                          MonteCarloBarostat)
+        assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
         assert sampler._thermodynamic_states[1].pressure == 1 * omm_unit.bar
 
         # Check we have the right number of atoms in the PDB
-        pdb = mdt.load_pdb('hybrid_system.pdb')
+        pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 5527
 
         # Check system forces

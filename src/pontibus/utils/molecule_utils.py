@@ -147,9 +147,9 @@ def _get_num_residues(offmol: OFFMolecule) -> int:
     last_resname = None
 
     for at in offmol.atoms:
-        at_resname = at.metadata.get('residue_name', 'UNK')
-        at_resnum = at.metadata.get('residue_number', '0')
-        at_chain_id = at.metadata.get('chain_id', 'X')
+        at_resname = at.metadata.get("residue_name", "UNK")
+        at_resnum = at.metadata.get("residue_number", "0")
+        at_chain_id = at.metadata.get("chain_id", "X")
 
         if not all(
             (

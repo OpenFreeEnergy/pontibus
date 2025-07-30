@@ -1,9 +1,9 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import logging
+import tempfile
 from itertools import product
 from string import ascii_uppercase
-import tempfile
 
 import numpy as np
 import numpy.typing as npt
@@ -22,10 +22,10 @@ from openff.units import Quantity, unit
 
 from pontibus.utils.molecule_utils import (
     _check_library_charges,
-    _get_offmol_resname,
-    _set_offmol_resname,
-    _set_offmol_metadata,
     _get_num_residues,
+    _get_offmol_resname,
+    _set_offmol_metadata,
+    _set_offmol_resname,
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
@@ -36,9 +36,7 @@ from pontibus.utils.settings import (
 logger = logging.getLogger(__name__)
 
 
-def _proteincomp_to_topology(
-    protein_component: ProteinComponent
-) -> Topology:
+def _proteincomp_to_topology(protein_component: ProteinComponent) -> Topology:
     """
     Convert a ProteinComponent to an OpenFF Topology via PDB serialization.
 
@@ -245,7 +243,7 @@ def _assign_comp_resnames_and_keys(
     # If we have solvent, we set its residue name
     if solvent_component is not None:
         # Assign the key
-        solvent_offmol.properties['key'] = str(solvent_component.key)  # type: ignore[union-attr]
+        solvent_offmol.properties["key"] = str(solvent_component.key)  # type: ignore[union-attr]
 
         # Assign the resname if necessary
         offmol_resname = _get_offmol_resname(solvent_offmol)
@@ -265,7 +263,7 @@ def _assign_comp_resnames_and_keys(
 
     for comp, offmol in smc_components.items():
         # Assign the key
-        offmol.properties['key'] = str(comp.key)
+        offmol.properties["key"] = str(comp.key)
 
         # Assign the resname if necessary
         off_resname = _get_offmol_resname(offmol)
@@ -287,7 +285,7 @@ def _assign_comp_resnames_and_keys(
     if protein_component is not None:
         # Assign the key and check that everything has a resname
         for mol in protein_molecules:  # type: ignore[union-attr]
-            mol.properties['key'] = str(protein_component.key)
+            mol.properties["key"] = str(protein_component.key)
 
             for at in mol.atoms:
                 if "residue_name" not in at.metadata:
@@ -384,13 +382,13 @@ def _solvate_system(
             molecules = [m for m in topology.molecules]
             na = OFFMolecule.from_smiles("[Na+]")
             cl = OFFMolecule.from_smiles("[Cl-]")
-            solvent_key = solvent_offmol.properties['key']
+            solvent_key = solvent_offmol.properties["key"]
             for mol in molecules:
                 if _get_offmol_resname(mol) is not None:
                     continue
 
-                if 'key' not in mol.properties:
-                    mol.properties['key'] = solvent_key
+                if "key" not in mol.properties:
+                    mol.properties["key"] = solvent_key
 
                 if mol.is_isomorphic_with(solvent_offmol):
                     _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))
@@ -416,10 +414,7 @@ def _solvate_system(
 
 
 def _post_process_topology(
-    pre_topology,
-    smc_components,
-    solvent_component,
-    protein_component
+    pre_topology, smc_components, solvent_component, protein_component
 ) -> tuple[Topology, dict[Component, npt.NDArray]]:
     """
     Helper method to post-process a Topology and get a comp:resid dictionary
@@ -456,26 +451,23 @@ def _post_process_topology(
 
     for extra_comp in [solvent_component, protein_component]:
         if extra_comp is not None:
-            comps.append(extra_comp)        
+            comps.append(extra_comp)
 
     # A dictionary of key:comp for later use
-    key_to_comp: dict[str, Component] = {
-        comp.key : comp
-        for comp in comps
-    }
+    key_to_comp: dict[str, Component] = {comp.key: comp for comp in comps}
 
     # Do some checks and get a list of all existing chains
     known_chains = set()
     for mol in mols:
-        chain_truth = ['chain_id' in at.metadata for at in mol.atoms]
-        resnum_truth = ['residue_number' in at.metadata for at in mol.atoms]
+        chain_truth = ["chain_id" in at.metadata for at in mol.atoms]
+        resnum_truth = ["residue_number" in at.metadata for at in mol.atoms]
 
         if any(chain_truth):
             if not all(chain_truth):
                 errmsg = f"All atoms in {mol} must have chain ID defined"
                 raise ValueError(errmsg)
 
-            chain_ids = set([at.metadata['chain_id'] for at in mol.atoms])
+            chain_ids = set([at.metadata["chain_id"] for at in mol.atoms])
             known_chains.update(chain_ids)
 
         if any(resnum_truth):
@@ -491,10 +483,7 @@ def _post_process_topology(
         raise ValueError(errmsg)
 
     # Add in a chain for each SmallMoleculeComponent
-    chains = {
-        comp.key : chain_id
-        for comp, chain_id in zip(comps, available_ids)
-    }
+    chains = {comp.key: chain_id for comp, chain_id in zip(comps, available_ids)}
 
     # Temporary container to feed comp_resids
     compkey_residx = {}
@@ -505,22 +494,20 @@ def _post_process_topology(
 
         # set the chain if no chain is specified
         # already checked that all atoms must be specified if any
-        if 'chain_id' not in mol.atoms[0].metadata:
-            _set_offmol_metadata(
-                mol, "chain_id", chains[mol.properties['key']]
-            )
+        if "chain_id" not in mol.atoms[0].metadata:
+            _set_offmol_metadata(mol, "chain_id", chains[mol.properties["key"]])
 
         # set the residue number if it's not been set on the first atom
-        if 'residue_number' not in mol.atoms[0].metadata:
+        if "residue_number" not in mol.atoms[0].metadata:
             _set_offmol_metadata(mol, "residue_number", mol_index)
 
-        # Get the number of residues this molecule spans        
+        # Get the number of residues this molecule spans
         # let's duplicate the interchange behaviour
         num_residx = _get_num_residues(mol)
 
         # update compkey_residx
-        key = mol.properties['key']
-        residx_range = [r for r in range(residx, residx+num_residx)]
+        key = mol.properties["key"]
+        residx_range = [r for r in range(residx, residx + num_residx)]
         if key not in compkey_residx:
             compkey_residx[key] = residx_range
         else:
@@ -531,8 +518,7 @@ def _post_process_topology(
 
     # Turn compkey_resids to comp_resids
     comp_resids = {
-        key_to_comp[key]: np.array(val, dtype=int)
-        for key, val in compkey_residx.items()
+        key_to_comp[key]: np.array(val, dtype=int) for key, val in compkey_residx.items()
     }
 
     # create the new Topology
@@ -586,10 +572,7 @@ def interchange_packmol_creation(
 
     # Get protein molecules if needed
     if protein_component is not None:
-        protein_molecules = [
-            m for m in
-            _proteincomp_to_topology(protein_component).molecules
-        ]
+        protein_molecules = [m for m in _proteincomp_to_topology(protein_component).molecules]
     else:
         protein_molecules = None
 
@@ -638,7 +621,7 @@ def interchange_packmol_creation(
         pre_topology=topology,
         smc_components=smc_components,
         solvent_component=solvent_component,
-        protein_component=protein_component
+        protein_component=protein_component,
     )
 
     # Run validation checks on inputs to Interchange

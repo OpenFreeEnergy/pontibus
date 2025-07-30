@@ -51,6 +51,7 @@ from openmmtools import multistate
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
+from pontibus.utils.molecule_utils import _get_num_residues
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
@@ -63,8 +64,6 @@ from pontibus.utils.system_manipulation import (
     adjust_system,
     copy_interchange_with_replacement,
 )
-from pontibus.utils.molecule_utils import _get_num_residues
-
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +195,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         last_residx = interB.to_openmm_topology(collate=True).getNumResidues() - 1
         alchemB_nresids = _get_num_residues(interB.topology.molecule(-1))
         alchemB_resids = np.array(
-            [r for r in range(last_residx, last_residx-alchemB_nresids, -1)],
-            dtype=int
+            [r for r in range(last_residx, last_residx - alchemB_nresids, -1)], dtype=int
         )
 
         # Fetch the alchemical resids for each state from the comp_resids

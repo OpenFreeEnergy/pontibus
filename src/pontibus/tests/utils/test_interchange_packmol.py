@@ -31,12 +31,12 @@ from pontibus.utils.molecule_utils import (
 )
 from pontibus.utils.molecules import WATER
 from pontibus.utils.system_creation import (
-    _check_and_deduplicate_charged_mols,
     _assign_comp_resnames_and_keys,
+    _check_and_deduplicate_charged_mols,
     _get_force_field,
+    _proteincomp_to_topology,
     _solvate_system,
     interchange_packmol_creation,
-    _proteincomp_to_topology,
 )
 
 
@@ -94,13 +94,17 @@ def water_off_am1bcc():
 def test_convert_proteincomp(T4_protein_component):
     # Get an OpenFF Toplogy by going through rdkit
     rdmols = Chem.GetMolFrags(T4_protein_component.to_rdkit(), asMols=True, sanitizeFrags=False)
-    ofe_mol = Molecule.from_rdkit(rdmols[0], allow_undefined_stereo=True, hydrogens_are_explicit=True)
+    ofe_mol = Molecule.from_rdkit(
+        rdmols[0], allow_undefined_stereo=True, hydrogens_are_explicit=True
+    )
     ofe_top = Topology.from_molecules([ofe_mol])
     # The the OpenFF Topology with the tooling
     off_top = _proteincomp_to_topology(T4_protein_component)
 
     # light isormophic check
-    assert off_top.molecule(0).is_isomorphic_with(ofe_top.molecule(0), atom_stereochemistry_matching=False)
+    assert off_top.molecule(0).is_isomorphic_with(
+        ofe_top.molecule(0), atom_stereochemistry_matching=False
+    )
 
 
 def test_get_and_set_offmol_resname(CN_molecule, caplog):
@@ -258,7 +262,11 @@ def test_resname_solvent_ion_clash(smc_components_benzene_named, resname):
     errmsg = "Solvent resname is set to"
     with pytest.raises(ValueError, match=errmsg):
         _assign_comp_resnames_and_keys(
-            smc_components_benzene_named, ExtendedSolventComponent(neutralize=True), solv_off, None, None
+            smc_components_benzene_named,
+            ExtendedSolventComponent(neutralize=True),
+            solv_off,
+            None,
+            None,
         )
 
 
@@ -1447,7 +1455,11 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
         protein_component = request.getfixturevalue(self.protein_comp)
         interchange, comp_resids = interchange_packmol_creation(
             ffsettings=InterchangeFFSettings(
-                forcefields=["openff-2.0.0.offxml", "ff14sb_off_impropers_0.0.3.offxml", "opc3.offxml"],
+                forcefields=[
+                    "openff-2.0.0.offxml",
+                    "ff14sb_off_impropers_0.0.3.offxml",
+                    "opc3.offxml",
+                ],
             ),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components,
@@ -1482,7 +1494,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
     def num_waters(self, num_residues, num_pos_ions, num_neg_ions):
         return num_residues - (1 + 164 + num_neg_ions + num_pos_ions)
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope="class")
     def num_protein_atoms(self):
         return 2613
 
@@ -1518,8 +1530,8 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
     def test_solvent_resnames(self, omm_topology, num_pos_ions, num_neg_ions, num_waters):
         counts = {
             self.solvent_resname: 0,
-            'NA+': 0,
-            'CL-': 0,
+            "NA+": 0,
+            "CL-": 0,
         }
         for i, res in enumerate(list(omm_topology.residues())[165:]):
             assert res.index == i + 165
@@ -1527,8 +1539,8 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             counts[res.name] += 1
 
         assert counts[self.solvent_resname] == num_waters
-        assert counts['NA+'] == num_pos_ions
-        assert counts['CL-'] == num_neg_ions
+        assert counts["NA+"] == num_pos_ions
+        assert counts["CL-"] == num_neg_ions
 
     def test_solvent_nonbond_parameters(self, nonbonds, num_protein_atoms, num_waters):
         solute_count = 12 + num_protein_atoms
@@ -1548,6 +1560,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
+
 
 # def test_setcharge_coc_solvent(smc_components_benzene):
 #    ...
