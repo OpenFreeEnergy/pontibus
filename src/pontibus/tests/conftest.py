@@ -1,7 +1,6 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
-import importlib
 import os
 from importlib import resources
 
@@ -140,7 +139,7 @@ def pytest_configure(config):
 @pytest.fixture(scope="session")
 def benzene_modifications():
     files = {}
-    with importlib.resources.files("pontibus.tests.data") as d:
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
         fn = str(d / "benzene_modifications.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
         for rdmol in supp:
@@ -151,7 +150,7 @@ def benzene_modifications():
 @pytest.fixture(scope="session")
 def benzene_modifications_charged():
     files = {}
-    with importlib.resources.files("pontibus.tests.data") as d:
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
         fn = str(d / "benzene_modifications_charged.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
         for rdmol in supp:
@@ -164,7 +163,7 @@ def CN_molecule():
     """
     A basic CH3NH2 molecule for quick testing.
     """
-    with resources.files("openfe.tests.data") as d:
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
         fn = str(d / "CN.sdf")
         supp = Chem.SDMolSupplier(str(fn), removeHs=False)
 
@@ -175,7 +174,7 @@ def CN_molecule():
 
 @pytest.fixture(scope="session")
 def T4_protein_component():
-    with resources.files("openfe.tests.data") as d:
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
         fn = str(d / "181l_only.pdb")
         comp = gufe.ProteinComponent.from_pdb_file(fn, name="T4_protein")
 
