@@ -11,6 +11,8 @@ from gufe import SmallMoleculeComponent
 from openff.units import unit
 from rdkit import Chem
 
+from pontibus.utils.system_creation import _proteincomp_to_topology
+
 
 class SlowTests:
     """Plugin for handling fixtures that skips slow tests
@@ -35,7 +37,7 @@ class SlowTests:
     -----------------------
 
     To add these fixtures simply add a `@pytest.mark.gpu` or
-    `@pytest.mark.slow` or `@pytest.mark.cpuslow`
+    `@pytest.mark.slow` or `@pytest.mark.cpuvslow`
     decorator to the relevant function or class.
 
 
@@ -181,6 +183,11 @@ def T4_protein_component():
     return comp
 
 
+@pytest.fixture(scope="session")
+def T4_protein_offtop(T4_protein_component):
+    return _proteincomp_to_topology(T4_protein_component)
+
+
 @pytest.fixture
 def benzene_vacuum_system(benzene_modifications_charged):
     return openfe.ChemicalSystem(
@@ -251,5 +258,73 @@ def benzene_to_toluene_mapping(benzene_modifications_charged):
 
     molA = benzene_modifications_charged["benzene"]
     molB = benzene_modifications_charged["toluene"]
+
+    return next(mapper.suggest_mappings(molA, molB))
+
+
+@pytest.fixture(scope="session")
+def eg5_protein_pdb():  # pragma: no cover
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
+        yield str(d / "eg5_protein.pdb")
+
+
+@pytest.fixture(scope="session")
+def eg5_ligands_sdf():  # pragma: no cover
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
+        yield str(d / "eg5_ligands_charged.sdf")
+
+
+@pytest.fixture(scope="session")
+def eg5_cofactor_sdf():  # pragma: no cover
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
+        yield str(d / "eg5_cofactor_charged.sdf")
+
+
+@pytest.fixture(scope="session")
+def eg5_protein(eg5_protein_pdb) -> openfe.ProteinComponent:  # pragma: no cover
+    return openfe.ProteinComponent.from_pdb_file(eg5_protein_pdb)
+
+
+@pytest.fixture(scope="session")
+def eg5_ligands(eg5_ligands_sdf) -> list[SmallMoleculeComponent]:  # pragma: no cover
+    return [SmallMoleculeComponent(m) for m in Chem.SDMolSupplier(eg5_ligands_sdf, removeHs=False)]
+
+
+@pytest.fixture(scope="session")
+def eg5_cofactor(eg5_cofactor_sdf) -> SmallMoleculeComponent:  # pragma: no cover
+    return SmallMoleculeComponent.from_sdf_file(eg5_cofactor_sdf)
+
+
+@pytest.fixture(scope="session")
+def eg5_complex_systemA(eg5_protein, eg5_ligands, eg5_cofactor):  # pragma: no cover
+    mol, _ = eg5_ligands
+    return openfe.ChemicalSystem(
+        {
+            "protein": eg5_protein,
+            "ligand": mol,
+            "cofactors": eg5_cofactor,
+            "solvent": openfe.SolventComponent(),
+        }
+    )
+
+
+@pytest.fixture(scope="session")
+def eg5_complex_systemB(eg5_protein, eg5_ligands, eg5_cofactor):  # pragma: no cover
+    _, mol = eg5_ligands
+    return openfe.ChemicalSystem(
+        {
+            "protein": eg5_protein,
+            "ligand": mol,
+            "cofactors": eg5_cofactor,
+            "solvent": openfe.SolventComponent(),
+        }
+    )
+
+
+@pytest.fixture(scope="session")
+def eg5_ligands_mapping(benzene_modifications_charged, eg5_ligands):  # pragma: no cover
+    mapper = openfe.setup.LomapAtomMapper(element_change=False)
+
+    molA, molB = eg5_ligands
 
     return next(mapper.suggest_mappings(molA, molB))
