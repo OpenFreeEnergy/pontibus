@@ -131,7 +131,7 @@ def _box_density_from_mols(
 
     Acknowledgements
     ----------------
-    Adapted from openff.Interchange, with a fix to account for solute mass.
+    Adapted from openff.interchange, with a fix to account for solute mass.
     """
     # Get the desired volume in cubic working units
     molecules_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) * n for molecule, n in zip(molecules, n_copies))
@@ -151,6 +151,42 @@ def _neutralize_and_pack_box(
     box_vectors: Quantity,
     solvent_molarity: Quantity = Quantity(55.4, "mole / liter")
 ) -> Topology:
+    """
+    Parameters
+    ----------
+    solute_topology : openff.toolkit.Topology
+      The solute topology.
+    solvent : openff.toolkit.Molecule
+      An OpenFF Molecule representing the solvent.
+    init_n_solvent_mols : int
+      The "initial" number of solvent molecules to be placed.
+    ion_concentration : openff.units.Quantity
+      The salt concentration to add.
+    packing_tolerance : openff.units.Quantity
+      The packmol packing tolerance.
+    box_vectors : openff.units.Quantity
+      The box vectors of the final box to be written.
+    solvent_molarity : openff.units.Quantity
+      The pure solvent molarity, default to water at 55.4 mole/liter.
+
+    Returns
+    -------
+    Topology
+      The solvated topology.
+
+    Raises
+    ------
+    ValueError
+      If the total charge after adding the ions, is not close to zero.
+
+    Notes
+    -----
+    For now this only really works for water.
+
+    Acknowledgements
+    ----------------
+    Adapted from openff.interchange
+    """
 
     solute_charge = sum([molecule.total_charge.m for molecule in solute_topology.molecules])
     solute_charge_magnitude = np.abs(solute_charge)
