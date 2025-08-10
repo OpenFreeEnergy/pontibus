@@ -35,9 +35,9 @@ from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
     _get_force_field,
     _proteincomp_to_topology,
-    _solvate_system,
     interchange_packmol_creation,
 )
+from pontibus.utils.system_solvation import packmol_solvation
 
 
 @pytest.fixture(scope="module")
@@ -295,11 +295,11 @@ def test_comp_resnames_and_keys_missing_prot_residueinfo(
         )
 
 
-def test_solvate_system_neutralize_nonwater(methanol):
+def test_packmol_solvation_neutralize_nonwater(methanol):
     msg = "Cannot neutralize a system with non-water solvent"
     with pytest.raises(ValueError, match=msg):
-        _solvate_system(
-            solute_topology=Topology(),
+        packmol_solvation(
+            solute_topology=Topology.from_molecules(methanol),
             solvent_offmol=methanol,
             solvation_settings=PackmolSolvationSettings(),
             neutralize=True,
@@ -307,26 +307,11 @@ def test_solvate_system_neutralize_nonwater(methanol):
         )
 
 
-def test_solvate_system_neutralize_num_sol_defined(water_off):
-    msg = "Cannot neutralize a system where the number of waters"
-    with pytest.raises(ValueError, match=msg):
-        _solvate_system(
-            solute_topology=Topology(),
-            solvent_offmol=water_off,
-            solvation_settings=PackmolSolvationSettings(
-                number_of_solvent_molecules=100,
-                solvent_padding=None,
-            ),
-            neutralize=True,
-            ion_concentration=0.1 * unit.molar,
-        )
-
-
-def test_solvate_system_neutralize_bad_conc(water_off):
+def test_packmol_solvation_neutralize_bad_conc(water_off, methanol):
     msg = "is not compatible with mole / liter"
     with pytest.raises(ValueError, match=msg):
-        _solvate_system(
-            solute_topology=Topology(),
+        packmol_solvation(
+            solute_topology=Topology.from_molecules(methanol),
             solvent_offmol=water_off,
             solvation_settings=PackmolSolvationSettings(),
             neutralize=True,

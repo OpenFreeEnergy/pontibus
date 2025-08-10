@@ -9,16 +9,9 @@ import numpy as np
 import numpy.typing as npt
 from gufe import Component, ProteinComponent, SmallMoleculeComponent, SolventComponent
 from openff.interchange import Interchange
-from openff.interchange.components._packmol import (
-    RHOMBIC_DODECAHEDRON,
-    UNIT_CUBE,
-    pack_box,
-    solvate_topology,
-    solvate_topology_nonwater,
-)
 from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import Quantity, unit
+from openff.units import unit
 
 from pontibus.utils.molecule_utils import (
     _check_library_charges,
@@ -32,6 +25,8 @@ from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
+from pontibus.utils.system_solvation import packmol_solvation
+
 
 logger = logging.getLogger(__name__)
 
@@ -293,126 +288,6 @@ def _assign_comp_resnames_and_keys(
                     raise ValueError(errmsg)
 
 
-def _solvate_system(
-    solute_topology: Topology,
-    solvent_offmol: OFFMolecule,
-    solvation_settings: PackmolSolvationSettings,
-    neutralize: bool,
-    ion_concentration: Quantity,
-) -> Topology:
-    """
-    Solvate solute Topology using the Interchange packmol interface.
-
-    Parameters
-    ----------
-    solute_topology : Topology
-      The solute Topology to solvate.
-    solvent_offmol : OFFMolecule
-      An OpenFF Molecule representing the solvent.
-    solvation_settings : PackmolSolvationSettings
-      Settings for how to solvate the system.
-    neutralize : bool
-      Whether or not the system should be neutralized. Note
-      that this can only happen if ``number_of_solvent_molecules``
-      is not defined in ``solvation_settings`` and the ``solvent_offmol``
-      is water.
-    ion_concentration : Quantity
-      The concentration of NaCl to add to the system when
-      neutralizing. Note that this is ignored if neutralize
-      if False. Must be compatible with mole / liter.
-
-    Returns
-    -------
-    Topology
-      The solvated Topology.
-
-    Raises
-    ------
-    ValueError
-      If ``neutralize`` is ``True`` and ``number_of_solvent_molecules`` is
-      defined.
-      If ``neutralize`` is ``True`` and ``solvent_offmol`` is not water.
-      if ``ion_concentration`` is not compatible with mole / liter.
-    """
-    # Doubling up on some validation mainly for my own sanity later
-    if neutralize:
-        if not solvent_offmol.is_isomorphic_with(offmol_water):
-            errmsg = "Cannot neutralize a system with non-water solvent"
-            raise ValueError(errmsg)
-        if solvation_settings.number_of_solvent_molecules is not None:
-            errmsg = "Cannot neutralize a system where the number of waters are explicitly defined"
-            raise ValueError(errmsg)
-        if not ion_concentration.is_compatible_with("mole / liter"):
-            errmsg = f"{ion_concentration} is not compatible with mole / liter"
-            raise ValueError(errmsg)
-
-    # Pick up the user selected box shape
-    if solvation_settings.box_shape is not None:
-        box_shape = {
-            "cube": UNIT_CUBE,
-            "dodecahedron": RHOMBIC_DODECAHEDRON,
-        }[solvation_settings.box_shape.lower()]
-
-    # Create the topology
-    if solvation_settings.number_of_solvent_molecules is not None:
-        return pack_box(
-            molecules=[solvent_offmol],
-            number_of_copies=[solvation_settings.number_of_solvent_molecules],
-            solute=solute_topology,
-            tolerance=solvation_settings.packing_tolerance,
-            box_vectors=solvation_settings.box_vectors,
-            target_density=solvation_settings.target_density,
-            box_shape=box_shape,
-            center_solute=True,
-            working_directory=None,
-            retain_working_files=False,
-        )
-    else:
-        if neutralize:
-            topology = solvate_topology(
-                topology=solute_topology,
-                nacl_conc=ion_concentration.to("mole / liter"),
-                target_density=solvation_settings.target_density,
-                padding=solvation_settings.solvent_padding,
-                box_shape=box_shape,
-                tolerance=solvation_settings.packing_tolerance,
-            )
-            # This method uses internal representation of molecules
-            # So we need to re-assign resnames & keys
-            molecules = [m for m in topology.molecules]
-            na = OFFMolecule.from_smiles("[Na+]")
-            cl = OFFMolecule.from_smiles("[Cl-]")
-            solvent_key = solvent_offmol.properties["key"]
-            for mol in molecules:
-                if _get_offmol_resname(mol) is not None:
-                    continue
-
-                if "key" not in mol.properties:
-                    mol.properties["key"] = solvent_key
-
-                if mol.is_isomorphic_with(solvent_offmol):
-                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))
-
-                if mol.is_isomorphic_with(na):
-                    _set_offmol_resname(mol, "NA+")
-
-                if mol.is_isomorphic_with(cl):
-                    _set_offmol_resname(mol, "CL-")
-
-            named_top = Topology.from_molecules(molecules=molecules)
-            named_top.box_vectors = topology.box_vectors
-            return named_top
-        else:
-            return solvate_topology_nonwater(
-                topology=solute_topology,
-                solvent=solvent_offmol,
-                target_density=solvation_settings.target_density,
-                padding=solvation_settings.solvent_padding,
-                box_shape=box_shape,
-                tolerance=solvation_settings.packing_tolerance,
-            )
-
-
 def _post_process_topology(
     pre_topology, smc_components, solvent_component, protein_component
 ) -> tuple[Topology, dict[Component, npt.NDArray]]:
@@ -607,7 +482,7 @@ def interchange_packmol_creation(
 
         solute_topology = Topology.from_molecules(topology_molecules)
 
-        topology = _solvate_system(
+        topology = packmol_solvation(
             solute_topology=solute_topology,
             solvent_offmol=solvent_offmol,
             solvation_settings=solvation_settings,
