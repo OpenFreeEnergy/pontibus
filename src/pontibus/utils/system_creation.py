@@ -1,28 +1,23 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import logging
+import tempfile
 from itertools import product
 from string import ascii_uppercase
-from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 from gufe import Component, ProteinComponent, SmallMoleculeComponent, SolventComponent
 from openff.interchange import Interchange
-from openff.interchange.components._packmol import (
-    RHOMBIC_DODECAHEDRON,
-    UNIT_CUBE,
-    pack_box,
-    solvate_topology,
-    solvate_topology_nonwater,
-)
 from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import Quantity, unit
+from openff.units import unit
 
 from pontibus.utils.molecule_utils import (
     _check_library_charges,
+    _get_num_residues,
     _get_offmol_resname,
+    _set_offmol_metadata,
     _set_offmol_resname,
 )
 from pontibus.utils.molecules import offmol_water
@@ -30,8 +25,32 @@ from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
+from pontibus.utils.system_solvation import packmol_solvation
 
 logger = logging.getLogger(__name__)
+
+
+def _proteincomp_to_topology(protein_component: ProteinComponent) -> Topology:
+    """
+    Convert a ProteinComponent to an OpenFF Topology via PDB serialization.
+
+    Parameters
+    ----------
+    protein_component : ProteinComponent
+      The ProteinComponent to convert.
+
+    Returns
+    -------
+    off_top : openff.toolkit.Topology
+      A Topology containing the protein.
+    """
+    # TODO: maybe switch to NamedTemporaryFile eventually?
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = f"{tmpdir}/tmp.pdb"
+        protein_component.to_pdb_file(filepath)
+        off_top = Topology.from_pdb(filepath)
+
+    return off_top
 
 
 def _check_and_deduplicate_charged_mols(
@@ -113,7 +132,6 @@ def _validate_components(
     Raises
     ------
     ValueError
-      If there is a protein_component.
       If the solvent_component requests counterions for non-water solvent.
       If the solvent component requests counterions without neutralizing.
       If the counterions are not Na+ and Cl-.
@@ -121,12 +139,9 @@ def _validate_components(
       If the solvent_component and solvent_offmol are not isomorphic.
       If the solvent_offmol doesn't have one conformer.
     """
-    # Adding protein components is not currently supported
-    if protein_component is not None:
-        errmsg = (
-            "Creation of systems solely with Interchange "
-            "using ProteinComponents is not currently supported"
-        )
+    if (solvent_component is None) and (protein_component is not None):
+        # If there's a protein without solvent then we're in trouble
+        errmsg = "Must have solvent to have a protein"
         raise ValueError(errmsg)
 
     if solvent_component is not None:
@@ -141,11 +156,10 @@ def _validate_components(
                 raise ValueError(errmsg)
 
         # We can't add ions without neutralizing but we can neutralize without ion conc
-        if (
-            not solvent_component.neutralize
-        ) and solvent_component.ion_concentration > 0 * unit.molar:
-            errmsg = "Cannot add ions without neutralizing"
-            raise ValueError(errmsg)
+        if not solvent_component.neutralize:
+            if solvent_component.ion_concentration > 0 * unit.molar:
+                errmsg = "Cannot add ions without neutralizing"
+                raise ValueError(errmsg)
 
         # Can't neutralize with anything but Na Cl
         if solvent_component.neutralize:
@@ -164,7 +178,6 @@ def _validate_components(
             )
             raise ValueError(errmsg)
 
-        # TODO: check here that the offmol has a single conformer
         if solvent_offmol.n_conformers != 1:
             errmsg = (
                 "Solvent OpenFF Molecule should have a single conformer. "
@@ -199,13 +212,15 @@ def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
     return force_field
 
 
-def _get_comp_resnames(
+def _assign_comp_resnames_and_keys(
     smc_components: dict[SmallMoleculeComponent, OFFMolecule],
     solvent_component: SolventComponent | None,
     solvent_offmol: OFFMolecule | None,
-) -> dict[str, tuple[Component, list[Any]]]:
+    protein_component: ProteinComponent | None,
+    protein_molecules: list[OFFMolecule] | None,
+) -> None:
     """
-    Assign residue names so we can track components in a generated Topology.
+    Assign residue names to Small and Solvent Components.
 
     Parameters
     ----------
@@ -214,175 +229,177 @@ def _get_comp_resnames(
     solvent_component : Optional[SolventComponent]
       Solvent component of the system, if any.
     solvent_offmol : Optional[openff.toolkit.Molecule]
-      OpenFF Molecule defining the solvent, if necessary
-
-    Returns
-    -------
-    comp_resnames: dict[str, tuple[Component, list[Any]]]
-      A dictionary keyed by residue names which contains
-      a tuple with the matching Component and an empty list
-      which will later be populated with residue numbers.
+      OpenFF Molecule defining the solvent, if necessary.
     """
-    # Note: comp_resnames is dict[str, tuple[Component, list]] where the final
-    # list is to append residues later on
-    # TODO: make this a method
-    # TODO: we should be able to rely on offmol equality in the same way that
-    # intechange does
-    comp_resnames: dict[str, tuple[Component, list[Any]]] = {}
+    # List of unique resnames to track
+    unique_resnames = []
 
     # If we have solvent, we set its residue name
     if solvent_component is not None:
+        # Assign the key
+        solvent_offmol.properties["key"] = str(solvent_component.key)  # type: ignore[union-attr]
+
+        # Assign the resname if necessary
         offmol_resname = _get_offmol_resname(solvent_offmol)
         if offmol_resname is None:
             offmol_resname = "SOL"
             _set_offmol_resname(solvent_offmol, offmol_resname)
-        comp_resnames[offmol_resname] = (solvent_component, [])
+
         if solvent_component.neutralize:
             if offmol_resname in ["NA+", "CL-"]:
                 errmsg = "Solvent resname is set to NA+ or CL-"
                 raise ValueError(errmsg)
 
-            # Add in extra entries for NA and CL
-            comp_resnames["NA+"] = (solvent_component, [])
-            comp_resnames["CL-"] = (solvent_component, [])
+        unique_resnames.append(offmol_resname)
 
     # A store of residue names to replace residue names if they aren't unique
     resnames_store = ["".join(i) for i in product(ascii_uppercase, repeat=3)]
 
     for comp, offmol in smc_components.items():
+        # Assign the key
+        offmol.properties["key"] = str(comp.key)
+
+        # Assign the resname if necessary
         off_resname = _get_offmol_resname(offmol)
-        if off_resname is None or off_resname in comp_resnames:
+        if off_resname is None or off_resname in unique_resnames:
             # warn that we are overriding clashing molecule resnames
-            if off_resname in comp_resnames:
+            if off_resname in unique_resnames:
                 wmsg = f"Duplicate residue name {off_resname}, duplicate will be renamed"
                 logger.warning(wmsg)
 
             # just loop through and pick up a name that doesn't exist
-            while (off_resname in comp_resnames) or (off_resname is None):
+            while (off_resname in unique_resnames) or (off_resname is None):
                 off_resname = resnames_store.pop(0)
 
         wmsg = f"Setting component {comp} residue name to {off_resname}"
         logger.warning(wmsg)
         _set_offmol_resname(offmol, off_resname)
-        comp_resnames[off_resname] = (comp, [])
+        unique_resnames.append(off_resname)
 
-    return comp_resnames
+    if protein_component is not None:
+        # Assign the key and check that everything has a resname
+        for mol in protein_molecules:  # type: ignore[union-attr]
+            mol.properties["key"] = str(protein_component.key)
+
+            for at in mol.atoms:
+                if "residue_name" not in at.metadata:
+                    errmsg = "protein molecule missing residue info"
+                    raise ValueError(errmsg)
 
 
-def _solvate_system(
-    solute_topology: Topology,
-    solvent_offmol: OFFMolecule,
-    solvation_settings: PackmolSolvationSettings,
-    neutralize: bool,
-    ion_concentration: Quantity,
-) -> Topology:
+def _post_process_topology(
+    pre_topology, smc_components, solvent_component, protein_component
+) -> tuple[Topology, dict[Component, npt.NDArray]]:
     """
-    Solvate solute Topology using the Interchange packmol interface.
+    Helper method to post-process a Topology and get a comp:resid dictionary
+
+    Specifically we:
+      1. Assign molecule chains based on their components
+      2. Ensure all molecules have a residue number
+      3. Get the resindex range for each molecule and add it to comp_resids.
 
     Parameters
     ----------
-    solute_topology : Topology
-      The solute Topology to solvate.
-    solvent_offmol : OFFMolecule
-      An OpenFF Molecule representing the solvent.
-    solvation_settings : PackmolSolvationSettings
-      Settings for how to solvate the system.
-    neutralize : bool
-      Whether or not the system should be neutralized. Note
-      that this can only happen if ``number_of_solvent_molecules``
-      is not defined in ``solvation_settings`` and the ``solvent_offmol``
-      is water.
-    ion_concentration : Quantity
-      The concentration of NaCl to add to the system when
-      neutralizing. Note that this is ignored if neutralize
-      if False. Must be compatible with mole / liter.
+    pre_topology : openff.toolkit.Topology
+      The Topology to post-process
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
+      Solute SmallMoleculeComponents.
+    solvent_component : Optional[SolventComponent]
+      Solvent component of the system, if any.
+    protein_component : Optional[ProteinComponent]
+      Protein component of the system, if any.
 
     Returns
     -------
-    Topology
-      The solvated Topology.
-
-    Raises
-    ------
-    ValueError
-      If ``neutralize`` is ``True`` and ``number_of_solvent_molecules`` is
-      defined.
-      If ``neutralize`` is ``True`` and ``solvent_offmol`` is not water.
-      if ``ion_concentration`` is not compatible with mole / liter.
+    post_topology : openff.toolkit.Topology
+      The post-processed Topology
+    comp_resids : dict[Component, npt.NDArray]
+      A dictionary defining the residue indices matching
+      various components in the system.
     """
-    # Doubling up on some validation mainly for my own sanity later
-    if neutralize:
-        if not solvent_offmol.is_isomorphic_with(offmol_water):
-            errmsg = "Cannot neutralize a system with non-water solvent"
-            raise ValueError(errmsg)
-        if solvation_settings.number_of_solvent_molecules is not None:
-            errmsg = "Cannot neutralize a system where the number of waters are explicitly defined"
-            raise ValueError(errmsg)
-        if not ion_concentration.is_compatible_with("mole / liter"):
-            errmsg = f"{ion_concentration} is not compatible with mole / liter"
-            raise ValueError(errmsg)
 
-    # Pick up the user selected box shape
-    if solvation_settings.box_shape is not None:
-        box_shape = {
-            "cube": UNIT_CUBE,
-            "dodecahedron": RHOMBIC_DODECAHEDRON,
-        }[solvation_settings.box_shape.lower()]
+    mols = [m for m in pre_topology.molecules]
 
-    # Create the topology
-    if solvation_settings.number_of_solvent_molecules is not None:
-        return pack_box(
-            molecules=[solvent_offmol],
-            number_of_copies=[solvation_settings.number_of_solvent_molecules],
-            solute=solute_topology,
-            tolerance=solvation_settings.packing_tolerance,
-            box_vectors=solvation_settings.box_vectors,
-            target_density=solvation_settings.target_density,
-            box_shape=box_shape,
-            center_solute=True,
-            working_directory=None,
-            retain_working_files=False,
-        )
-    else:
-        if neutralize:
-            topology = solvate_topology(
-                topology=solute_topology,
-                nacl_conc=ion_concentration.to("mole / liter"),
-                target_density=solvation_settings.target_density,
-                padding=solvation_settings.solvent_padding,
-                box_shape=box_shape,
-                tolerance=solvation_settings.packing_tolerance,
-            )
-            # This method uses internal representation of molecules
-            # So we need to re-assign resnames
-            molecules = [m for m in topology.molecules]
-            na = OFFMolecule.from_smiles("[Na+]")
-            cl = OFFMolecule.from_smiles("[Cl-]")
-            for mol in molecules:
-                if _get_offmol_resname(mol) is not None:
-                    continue
+    # Create a list of components
+    comps = [*smc_components.keys()]
 
-                if mol.is_isomorphic_with(solvent_offmol):
-                    _set_offmol_resname(mol, _get_offmol_resname(solvent_offmol))
+    for extra_comp in [solvent_component, protein_component]:
+        if extra_comp is not None:
+            comps.append(extra_comp)
 
-                if mol.is_isomorphic_with(na):
-                    _set_offmol_resname(mol, "NA+")
+    # A dictionary of key:comp for later use
+    key_to_comp: dict[str, Component] = {comp.key: comp for comp in comps}
 
-                if mol.is_isomorphic_with(cl):
-                    _set_offmol_resname(mol, "CL-")
+    # Do some checks and get a list of all existing chains
+    known_chains = set()
+    for mol in mols:
+        chain_truth = ["chain_id" in at.metadata for at in mol.atoms]
+        resnum_truth = ["residue_number" in at.metadata for at in mol.atoms]
 
-            named_top = Topology.from_molecules(molecules=molecules)
-            named_top.box_vectors = topology.box_vectors
-            return named_top
+        if any(chain_truth):
+            if not all(chain_truth):
+                errmsg = f"All atoms in {mol} must have chain ID defined"
+                raise ValueError(errmsg)
+
+            chain_ids = set([at.metadata["chain_id"] for at in mol.atoms])
+            known_chains.update(chain_ids)
+
+        if any(resnum_truth):
+            if not all(resnum_truth):
+                errmsg = f"All atoms in {mol} must have a residue number if any defined"
+                raise ValueError(errmsg)
+
+    # Get a list of available chain IDs
+    available_ids = [a for a in ascii_uppercase if a not in known_chains]
+
+    if len(available_ids) < len(comps):
+        errmsg = "Too few chain IDs are available"
+        raise ValueError(errmsg)
+
+    # Add in a chain for each SmallMoleculeComponent
+    chains = {comp.key: chain_id for comp, chain_id in zip(comps, available_ids)}
+
+    # Temporary container to feed comp_resids
+    compkey_residx = {}
+
+    residx = 0
+    for mol in mols:
+        mol_index = pre_topology.molecule_index(mol)
+
+        # set the chain if no chain is specified
+        # already checked that all atoms must be specified if any
+        if "chain_id" not in mol.atoms[0].metadata:
+            _set_offmol_metadata(mol, "chain_id", chains[mol.properties["key"]])
+
+        # set the residue number if it's not been set on the first atom
+        if "residue_number" not in mol.atoms[0].metadata:
+            _set_offmol_metadata(mol, "residue_number", mol_index)
+
+        # Get the number of residues this molecule spans
+        # let's duplicate the interchange behaviour
+        num_residx = _get_num_residues(mol)
+
+        # update compkey_residx
+        key = mol.properties["key"]
+        residx_range = [r for r in range(residx, residx + num_residx)]
+        if key not in compkey_residx:
+            compkey_residx[key] = residx_range
         else:
-            return solvate_topology_nonwater(
-                topology=solute_topology,
-                solvent=solvent_offmol,
-                target_density=solvation_settings.target_density,
-                padding=solvation_settings.solvent_padding,
-                box_shape=box_shape,
-                tolerance=solvation_settings.packing_tolerance,
-            )
+            compkey_residx[key].extend(residx_range)
+
+        # Update the residx tracker
+        residx += num_residx
+
+    # Turn compkey_resids to comp_resids
+    comp_resids = {
+        key_to_comp[key]: np.array(val, dtype=int) for key, val in compkey_residx.items()
+    }
+
+    # create the new Topology
+    post_topology = Topology.from_molecules(mols)
+    post_topology.box_vectors = pre_topology.box_vectors
+
+    return post_topology, comp_resids
 
 
 def interchange_packmol_creation(
@@ -392,7 +409,7 @@ def interchange_packmol_creation(
     protein_component: ProteinComponent | None,
     solvent_component: SolventComponent | None,
     solvent_offmol: OFFMolecule | None,
-) -> tuple[Interchange, dict[str, npt.NDArray]]:
+) -> tuple[Interchange, dict[Component, npt.NDArray]]:
     """
     Create an Interchange object for a given system, solvating with
     packmol where necessary.
@@ -416,30 +433,40 @@ def interchange_packmol_creation(
     -------
     Interchange : openff.interchange.Interchange
       Interchange object for the created system.
-    comp_resids : dict[str, npt.NDArray]
+    comp_resids : dict[Component, npt.NDArray]
       A dictionary defining the residue indices matching
       various components in the system.
     """
 
-    # 1. Component validations
+    # Component validations
     _validate_components(protein_component, solvent_component, solvent_offmol)
 
-    # 2. Get the force field object
+    # Get the force field object
     force_field = _get_force_field(ffsettings)
 
-    # 3. Assign residue names so we can track our components in the generated
-    # topology.
-    comp_resnames = _get_comp_resnames(smc_components, solvent_component, solvent_offmol)
+    # Get protein molecules if needed
+    if protein_component is not None:
+        protein_molecules = [m for m in _proteincomp_to_topology(protein_component).molecules]
+    else:
+        protein_molecules = None
 
-    # 4. Create an OFF Topology from the smcs
-    # Note: this is the base no solvent case!
-    topology = Topology.from_molecules([*smc_components.values()])
+    # Assign residue names to component keys
+    _assign_comp_resnames_and_keys(
+        smc_components=smc_components,
+        solvent_component=solvent_component,
+        solvent_offmol=solvent_offmol,
+        protein_component=protein_component,
+        protein_molecules=protein_molecules,
+    )
+
+    # Create a list of Molecules and solvate if necessary
+    # Add in the ligands, this is the base "no solvent" case!
+    topology_molecules = [*smc_components.values()]
 
     # Also create a list of charged molecules for later use
     charged_mols = [*smc_components.values()]
 
-    # 5. Solvent case
-    if solvent_component is not None:
+    if solvent_component is not None:  # solvent case
         # Append to charged molcule to charged_mols if we want to
         # otherwise we rely on library charges
         if solvation_settings.assign_solvent_charges:
@@ -448,33 +475,28 @@ def interchange_packmol_creation(
             # Make sure we have library charges for the molecule
             _check_library_charges(force_field, solvent_offmol)
 
-        topology = _solvate_system(
-            solute_topology=topology,
+        # Add protein mols if they exist
+        if protein_molecules is not None:
+            topology_molecules += protein_molecules
+
+        solute_topology = Topology.from_molecules(topology_molecules)
+
+        topology = packmol_solvation(
+            solute_topology=solute_topology,
             solvent_offmol=solvent_offmol,
             solvation_settings=solvation_settings,
             neutralize=solvent_component.neutralize,
             ion_concentration=solvent_component.ion_concentration,
         )
+    else:  # no solvent case
+        topology = Topology.from_molecules(topology_molecules)
 
-    # TODO: maybe make this a method
-    # Assign residue indices to each entry in the OFF topology
-    for molecule_index, molecule in enumerate(topology.molecules):
-        for atom in molecule.atoms:
-            atom.metadata["residue_number"] = molecule_index
-
-        # Get the residue name and store the index in comp resnames
-        # Note: lazily type ignore the return here, since None is impossible
-        resname = _get_offmol_resname(molecule)
-        comp_resnames[resname][1].append(molecule_index)  # type: ignore[index]
-
-    # Now create the component_resids dictionary properly
-    comp_resids: dict[Component, npt.NDArray] = {}
-    for entry in comp_resnames.values():
-        comp = entry[0]
-        if comp in comp_resids:
-            comp_resids[comp] = np.append(comp_resids[comp], np.array(entry[1]))
-        else:
-            comp_resids[comp] = np.array(entry[1])
+    topology, comp_resids = _post_process_topology(
+        pre_topology=topology,
+        smc_components=smc_components,
+        solvent_component=solvent_component,
+        protein_component=protein_component,
+    )
 
     # Run validation checks on inputs to Interchange
     # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
