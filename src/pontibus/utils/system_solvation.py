@@ -137,7 +137,7 @@ def _box_density_from_mols(
     molecules_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) * n for molecule, n in zip(molecules, n_copies))
     solute_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) for molecule in solute_topology.molecules)
     total_mass = molecules_total_mass + solute_total_mass
-    volume = total_mass / target_density  # type: ignore[operator]
+    volume = total_mass / target_density
 
     return _scale_box(box_shape, volume)
 

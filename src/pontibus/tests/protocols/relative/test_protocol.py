@@ -533,7 +533,7 @@ def test_dry_run_complex_setnwaters(
         "ff14sb_off_impropers_0.0.3.offxml",
     ]
     settings.solvation_settings = PackmolSolvationSettings(
-        number_of_solvent_molecules=30000,
+        number_of_solvent_molecules=15000,
         solvent_padding=None,
     )
 
