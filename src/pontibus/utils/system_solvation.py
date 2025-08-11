@@ -77,7 +77,7 @@ def _n_solvent_and_box_from_density(
 
     # compute box vectors from the solulte length and requested padding
     solute_length = _max_dist_between_points(solute_topology.get_positions())
-    image_distance = solute_length + padding * 2
+    image_distance = solute_length + padding * 2  # type: ignore[operator]
     box_vectors = box_shape * image_distance
 
     # compute target masses of solvent
@@ -96,7 +96,7 @@ def _n_solvent_and_box_from_density(
 
 def _box_density_from_mols(
     molecules: list[OFFMolecule],
-    n_copies: int,
+    n_copies: list[int],
     solute_topology: Topology,
     target_density: Quantity,
     box_shape: npt.NDArray,
@@ -137,7 +137,7 @@ def _box_density_from_mols(
     molecules_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) * n for molecule, n in zip(molecules, n_copies))
     solute_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) for molecule in solute_topology.molecules)
     total_mass = molecules_total_mass + solute_total_mass
-    volume = total_mass / target_density
+    volume = total_mass / target_density  # type: ignore[operator]
 
     return _scale_box(box_shape, volume)
 
@@ -256,7 +256,7 @@ def _neutralize_and_pack_box(
         solute=solute_topology,
         tolerance=packing_tolerance,
         box_vectors=box_vectors,
-        center_solute=True,
+        center_solute=False,
         working_directory=None,
         retain_working_files=False,
     )
@@ -323,17 +323,17 @@ def packmol_solvation(
                 molecules=[solvent_offmol],
                 n_copies=[solvation_settings.number_of_solvent_molecules],
                 solute_topology=solute_topology,
-                target_density=solvation_settings.target_density,
-                box_shape=box_shape,
+                target_density=solvation_settings.target_density,  # type: ignore[arg-type]
+                box_shape=box_shape,  # type: ignore[arg-type]
             )
     else:
         # In this case box vectors cannot be defined
         n_solvent, box_vectors = _n_solvent_and_box_from_density(
             solute_topology=solute_topology,
             solvent=solvent_offmol,
-            box_shape=box_shape,
-            padding=solvation_settings.solvent_padding,
-            target_density=solvation_settings.target_density,
+            box_shape=box_shape,  # type: ignore[arg-type]
+            padding=solvation_settings.solvent_padding,  # type: ignore[arg-type]
+            target_density=solvation_settings.target_density,  # type: ignore[arg-type]
         )
 
     if neutralize:
@@ -362,7 +362,7 @@ def packmol_solvation(
             box_vectors=box_vectors,
             target_density=None,
             box_shape=box_shape,
-            center_solute=True,
+            center_solute=False,
             working_directory=None,
             retain_working_files=False,
         )
