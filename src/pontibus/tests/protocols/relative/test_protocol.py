@@ -588,7 +588,7 @@ def test_dry_run_complex_setnwaters(
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
         assert len(sampler._hybrid_factory._unique_new_atoms) == 4
         assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == 92029
+        assert len(sampler._hybrid_factory._env_old_to_new_map) == 47340
 
 
 @pytest.mark.cpuvslow
