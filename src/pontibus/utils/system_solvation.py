@@ -4,23 +4,20 @@ import logging
 
 import numpy as np
 import numpy.typing as npt
-from copy import deepcopy
 from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
-    pack_box,
+    _check_add_positive_mass,
     _check_box_shape_shape,
     _max_dist_between_points,
-    _check_add_positive_mass,
     _scale_box,
+    pack_box,
 )
-from openff.toolkit import Topology
 from openff.toolkit import Molecule as OFFMolecule
-from openff.units import Quantity, unit
+from openff.toolkit import Topology
+from openff.units import Quantity
 
 from pontibus.utils.molecule_utils import (
-    _get_offmol_resname,
-    _set_offmol_metadata,
     _set_offmol_resname,
 )
 from pontibus.utils.molecules import offmol_water
@@ -83,7 +80,9 @@ def _n_solvent_and_box_from_density(
     # compute target masses of solvent
     box_volume = np.linalg.det(box_vectors.m) * box_vectors.u**3
     target_mass = box_volume * target_density
-    solute_mass = sum(sum([atom.mass for atom in molecule.atoms]) for molecule in solute_topology.molecules)
+    solute_mass = sum(
+        sum([atom.mass for atom in molecule.atoms]) for molecule in solute_topology.molecules
+    )
     solvent_mass = sum([atom.mass for atom in solvent.atoms])
     solvent_mass_to_add = target_mass - solute_mass
 
@@ -134,8 +133,12 @@ def _box_density_from_mols(
     Adapted from openff.interchange, with a fix to account for solute mass.
     """
     # Get the desired volume in cubic working units
-    molecules_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) * n for molecule, n in zip(molecules, n_copies))
-    solute_total_mass = sum(sum([atom.mass for atom in molecule.atoms]) for molecule in solute_topology.molecules)
+    molecules_total_mass = sum(
+        sum([atom.mass for atom in molecule.atoms]) * n for molecule, n in zip(molecules, n_copies)
+    )
+    solute_total_mass = sum(
+        sum([atom.mass for atom in molecule.atoms]) for molecule in solute_topology.molecules
+    )
     total_mass = molecules_total_mass + solute_total_mass
     volume = total_mass / target_density
 
@@ -149,7 +152,7 @@ def _neutralize_and_pack_box(
     ion_concentration: Quantity,
     packing_tolerance: Quantity,
     box_vectors: Quantity,
-    solvent_molarity: Quantity = Quantity(55.4, "mole / liter")
+    solvent_molarity: Quantity = Quantity(55.4, "mole / liter"),
 ) -> Topology:
     """
     Parameters
@@ -198,8 +201,8 @@ def _neutralize_and_pack_box(
     solvent_key = solvent.properties["key"]
     _set_offmol_resname(na, "NA+")
     _set_offmol_resname(cl, "CL-")
-    na.properties['key'] = solvent_key
-    cl.properties['key'] = solvent_key
+    na.properties["key"] = solvent_key
+    cl.properties["key"] = solvent_key
 
     # Get the individual solvent mass and the total mass of all the solvent molecules
     solvent_mol_mass = sum([atom.mass for atom in solvent.atoms])
@@ -214,7 +217,9 @@ def _neutralize_and_pack_box(
     else:
         # Compute the number of salt "molecules" to add from the mass
         # and concentration for a neutral solute
-        neutral_nacl_mass_fraction = (ion_concentration * nacl_mass) / (solvent_molarity * solvent_mol_mass)
+        neutral_nacl_mass_fraction = (ion_concentration * nacl_mass) / (
+            solvent_molarity * solvent_mol_mass
+        )
         neutral_nacl_mass_to_add = solvent_total_mass * neutral_nacl_mass_fraction
         neutral_nacl_to_add = np.round(neutral_nacl_mass_to_add / nacl_mass).m_as("dimensionless")
 
@@ -228,7 +233,9 @@ def _neutralize_and_pack_box(
                 np.sqrt(1 + solute_ion_ratio * solute_ion_ratio) - solute_ion_ratio
             )
 
-            nacl_mass_fraction = (sltcap_effective_ionic_strength * nacl_mass) / (solvent_molarity * solvent_mol_mass)
+            nacl_mass_fraction = (sltcap_effective_ionic_strength * nacl_mass) / (
+                solvent_molarity * solvent_mol_mass
+            )
             nacl_mass_to_add = solvent_total_mass * nacl_mass_fraction
             nacl_to_add = np.round(nacl_mass_to_add / nacl_mass).m_as("dimensionless")
 
@@ -238,17 +245,19 @@ def _neutralize_and_pack_box(
     solvent_to_add = int(np.round(solvent_mass_to_add / solvent_mol_mass).m_as("dimensionless"))
 
     # Neutralise the system by adding and removing salt
-    na_to_add = int(np.round(
-        nacl_to_add + (solute_charge_magnitude - solute_charge) / 2.0,
-    ))
-    cl_to_add = int(np.round(
-        nacl_to_add + (solute_charge_magnitude + solute_charge) / 2.0,
-    ))
+    na_to_add = int(
+        np.round(
+            nacl_to_add + (solute_charge_magnitude - solute_charge) / 2.0,
+        )
+    )
+    cl_to_add = int(
+        np.round(
+            nacl_to_add + (solute_charge_magnitude + solute_charge) / 2.0,
+        )
+    )
 
     if abs(solute_charge + na_to_add - cl_to_add) > 1e-6:
-        raise ValueError(
-            f"Failed to neutralise solute with charge {solute_charge.m}"
-        )
+        raise ValueError(f"Failed to neutralise solute with charge {solute_charge.m}")
 
     return pack_box(
         molecules=[solvent, na, cl],
@@ -351,7 +360,7 @@ def packmol_solvation(
             ion_concentration=ion_concentration.to("mole / liter"),
             packing_tolerance=solvation_settings.packing_tolerance,
             box_vectors=box_vectors,
-            solvent_molarity=Quantity(55.4, "mole / liter")
+            solvent_molarity=Quantity(55.4, "mole / liter"),
         )
     else:
         return pack_box(

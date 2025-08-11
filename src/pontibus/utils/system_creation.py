@@ -27,7 +27,6 @@ from pontibus.utils.settings import (
 )
 from pontibus.utils.system_solvation import packmol_solvation
 
-
 logger = logging.getLogger(__name__)
 
 

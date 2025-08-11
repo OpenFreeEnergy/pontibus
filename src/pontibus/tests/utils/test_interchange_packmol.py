@@ -1591,8 +1591,7 @@ class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
                 ],
             ),
             solvation_settings=PackmolSolvationSettings(
-                number_of_solvent_molecules=30000,
-                solvent_padding=None
+                number_of_solvent_molecules=30000, solvent_padding=None
             ),
             smc_components=smc_components,
             protein_component=protein_component,
