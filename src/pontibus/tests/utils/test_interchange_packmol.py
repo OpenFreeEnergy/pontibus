@@ -9,8 +9,7 @@ import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
 from numpy.testing import assert_allclose, assert_equal
 from openff.interchange.interop.openmm import to_openmm_positions
-from openff.toolkit import ForceField, Molecule, Topology
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, Topology, unit
 from openff.units.openmm import from_openmm, to_openmm
 from openmm import (
     HarmonicAngleForce,
@@ -1708,8 +1707,33 @@ class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
 #    ...
 #
 #
-# def test_box_setting_dodecahedron(smc_components_benzene):
-#    ...
+@pytest.mark.parametrize("box_shape", ["dodecahedron", "cube"])
+def test_box_setting_dodecahedron(
+    box_shape,
+    smc_components_benzene_named,
+    T4_protein_component,
+    water_off,
+):
+    solvation_settings = PackmolSolvationSettings(
+        target_density=0.5 * unit.grams / unit.mL,
+        box_shape=box_shape,
+    )
+    assert solvation_settings.box_shape == box_shape
+
+    topology, _ = interchange_packmol_creation(
+        InterchangeFFSettings(),
+        solvation_settings=solvation_settings,
+        smc_components=smc_components_benzene_named,
+        protein_component=T4_protein_component,
+        solvent_component=SolventComponent(),
+        solvent_offmol=water_off,
+    )
+
+    match box_shape:
+        case "dodecahedron":
+            assert topology.box_vectors is None
+        case "cube":
+            assert topology.box_vectors is None
 
 
 """
