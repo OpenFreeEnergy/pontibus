@@ -1591,7 +1591,7 @@ class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
                 ],
             ),
             solvation_settings=PackmolSolvationSettings(
-                number_of_solvent_molecules=30000, solvent_padding=None
+                number_of_solvent_molecules=5000, solvent_padding=None
             ),
             smc_components=smc_components,
             protein_component=protein_component,
@@ -1615,15 +1615,15 @@ class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 77
+        return 10
 
     @pytest.fixture(scope="class")
     def num_neg_ions(self):
-        return 86
+        return 19
 
     @pytest.fixture(scope="class")
     def num_waters(self):
-        return 29751
+        return 4968
 
     @pytest.fixture(scope="class")
     def num_protein_atoms(self):
