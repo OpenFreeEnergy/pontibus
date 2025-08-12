@@ -9,7 +9,8 @@ import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
 from numpy.testing import assert_allclose, assert_equal
 from openff.interchange.interop.openmm import to_openmm_positions
-from openff.toolkit import ForceField, Molecule, Topology, unit
+from openff.toolkit import ForceField, Molecule, Topology
+from openff.units import unit
 from openff.units.openmm import from_openmm, to_openmm
 from openmm import (
     HarmonicAngleForce,
