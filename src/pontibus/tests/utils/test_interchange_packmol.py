@@ -41,6 +41,16 @@ from pontibus.utils.system_solvation import packmol_solvation
 
 
 @pytest.fixture(scope="module")
+def protein_ff_settings():
+    return InterchangeFFSettings(
+        forcefields=[
+            "openff-2.0.0.offxml",
+            "ff14sb_off_impropers_0.0.3.offxml",
+        ],
+    )
+
+
+@pytest.fixture(scope="module")
 def smc_components_benzene_unnamed(benzene_modifications):
     benzene_off = benzene_modifications["benzene"].to_openff()
     benzene_off.assign_partial_charges(partial_charge_method="gasteiger")
@@ -1714,6 +1724,7 @@ def test_box_setting_dodecahedron(
     smc_components_benzene_named,
     T4_protein_component,
     water_off,
+    protein_ff_settings,
 ):
     solvation_settings = PackmolSolvationSettings(
         target_density=0.5 * unit.grams / unit.mL,
@@ -1721,8 +1732,8 @@ def test_box_setting_dodecahedron(
     )
     assert solvation_settings.box_shape == box_shape
 
-    topology, _ = interchange_packmol_creation(
-        InterchangeFFSettings(),
+    interchange, _ = interchange_packmol_creation(
+        ffsettings=protein_ff_settings,
         solvation_settings=solvation_settings,
         smc_components=smc_components_benzene_named,
         protein_component=T4_protein_component,
@@ -1732,9 +1743,15 @@ def test_box_setting_dodecahedron(
 
     match box_shape:
         case "dodecahedron":
-            assert topology.box_vectors is None
+            np.testing.assert_allclose(
+                interchange.box.m / np.linalg.norm(interchange.box.m, axis=1),
+                np.array([[1, 0, 0], [0, 1, 0], [0.5, 0.5, 0.5**0.5]]),
+            )
         case "cube":
-            assert topology.box_vectors is None
+            np.testing.assert_allclose(
+                interchange.box.m / np.diag(interchange.box.m),
+                np.eye(3),
+            )
 
 
 """
