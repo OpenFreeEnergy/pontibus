@@ -82,12 +82,12 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         """
         if not len(selection_indices) > 0:
             return
-    
+
         bfactors = np.zeros_like(selection_indices, dtype=float)
         bfactors[np.in1d(selection_indices, list(atom_classes["unique_old_atoms"]))] = 0.25  # lig A
         bfactors[np.in1d(selection_indices, list(atom_classes["core_atoms"]))] = 0.50  # core
         bfactors[np.in1d(selection_indices, list(atom_classes["unique_new_atoms"]))] = 0.75  # lig B
-    
+
         traj = mdtraj.Trajectory(
             positions[selection_indices, :],
             topology.subset(selection_indices),
