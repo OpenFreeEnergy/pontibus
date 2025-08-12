@@ -1471,7 +1471,9 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
                     "opc3.offxml",
                 ],
             ),
-            solvation_settings=PackmolSolvationSettings(),
+            solvation_settings=PackmolSolvationSettings(
+                target_density=0.3 * unit.grams / unit.mL
+            ),
             smc_components=smc_components,
             protein_component=protein_component,
             solvent_component=SolventComponent(),
@@ -1494,11 +1496,11 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 41
+        return 9
 
     @pytest.fixture(scope="class")
     def num_neg_ions(self):
-        return 50
+        return 18
 
     @pytest.fixture(scope="class")
     def num_waters(self, num_residues, num_pos_ions, num_neg_ions):
