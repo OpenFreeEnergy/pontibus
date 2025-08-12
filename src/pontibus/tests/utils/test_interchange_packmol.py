@@ -1726,6 +1726,8 @@ def test_box_setting_dodecahedron(
     water_off,
     protein_ff_settings,
 ):
+    import openmm.unit
+
     solvation_settings = PackmolSolvationSettings(
         target_density=0.5 * unit.grams / unit.mL,
         box_shape=box_shape,
@@ -1741,20 +1743,44 @@ def test_box_setting_dodecahedron(
         solvent_offmol=water_off,
     )
 
+    openmm_system = interchange.to_openmm_system()
+
+    # have to massage list[Vec3[Quantity]] into a more convenient array
+    a, b, c = [
+        row.value_in_unit(openmm.unit.nanometer)
+        for row in openmm_system.getDefaultPeriodicBoxVectors()
+    ]
+
+    openmm_box = np.asarray([a, b, c])
+
+    DODECAHEDRON_BOX = np.array([[1, 0, 0], [0, 1, 0], [0.5, 0.5, 0.5**0.5]])
+
     match box_shape:
         case "dodecahedron":
             np.testing.assert_allclose(
                 interchange.box.m / np.linalg.norm(interchange.box.m, axis=1),
-                np.array([[1, 0, 0], [0, 1, 0], [0.5, 0.5, 0.5**0.5]]),
+                DODECAHEDRON_BOX,
             )
+
+            np.testing.assert_allclose(
+                openmm_box / np.linalg.norm(openmm_box, axis=1),
+                DODECAHEDRON_BOX,
+            )
+
         case "cube":
             np.testing.assert_allclose(
-                interchange.box.m / np.diag(interchange.box.m),
+                interchange.box.m / np.linalg.norm(interchange.box.m, axis=1),
+                np.eye(3),
+            )
+
+            np.testing.assert_allclose(
+                openmm_box / np.linalg.norm(openmm_box, axis=1),
                 np.eye(3),
             )
 
 
 """
+
 5. Unamed solvent
   - Check we get warned about renaming
 6. Named solvent with inconsistent name
