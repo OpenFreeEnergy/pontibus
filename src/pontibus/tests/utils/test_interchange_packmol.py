@@ -1471,9 +1471,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
                     "opc3.offxml",
                 ],
             ),
-            solvation_settings=PackmolSolvationSettings(
-                target_density=0.3 * unit.grams / unit.mL
-            ),
+            solvation_settings=PackmolSolvationSettings(target_density=0.3 * unit.grams / unit.mL),
             smc_components=smc_components,
             protein_component=protein_component,
             solvent_component=SolventComponent(),
