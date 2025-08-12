@@ -70,6 +70,31 @@ logger = logging.getLogger(__name__)
 
 class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
     @staticmethod
+    def _write_hybrid_pdb(
+        positions: omm_unit.Quantity,
+        topology: mdtraj.Topology,
+        selection_indices: list[int],
+        atom_classes: dict[str, list[int]],
+        filename: pathlib.Path,
+    ) -> None:
+        """
+        Write out a PDB of the hybrid state
+        """
+        if not len(selection_indices) > 0:
+            return
+    
+        bfactors = np.zeros_like(selection_indices, dtype=float)
+        bfactors[np.in1d(selection_indices, list(atom_classes["unique_old_atoms"]))] = 0.25  # lig A
+        bfactors[np.in1d(selection_indices, list(atom_classes["core_atoms"]))] = 0.50  # core
+        bfactors[np.in1d(selection_indices, list(atom_classes["unique_new_atoms"]))] = 0.75  # lig B
+    
+        traj = mdtraj.Trajectory(
+            positions[selection_indices, :],
+            topology.subset(selection_indices),
+        )
+        traj.save_pdb(filename, bfactors=bfactors)
+
+    @staticmethod
     def _check_position_overlap(
         mapping: dict[str, dict[int, int]],
         positionsA: ArrayQuantity,
@@ -499,27 +524,22 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             velocity_interval=vel_interval,
         )
 
-        #  b. Write out a PDB containing the subsampled hybrid state
-        bfactors = np.zeros_like(selection_indices, dtype=float)  # solvent
-        bfactors[
-            np.in1d(selection_indices, list(hybrid_factory._atom_classes["unique_old_atoms"]))
-        ] = 0.25  # lig A
-        bfactors[np.in1d(selection_indices, list(hybrid_factory._atom_classes["core_atoms"]))] = (
-            0.50  # core
+        # Write out PDBs of the hybrid state (subsampled and then full)
+        self._write_hybrid_pdb(
+            hybrid_factory.hybrid_positions,
+            hybrid_factory.hybrid_topology,
+            selection_indices,
+            hybrid_factory._atom_classes,
+            shared_basepath / output_settings.output_structure,
         )
-        bfactors[
-            np.in1d(selection_indices, list(hybrid_factory._atom_classes["unique_new_atoms"]))
-        ] = 0.75  # lig B
 
-        if len(selection_indices) > 0:
-            traj = mdtraj.Trajectory(
-                hybrid_factory.hybrid_positions[selection_indices, :],
-                hybrid_factory.hybrid_topology.subset(selection_indices),
-            )
-            traj.save_pdb(
-                shared_basepath / output_settings.output_structure,
-                bfactors=bfactors,
-            )
+        self._write_hybrid_pdb(
+            hybrid_factory.hybrid_positions,
+            hybrid_factory.hybrid_topology,
+            [i for i in range(hybrid_factory.hybrid_system.getNumParticles())],
+            hybrid_factory._atom_classes,
+            shared_basepath / f"full_{output_settings.output_structure}",
+        )
 
         # 10. Get compute platform
         # restrict to a single CPU if running vacuum
