@@ -1729,7 +1729,7 @@ def test_box_setting_dodecahedron(
     import openmm.unit
 
     solvation_settings = PackmolSolvationSettings(
-        target_density=0.5 * unit.grams / unit.mL,
+        target_density=0.3 * unit.grams / unit.mL,
         box_shape=box_shape,
     )
     assert solvation_settings.box_shape == box_shape
