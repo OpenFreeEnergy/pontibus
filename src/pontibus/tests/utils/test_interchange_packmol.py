@@ -41,6 +41,16 @@ from pontibus.utils.system_solvation import packmol_solvation
 
 
 @pytest.fixture(scope="module")
+def protein_ff_settings():
+    return InterchangeFFSettings(
+        forcefields=[
+            "openff-2.0.0.offxml",
+            "ff14sb_off_impropers_0.0.3.offxml",
+        ],
+    )
+
+
+@pytest.fixture(scope="module")
 def smc_components_benzene_unnamed(benzene_modifications):
     benzene_off = benzene_modifications["benzene"].to_openff()
     benzene_off.assign_partial_charges(partial_charge_method="gasteiger")
@@ -1708,11 +1718,69 @@ class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
 #    ...
 #
 #
-# def test_box_setting_dodecahedron(smc_components_benzene):
-#    ...
+@pytest.mark.parametrize("box_shape", ["dodecahedron", "cube"])
+def test_box_setting_dodecahedron(
+    box_shape,
+    smc_components_benzene_named,
+    T4_protein_component,
+    water_off,
+    protein_ff_settings,
+):
+    import openmm.unit
+
+    solvation_settings = PackmolSolvationSettings(
+        target_density=0.3 * unit.grams / unit.mL,
+        box_shape=box_shape,
+    )
+    assert solvation_settings.box_shape == box_shape
+
+    interchange, _ = interchange_packmol_creation(
+        ffsettings=protein_ff_settings,
+        solvation_settings=solvation_settings,
+        smc_components=smc_components_benzene_named,
+        protein_component=T4_protein_component,
+        solvent_component=SolventComponent(),
+        solvent_offmol=water_off,
+    )
+
+    openmm_system = interchange.to_openmm_system()
+
+    # have to massage list[Vec3[Quantity]] into a more convenient array
+    a, b, c = [
+        row.value_in_unit(openmm.unit.nanometer)
+        for row in openmm_system.getDefaultPeriodicBoxVectors()
+    ]
+
+    openmm_box = np.asarray([a, b, c])
+
+    DODECAHEDRON_BOX = np.array([[1, 0, 0], [0, 1, 0], [0.5, 0.5, 0.5**0.5]])
+
+    match box_shape:
+        case "dodecahedron":
+            np.testing.assert_allclose(
+                interchange.box.m / np.linalg.norm(interchange.box.m, axis=1),
+                DODECAHEDRON_BOX,
+            )
+
+            np.testing.assert_allclose(
+                openmm_box / np.linalg.norm(openmm_box, axis=1),
+                DODECAHEDRON_BOX,
+            )
+
+        case "cube":
+            np.testing.assert_allclose(
+                interchange.box.m / np.linalg.norm(interchange.box.m, axis=1),
+                np.eye(3),
+            )
+
+            np.testing.assert_allclose(
+                openmm_box / np.linalg.norm(openmm_box, axis=1),
+                np.eye(3),
+            )
 
 
 """
+
 5. Unamed solvent
   - Check we get warned about renaming
 6. Named solvent with inconsistent name
