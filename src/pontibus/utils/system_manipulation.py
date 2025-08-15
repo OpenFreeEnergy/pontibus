@@ -138,7 +138,7 @@ def copy_interchange_with_replacement(
         # Check that all protein molecules are contiguous and at the start of
         # the topology
         protein_key = str(protein_component.key)
-        mask = [mol.key == protein_key for mol in mols]
+        mask = [mol.properties['key'] == protein_key for mol in mols]
         statuses = list(k for k, g in groupby(mask))
         if len(statuses) != 2 or (statuses[0] is False) or (statuses[-1] is True):
             raise ValueError("Protein is not at the start of topology")
