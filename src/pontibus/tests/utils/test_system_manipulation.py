@@ -17,6 +17,7 @@ from pontibus.utils.system_manipulation import (
     adjust_system,
     copy_interchange_with_replacement,
 )
+from pontibus.utils.settings import InterchangeFFSettings
 
 
 def test_adjust_forces_nothing():
@@ -47,7 +48,7 @@ def test_adjust_forces_add_comm_and_barostat():
 
 @pytest.fixture(scope="module")
 def forcefield():
-    return ForceField("openff-2.2.1.offxml")
+    return ForceField("openff-2.0.0.offxml", "tip3p.offxml")
 
 
 @pytest.fixture(scope="module")
@@ -75,7 +76,7 @@ def test_copy_no_conformers(forcefield):
             interchange=inter,
             del_mol=m1,
             insert_mol=m2,
-            force_field=forcefield,
+            ffsettings=InterchangeFFSettings(),
             charged_molecules=None,
         )
 
@@ -89,7 +90,7 @@ def test_copy_equality_clash(forcefield, insert_molecule, del_molecule):
             interchange=inter,
             del_mol=del_molecule,
             insert_mol=insert_molecule,
-            force_field=forcefield,
+            ffsettings=InterchangeFFSettings(),
             charged_molecules=None,
         )
 
@@ -105,8 +106,28 @@ def test_copy_no_del_match(forcefield, insert_molecule, del_molecule):
             interchange=inter,
             del_mol=fake_del_mol,
             insert_mol=insert_molecule,
-            force_field=forcefield,
+            ffsettings=InterchangeFFSettings,
             charged_molecules=None,
+        )
+
+
+def test_copy_noprotein_ff14sb(forcefield, insert_molecule, del_molecule):
+    topology = Topology.from_molecules([del_molecule])
+    inter = Interchange.from_smirnoff(forcefield, topology)
+
+    with pytest.raises(ValueError, match="A protein component is necessary"):
+        _ = copy_interchange_with_replacement(
+            interchange=inter,
+            del_mol=del_molecule,
+            insert_mol=insert_molecule,
+            ffsettings=InterchangeFFSettings(
+                forcefields=[
+                    "openff-2.0.0.offxml",
+                    "ff14sb_off_impropers_0.0.4.offxml"
+                ],
+            ),
+            charged_molecules=None,
+            protein_component=None,
         )
 
 
@@ -126,7 +147,7 @@ def test_copy_full(forcefield):
     inter = Interchange.from_smirnoff(forcefield, solvated_top, charge_from_molecules=[m1])
 
     inter_new = copy_interchange_with_replacement(
-        interchange=inter, del_mol=m1, insert_mol=m2, force_field=forcefield, charged_molecules=[m2]
+        interchange=inter, del_mol=m1, insert_mol=m2, ffsettings=InterchangeFFSettings(), charged_molecules=[m2]
     )
 
     assert inter.topology.n_molecules == inter_new.topology.n_molecules

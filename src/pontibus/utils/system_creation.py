@@ -383,7 +383,7 @@ def _post_process_topology(
 
 def _protein_split_combine_interchange(
     input_topology: Topology,
-    charge_from_molecules: list[OFFMolecule],
+    charge_from_molecules: list[OFFMolecule] | None,
     protein_component: ProteinComponent | None,
     ffsettings: InterchangeFFSettings,
 ) -> Interchange:
@@ -395,12 +395,12 @@ def _protein_split_combine_interchange(
     ----------
     input_topology : openff.toolkit.Topology
       The input topology to split and combine into an interchange.
-    charge_from_molecules : list[OFFMolecule]
+    charge_from_molecules : list[OFFMolecule] | None
       A list of charged molecules to pass on Interchange creation.
     protein_component : ProteinComponent | None
       The ProteinComponent, if there is one.
     ffsettings : InterchangeFFSettings
-      The force field settings.      
+      The force field settings.
 
     Returns
     -------

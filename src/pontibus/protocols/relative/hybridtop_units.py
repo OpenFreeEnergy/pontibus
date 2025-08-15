@@ -59,6 +59,7 @@ from pontibus.utils.settings import (
 from pontibus.utils.system_creation import (
     _get_force_field,
     interchange_packmol_creation,
+    _get_comp_resids,
 )
 from pontibus.utils.system_manipulation import (
     adjust_system,
@@ -200,33 +201,43 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
                 solvent_offmol=solvent_offmol,
             )
 
+        # Get the smc_components for state B
+        stateB_smc_comps = dict(chain(small_mols["stateB"], small_mols["both"]))
+
         # Get a list of the charged molecules to create stateB
-        stateB_charged_mols = [pair[1] for pair in chain(small_mols["stateB"], small_mols["both"])]
+        stateB_charged_mols = [*stateB_smc_comps.values()]
+
         if solvent_component is not None and solvation_settings.assign_solvent_charges:
             stateB_charged_mols.append(solvent_offmol)
+
+        # Get molB and set its key property to keep track of it
+        smcB = small_mols["stateB"][0][0]
+        molB = small_mols["stateB"][0][1]
+        molB.properties['key'] = str(smcB.key)
 
         # Set the stateB interchange
         with without_oechem_backend():
             interB = copy_interchange_with_replacement(
                 interchange=interA,
                 del_mol=small_mols["stateA"][0][1],
-                insert_mol=small_mols["stateB"][0][1],
-                force_field=_get_force_field(forcefield_settings),
+                insert_mol=molB,
+                ffsettings=forcefield_settings,
                 charged_molecules=stateB_charged_mols,
+                protein_component=protein_component,
             )
 
-        # stateB alchemical resid is the last N residues of the omm topology
-        # where N is the number of residues in that molecule
-        last_residx = interB.to_openmm_topology(collate=True).getNumResidues() - 1
-        alchemB_nresids = _get_num_residues(interB.topology.molecule(-1))
-        alchemB_resids = np.array(
-            [r for r in range(last_residx, last_residx - alchemB_nresids, -1)], dtype=int
+        # get the comp_resid dict for stateB
+        comp_residsB = _get_comp_resids(
+            interchange=interB,
+            smc_components=stateB_smc_comps,
+            solvent_component=solvent_component,
+            protein_component=protein_component
         )
 
         # Fetch the alchemical resids for each state from the comp_resids
         alchem_resids = {
             "stateA": comp_residsA[small_mols["stateA"][0][0]],
-            "stateB": alchemB_resids,
+            "stateB": comp_residsB[small_mols["stateB"][0][0]],
         }
 
         return interA, interB, alchem_resids
