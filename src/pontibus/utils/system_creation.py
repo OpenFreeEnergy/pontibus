@@ -186,7 +186,7 @@ def _validate_components(
             raise ValueError(errmsg)
 
 
-def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
+def _get_force_field(ffsettings: InterchangeFFSettings, exclude_ff14sb: bool) -> ForceField:
     """
     Get a ForceField object based on an input InterchangeFFSettings object.
 
@@ -194,6 +194,8 @@ def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
     ----------
     ffsettings : InterchangeFFSettings
       Settings defining how the force field is applied.
+    exclude_ff14sb : bool
+      Whether or not to exclude ff14sb
 
     Returns
     -------
@@ -201,7 +203,14 @@ def _get_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
       An OpenFF toolkit ForceField object.
     """
     # forcefields is a list so we unpack it
-    force_field = ForceField(*ffsettings.forcefields)
+    if exclude_ff14sb:
+        ffnames = [
+            name for name in ffsettings.forcefields
+            if 'ff14sb' not in name
+        ]
+        force_field = ForceField(*ffnames)
+    else:
+        force_field = ForceField(*ffsettings.forcefields)
 
     # We also set nonbonded cutoffs whilst we are here
     # TODO: double check what this means for nocutoff simulations
@@ -289,13 +298,13 @@ def _assign_comp_resnames_and_keys(
 
 def _post_process_topology(
     pre_topology, smc_components, solvent_component, protein_component
-) -> tuple[Topology, dict[Component, npt.NDArray]]:
+) -> Topology:
     """
-    Helper method to post-process a Topology and get a comp:resid dictionary
+    Helper method to post-process a Topology
 
     Specifically we:
-      1. Assign molecule chains based on their components
-      2. Ensure all molecules have a residue number
+      1. Assign molecule chains based on their components.
+      2. Ensure all molecules have a residue number.
       3. Get the resindex range for each molecule and add it to comp_resids.
 
     Parameters
@@ -313,11 +322,7 @@ def _post_process_topology(
     -------
     post_topology : openff.toolkit.Topology
       The post-processed Topology
-    comp_resids : dict[Component, npt.NDArray]
-      A dictionary defining the residue indices matching
-      various components in the system.
     """
-
     mols = [m for m in pre_topology.molecules]
 
     # Create a list of components
@@ -326,9 +331,6 @@ def _post_process_topology(
     for extra_comp in [solvent_component, protein_component]:
         if extra_comp is not None:
             comps.append(extra_comp)
-
-    # A dictionary of key:comp for later use
-    key_to_comp: dict[str, Component] = {comp.key: comp for comp in comps}
 
     # Do some checks and get a list of all existing chains
     known_chains = set()
@@ -356,13 +358,10 @@ def _post_process_topology(
         errmsg = "Too few chain IDs are available"
         raise ValueError(errmsg)
 
-    # Add in a chain for each SmallMoleculeComponent
+    # Add in a chain for each Component
     chains = {comp.key: chain_id for comp, chain_id in zip(comps, available_ids)}
 
-    # Temporary container to feed comp_resids
-    compkey_residx = {}
-
-    residx = 0
+    # Add in the chain and residue numbers if needed
     for mol in mols:
         mol_index = pre_topology.molecule_index(mol)
 
@@ -375,12 +374,121 @@ def _post_process_topology(
         if "residue_number" not in mol.atoms[0].metadata:
             _set_offmol_metadata(mol, "residue_number", mol_index)
 
-        # Get the number of residues this molecule spans
-        # let's duplicate the interchange behaviour
-        num_residx = _get_num_residues(mol)
+    # create the new Topology
+    post_topology = Topology.from_molecules(mols)
+    post_topology.box_vectors = pre_topology.box_vectors
 
-        # update compkey_residx
+    return post_topology
+
+
+def _protein_split_combine_interchange(
+    input_topology: Topology,
+    charge_from_molecules: list[OFFMolecule],
+    protein_component: ProteinComponent | None,
+    ffsettings: InterchangeFFSettings,
+) -> Interchange:
+    """
+    Create an interchange as the combination of the protein
+    and non-protein components.
+
+    Parameters
+    ----------
+    input_topology : openff.toolkit.Topology
+      The input topology to split and combine into an interchange.
+    charge_from_molecules : list[OFFMolecule]
+      A list of charged molecules to pass on Interchange creation.
+    protein_component : ProteinComponent | None
+      The ProteinComponent, if there is one.
+    ffsettings : InterchangeFFSettings
+      The force field settings.      
+
+    Returns
+    -------
+    Interchange
+      The combined Interchange, with the protein going first.
+
+    Raises
+    ------
+    ValueError
+      If ``protein_component`` is ``None``.
+    """
+    if protein_component is None:
+        raise ValueError("Using ff14SB without a protein is a bad idea")
+
+    protein_ff = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=False)
+    nonprotein_ff = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+
+    # Get a list of all the protein molecules
+    protein_key = str(protein_component.key)
+    protein_mols = []
+    nonprotein_mols = []
+
+    for mol in input_topology.molecules:
+        if mol.properties['key'] == protein_key:
+            protein_mols.append(mol)
+        else:
+            nonprotein_mols.append(mol)
+
+    # Create the individual topologies and make sure we copy the box vectors
+    protein_top = Topology.from_molecules(protein_mols)
+    protein_top.box_vectors = input_topology.box_vectors
+    nonprotein_top = Topology.from_molecules(nonprotein_mols)
+    nonprotein_top.box_vectors = input_topology.box_vectors
+
+    # We assume proteins will never have input charge
+    protein_interchange = protein_ff.create_interchange(
+        topology=protein_top,
+    )
+
+    non_protein_interchange = nonprotein_ff.create_interchange(
+        topology=nonprotein_top,
+        charge_from_molecules=charge_from_molecules
+    )
+
+    # Return the combination of the two
+    return protein_interchange.combine(non_protein_interchange)
+
+
+def _get_comp_resids(
+    interchange: Interchange,
+    smc_components: dict[SmallMoleculeComponent, OFFMolecule],
+    solvent_component: SolventComponent | None,
+    protein_component: ProteinComponent | None,
+) -> dict[Component, npt.NDArray]:
+    """
+    interchange : openff.interchange.Interchange
+      Interchange object for the created system.
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]
+      Solute SmallMoleculeComponents.
+    solvent_component: SolventComponent | None
+      SolventComponent of the system, if any.
+    protein_component : ProteinComponent | None
+      ProteinComponent of the system, if any.
+
+    Returns
+    -------
+    comp_resids : dict[Component, npt.NDArray]
+      A dictionary definingg the resisdue indices matching
+      various components in the system.
+    """
+    comps = [*smc_components.keys()]
+
+    for extra_comp in [solvent_component, protein_component]:
+        if extra_comp is not None:
+            comps.append(extra_comp)
+
+    key_to_comp: dict[str, Component] = {comp.key: comp for comp in comps}
+
+    # Temporary container to feed comp_resids
+    compkey_residx = {}
+
+    # Keep track of the current residx
+    residx = 0
+    for mol in interchange.topology.molecules:
         key = mol.properties["key"]
+        num_residx = _get_num_residues(mol)
+        residx_range = [r for r in range(residx, residx + num_residx)]
+
         residx_range = [r for r in range(residx, residx + num_residx)]
         if key not in compkey_residx:
             compkey_residx[key] = residx_range
@@ -395,11 +503,7 @@ def _post_process_topology(
         key_to_comp[key]: np.array(val, dtype=int) for key, val in compkey_residx.items()
     }
 
-    # create the new Topology
-    post_topology = Topology.from_molecules(mols)
-    post_topology.box_vectors = pre_topology.box_vectors
-
-    return post_topology, comp_resids
+    return comp_resids
 
 
 def interchange_packmol_creation(
@@ -441,9 +545,6 @@ def interchange_packmol_creation(
     # Component validations
     _validate_components(protein_component, solvent_component, solvent_offmol)
 
-    # Get the force field object
-    force_field = _get_force_field(ffsettings)
-
     # Get protein molecules if needed
     if protein_component is not None:
         protein_molecules = [m for m in _proteincomp_to_topology(protein_component).molecules]
@@ -467,13 +568,16 @@ def interchange_packmol_creation(
     charged_mols = [*smc_components.values()]
 
     if solvent_component is not None:  # solvent case
-        # Append to charged molcule to charged_mols if we want to
+        # Append to charged molecule to charged_mols if we want to
         # otherwise we rely on library charges
         if solvation_settings.assign_solvent_charges:
             charged_mols.append(solvent_offmol)
         else:
             # Make sure we have library charges for the molecule
-            _check_library_charges(force_field, solvent_offmol)
+            _check_library_charges(
+                _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True),
+                solvent_offmol
+            )
 
         # Add protein mols if they exist
         if protein_molecules is not None:
@@ -491,7 +595,7 @@ def interchange_packmol_creation(
     else:  # no solvent case
         topology = Topology.from_molecules(topology_molecules)
 
-    topology, comp_resids = _post_process_topology(
+    topology = _post_process_topology(
         pre_topology=topology,
         smc_components=smc_components,
         solvent_component=solvent_component,
@@ -502,9 +606,30 @@ def interchange_packmol_creation(
     # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
     unique_charged_mols = _check_and_deduplicate_charged_mols(charged_mols)
 
-    interchange = force_field.create_interchange(
-        topology=topology,
-        charge_from_molecules=unique_charged_mols,
+    # ff14sb can end up with overlapping parameters, so split things
+    # if necessary
+    if any(['ff14sb' in name for name in ffsettings.forcefields]):
+        interchange = _protein_split_combine_interchange(
+            input_topology=topology,
+            charge_from_molecules=unique_charged_mols,
+            protein_component=protein_component,
+            ffsettings=ffsettings,
+        )
+    else:
+        force_field = _get_force_field(
+            ffsettings=ffsettings, exclude_ff14sb=True
+        )
+        interchange = force_field.create_interchange(
+            topology=topology,
+            charge_from_molecules=unique_charged_mols,
+        )
+
+    # get the comp_resids dict
+    comp_resids = _get_comp_resids(
+        interchange=interchange,
+        smc_components=smc_components,
+        solvent_component=solvent_component,
+        protein_component=protein_component,
     )
 
     return interchange, comp_resids

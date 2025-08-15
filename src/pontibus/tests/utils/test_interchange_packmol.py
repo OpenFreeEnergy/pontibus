@@ -385,7 +385,7 @@ def test_get_force_field():
         switch_width=0.2 * unit.nanometer,
     )
 
-    ff = _get_force_field(ffsettings)
+    ff = _get_force_field(ffsettings, exclude_ff14sb=True)
 
     assert ff["vdW"].cutoff == ff["Electrostatics"].cutoff == 1.0 * unit.nanometer
     assert ff["vdW"].switch_width == 0.2 * unit.nanometer
@@ -404,7 +404,8 @@ def test_get_force_field_custom():
 
     ffsettings = InterchangeFFSettings(forcefields=[sage.to_string(), "opc.offxml"])
 
-    ff = _get_force_field(ffsettings)
+    # Setting exclusion to False purely to check that it still works
+    ff = _get_force_field(ffsettings, exclude_ff14sb=False)
 
     bonds = ff.get_parameter_handler("Bonds")
     bond_param = bonds[bond_parameter.smirks]
@@ -1526,6 +1527,28 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
     def num_constraints(self, num_waters):
         return 6 + 1319 + (3 * num_waters)
 
+    def test_topology(self, omm_topology, num_residues, num_particles):
+        residues = list(omm_topology.residues())
+        assert len(residues) == num_residues
+        assert len(list(omm_topology.atoms())) == num_particles
+        # protein
+        assert residues[0].name == "ACE"  # Expect first protein residue
+        assert residues[0].index == int(residues[0].id) - 1 == 0
+        assert all([r.chain.id == 'A' for r in residues[:164]])
+        assert all([r.chain.index == 0 for r in residues[:164]])
+        # ligand
+        assert residues[164].name == self.resname  # Expect auto-named to AAA
+        assert residues[164].index == 164
+        assert residues[164].id == 0
+        assert residues[164].chain.id == 'B'
+        assert residues[164].chain.index == 1
+        # solvent
+        assert residues[165].name == 'SOL'
+        assert residues[165].index == 165
+        assert residues[165].id == 2
+        assert all([r.chain.id == 'C' for r in residues[165:]])
+        assert all([r.chain.index == i+2 for i, r in enumerate(residues[165:])])
+
     def test_system_total_charge(self, nonbonds, omm_system):
         total_charge = 0.0
         for i in range(omm_system.getNumParticles()):
@@ -1538,12 +1561,14 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
         _, comp_resids = interchange_system
 
         assert len(comp_resids) == 3
-        assert list(comp_resids)[0] == next(iter(request.getfixturevalue(self.smc_comps)))
-        assert list(comp_resids)[1] == request.getfixturevalue(self.protein_comp)
+        assert list(comp_resids)[0] == request.getfixturevalue(self.protein_comp)
+        assert list(comp_resids)[1] == next(iter(request.getfixturevalue(self.smc_comps)))
         assert list(comp_resids)[2] == SolventComponent()
-        assert_equal(list(comp_resids.values())[0], [0])
+
         # 164 residues in T4 lysozyme
-        assert_equal(list(comp_resids.values())[1], [i for i in range(1, 165)])
+        assert_equal(list(comp_resids.values())[0], [i for i in range(164)])
+        # ligand
+        assert_equal(list(comp_resids.values())[1], [164])
         # solvent
         assert_equal(list(comp_resids.values())[2], [i for i in range(165, num_residues)])
 
@@ -1582,7 +1607,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             assert e2 == e2
 
 
-class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
+class TestComplexOPC3NumWaters(TestComplexOPC3):
     smc_comps = "smc_components_benzene_named"
     protein_comp = "T4_protein_component"
     resname = "BNZ"
@@ -1654,19 +1679,6 @@ class TestComplexOPC3NumWaters(TestSolventOPC3UnamedBenzene):
             total_charge += from_openmm(c).m
 
         assert total_charge == pytest.approx(0, abs=1e-6)
-
-    def test_comp_resids(self, interchange_system, request, num_residues):
-        _, comp_resids = interchange_system
-
-        assert len(comp_resids) == 3
-        assert list(comp_resids)[0] == next(iter(request.getfixturevalue(self.smc_comps)))
-        assert list(comp_resids)[1] == request.getfixturevalue(self.protein_comp)
-        assert list(comp_resids)[2] == SolventComponent()
-        assert_equal(list(comp_resids.values())[0], [0])
-        # 164 residues in T4 lysozyme
-        assert_equal(list(comp_resids.values())[1], [i for i in range(1, 165)])
-        # solvent
-        assert_equal(list(comp_resids.values())[2], [i for i in range(165, num_residues)])
 
     def test_solvent_resnames(self, omm_topology, num_pos_ions, num_neg_ions, num_waters):
         counts = {
