@@ -204,10 +204,7 @@ def _get_force_field(ffsettings: InterchangeFFSettings, exclude_ff14sb: bool) ->
     """
     # forcefields is a list so we unpack it
     if exclude_ff14sb:
-        ffnames = [
-            name for name in ffsettings.forcefields
-            if 'ff14sb' not in name
-        ]
+        ffnames = [name for name in ffsettings.forcefields if "ff14sb" not in name]
         force_field = ForceField(*ffnames)
     else:
         force_field = ForceField(*ffsettings.forcefields)
@@ -424,7 +421,7 @@ def _protein_split_combine_interchange(
     nonprotein_mols = []
 
     for mol in input_topology.molecules:
-        if mol.properties['key'] == protein_key:
+        if mol.properties["key"] == protein_key:
             protein_mols.append(mol)
         else:
             nonprotein_mols.append(mol)
@@ -441,8 +438,7 @@ def _protein_split_combine_interchange(
     )
 
     non_protein_interchange = nonprotein_ff.create_interchange(
-        topology=nonprotein_top,
-        charge_from_molecules=charge_from_molecules
+        topology=nonprotein_top, charge_from_molecules=charge_from_molecules
     )
 
     # Return the combination of the two
@@ -575,8 +571,7 @@ def interchange_packmol_creation(
         else:
             # Make sure we have library charges for the molecule
             _check_library_charges(
-                _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True),
-                solvent_offmol
+                _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True), solvent_offmol
             )
 
         # Add protein mols if they exist
@@ -608,7 +603,7 @@ def interchange_packmol_creation(
 
     # ff14sb can end up with overlapping parameters, so split things
     # if necessary
-    if any(['ff14sb' in name for name in ffsettings.forcefields]):
+    if any(["ff14sb" in name for name in ffsettings.forcefields]):
         interchange = _protein_split_combine_interchange(
             input_topology=topology,
             charge_from_molecules=unique_charged_mols,
@@ -616,9 +611,7 @@ def interchange_packmol_creation(
             ffsettings=ffsettings,
         )
     else:
-        force_field = _get_force_field(
-            ffsettings=ffsettings, exclude_ff14sb=True
-        )
+        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
         interchange = force_field.create_interchange(
             topology=topology,
             charge_from_molecules=unique_charged_mols,

@@ -1534,20 +1534,20 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
         # protein
         assert residues[0].name == "ACE"  # Expect first protein residue
         assert residues[0].index == int(residues[0].id) - 1 == 0
-        assert all([r.chain.id == 'A' for r in residues[:164]])
+        assert all([r.chain.id == "A" for r in residues[:164]])
         assert all([r.chain.index == 0 for r in residues[:164]])
         # ligand
         assert residues[164].name == self.resname  # Expect auto-named to AAA
         assert residues[164].index == 164
         assert residues[164].id == 0
-        assert residues[164].chain.id == 'B'
+        assert residues[164].chain.id == "B"
         assert residues[164].chain.index == 1
         # solvent
-        assert residues[165].name == 'SOL'
+        assert residues[165].name == "SOL"
         assert residues[165].index == 165
         assert residues[165].id == 2
-        assert all([r.chain.id == 'C' for r in residues[165:]])
-        assert all([r.chain.index == i+2 for i, r in enumerate(residues[165:])])
+        assert all([r.chain.id == "C" for r in residues[165:]])
+        assert all([r.chain.index == i + 2 for i, r in enumerate(residues[165:])])
 
     def test_system_total_charge(self, nonbonds, omm_system):
         total_charge = 0.0

@@ -13,11 +13,11 @@ from pontibus.utils.molecule_utils import (
     _get_offmol_metadata,
     _set_offmol_metadata,
 )
+from pontibus.utils.settings import InterchangeFFSettings
 from pontibus.utils.system_manipulation import (
     adjust_system,
     copy_interchange_with_replacement,
 )
-from pontibus.utils.settings import InterchangeFFSettings
 
 
 def test_adjust_forces_nothing():
@@ -121,10 +121,7 @@ def test_copy_noprotein_ff14sb(forcefield, insert_molecule, del_molecule):
             del_mol=del_molecule,
             insert_mol=insert_molecule,
             ffsettings=InterchangeFFSettings(
-                forcefields=[
-                    "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.4.offxml"
-                ],
+                forcefields=["openff-2.0.0.offxml", "ff14sb_off_impropers_0.0.4.offxml"],
             ),
             charged_molecules=None,
             protein_component=None,
@@ -147,7 +144,11 @@ def test_copy_full(forcefield):
     inter = Interchange.from_smirnoff(forcefield, solvated_top, charge_from_molecules=[m1])
 
     inter_new = copy_interchange_with_replacement(
-        interchange=inter, del_mol=m1, insert_mol=m2, ffsettings=InterchangeFFSettings(), charged_molecules=[m2]
+        interchange=inter,
+        del_mol=m1,
+        insert_mol=m2,
+        ffsettings=InterchangeFFSettings(),
+        charged_molecules=[m2],
     )
 
     assert inter.topology.n_molecules == inter_new.topology.n_molecules

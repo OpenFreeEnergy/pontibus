@@ -2,22 +2,23 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 from itertools import groupby
+
 import numpy as np
+from openfe import ProteinComponent
 from openff.interchange import Interchange
 from openff.toolkit import Molecule, Topology
 from openmm import Force, System
-from openfe import ProteinComponent
 
 from pontibus.utils.molecule_utils import (
     _get_offmol_metadata,
     _set_offmol_metadata,
 )
+from pontibus.utils.settings import InterchangeFFSettings
 from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
     _get_force_field,
-    _protein_split_combine_interchange
+    _protein_split_combine_interchange,
 )
-from pontibus.utils.settings import InterchangeFFSettings
 
 
 def adjust_system(
@@ -79,7 +80,7 @@ def copy_interchange_with_replacement(
     insert_mol : Molecule
       The Molecule to insert to the Interchange.
     ffsettings : InterchangeFFSettings
-      The force field settings.    
+      The force field settings.
     charged_molecules : list[Molecule] | None
       A  list of Molecules which partial charges to use in the new Interchange.
     protein_component : ProteinComponent | None
@@ -132,13 +133,13 @@ def copy_interchange_with_replacement(
     if charged_molecules is not None:
         charged_molecules = _check_and_deduplicate_charged_mols(charged_molecules)
 
-    if any(['ff14sb' in name for name in ffsettings.forcefields]):
+    if any(["ff14sb" in name for name in ffsettings.forcefields]):
         if protein_component is None:
             raise ValueError("A protein component is necessary with ff14sb")
         # Check that all protein molecules are contiguous and at the start of
         # the topology
         protein_key = str(protein_component.key)
-        mask = [mol.properties['key'] == protein_key for mol in mols]
+        mask = [mol.properties["key"] == protein_key for mol in mols]
         statuses = list(k for k, g in groupby(mask))
         if len(statuses) != 2 or (statuses[0] is False) or (statuses[-1] is True):
             raise ValueError("Protein is not at the start of topology")
@@ -150,9 +151,7 @@ def copy_interchange_with_replacement(
             ffsettings=ffsettings,
         )
     else:
-        force_field = _get_force_field(
-            ffsettings=ffsettings, exclude_ff14sb=True
-        )
+        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
         new_interchange = force_field.create_interchange(
             topology=new_topology,
             charge_from_molecules=charged_molecules,

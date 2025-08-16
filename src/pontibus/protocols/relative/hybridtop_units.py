@@ -51,15 +51,13 @@ from openmmtools import multistate
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
-from pontibus.utils.molecule_utils import _get_num_residues
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import (
-    _get_force_field,
-    interchange_packmol_creation,
     _get_comp_resids,
+    interchange_packmol_creation,
 )
 from pontibus.utils.system_manipulation import (
     adjust_system,
@@ -213,7 +211,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         # Get molB and set its key property to keep track of it
         smcB = small_mols["stateB"][0][0]
         molB = small_mols["stateB"][0][1]
-        molB.properties['key'] = str(smcB.key)
+        molB.properties["key"] = str(smcB.key)
 
         # Set the stateB interchange
         with without_oechem_backend():
@@ -231,7 +229,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             interchange=interB,
             smc_components=stateB_smc_comps,
             solvent_component=solvent_component,
-            protein_component=protein_component
+            protein_component=protein_component,
         )
 
         # Fetch the alchemical resids for each state from the comp_resids
