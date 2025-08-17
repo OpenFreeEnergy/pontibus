@@ -14,12 +14,12 @@ from openff.toolkit import Molecule as OFFMolecule
 from openff.units import unit
 
 from pontibus.utils.molecule_utils import (
+    _check_and_deduplicate_charged_mols,
     _check_library_charges,
     _get_num_residues,
     _get_offmol_resname,
     _set_offmol_metadata,
     _set_offmol_resname,
-    _check_and_deduplicate_charged_mols
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (

@@ -10,9 +10,9 @@ from openff.toolkit import Molecule, Topology
 from openmm import Force, System
 
 from pontibus.utils.molecule_utils import (
+    _check_and_deduplicate_charged_mols,
     _get_offmol_metadata,
     _set_offmol_metadata,
-    _check_and_deduplicate_charged_mols,
 )
 from pontibus.utils.settings import InterchangeFFSettings
 from pontibus.utils.system_creation import (
