@@ -16,7 +16,6 @@ from pontibus.utils.molecule_utils import (
 )
 from pontibus.utils.settings import InterchangeFFSettings
 from pontibus.utils.system_creation import (
-    _check_and_deduplicate_charged_mols,
     _get_force_field,
     _protein_split_combine_interchange,
 )
