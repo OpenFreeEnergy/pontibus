@@ -34,8 +34,8 @@ from pontibus.utils.system_creation import (
     _assign_comp_resnames_and_keys,
     _check_and_deduplicate_charged_mols,
     _get_force_field,
-    _proteincomp_to_topology,
     _protein_split_combine_interchange,
+    _proteincomp_to_topology,
     interchange_packmol_creation,
 )
 from pontibus.utils.system_manipulation import copy_interchange_with_replacement
@@ -1033,29 +1033,29 @@ def test_split_combine_noprotein_error(water_off, protein_ff_settings):
         )
 
 
-def test_split_combine_parameters(thrombin_protein_component, thrombin_protein_offtop, thrombin_ligands_charged):
+def test_split_combine_parameters(
+    thrombin_protein_component, thrombin_protein_offtop, thrombin_ligands_charged
+):
     # Prep ligand 6a
-    l_6a = thrombin_ligands_charged['6a']
+    l_6a = thrombin_ligands_charged["6a"]
     l_6a_off = l_6a.to_openff()
-    l_6a_off.properties['key'] = str(l_6a.key)
+    l_6a_off.properties["key"] = str(l_6a.key)
 
     # Prep ligand 6b
-    l_6b = thrombin_ligands_charged['6b']
+    l_6b = thrombin_ligands_charged["6b"]
     l_6b_off = l_6b.to_openff()
-    l_6b_off.properties['key'] = str(l_6b.key)
+    l_6b_off.properties["key"] = str(l_6b.key)
 
     # A water molecule
-    water = Molecule.from_smiles('O')
+    water = Molecule.from_smiles("O")
     water.generate_conformers(n_conformers=1)
-    water.properties['key'] = 'foo'
+    water.properties["key"] = "foo"
 
     # protein mols
     protein_mols = [m for m in thrombin_protein_offtop.molecules]
 
     # stateA topology
-    stateA_top = Topology.from_molecules(
-        protein_mols + [l_6a_off, water]
-    )
+    stateA_top = Topology.from_molecules(protein_mols + [l_6a_off, water])
 
     # ffsettings
     ffsettings = InterchangeFFSettings(
@@ -1085,7 +1085,7 @@ def test_split_combine_parameters(thrombin_protein_component, thrombin_protein_o
     for key, val in interA["vdW"].key_map.items():
         if key.atom_indices[0] < thrombin_protein_offtop.n_atoms:
             assert val.id in proteinff_smirks
-            if val.id not in ['[#1]-[#8X2H2+0:1]-[#1]', '[#1:1]-[#8X2H2+0]-[#1]']:
+            if val.id not in ["[#1]-[#8X2H2+0:1]-[#1]", "[#1:1]-[#8X2H2+0]-[#1]"]:
                 assert val.id not in ligandff_smirks
         elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + l_6a_off.n_atoms):
             assert val.id not in proteinff_smirks
@@ -1101,14 +1101,14 @@ def test_split_combine_parameters(thrombin_protein_component, thrombin_protein_o
         insert_mol=l_6b_off,
         ffsettings=ffsettings,
         charged_molecules=[l_6b_off],
-        protein_component=thrombin_protein_component
+        protein_component=thrombin_protein_component,
     )
 
     # Again probe the contents to make sure we applied the right force field
     for key, val in interB["vdW"].key_map.items():
         if key.atom_indices[0] < thrombin_protein_offtop.n_atoms:
             assert val.id in proteinff_smirks
-            if val.id not in ['[#1]-[#8X2H2+0:1]-[#1]', '[#1:1]-[#8X2H2+0]-[#1]']:
+            if val.id not in ["[#1]-[#8X2H2+0:1]-[#1]", "[#1:1]-[#8X2H2+0]-[#1]"]:
                 assert val.id not in ligandff_smirks
         elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + water.n_atoms):
             assert val.id in waterff_smirks

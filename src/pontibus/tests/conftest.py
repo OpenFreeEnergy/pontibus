@@ -161,7 +161,7 @@ def benzene_modifications_charged():
     return files
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def thrombin_ligands_charged():
     files = {}
     with resources.as_file(resources.files("pontibus.tests.data")) as d:
@@ -200,7 +200,7 @@ def T4_protein_offtop(T4_protein_component):
     return _proteincomp_to_topology(T4_protein_component)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def thrombin_protein_component():
     with resources.as_file(resources.files("pontibus.tests.data")) as d:
         fn = str(d / "thrombin.pdb")
@@ -215,7 +215,7 @@ def thrombin_protein_offtop(thrombin_protein_component):
     key = str(thrombin_protein_component.key)
     mols = [m for m in offtop.molecules]
     for m in mols:
-        m.properties['key'] = key
+        m.properties["key"] = key
 
     return Topology.from_molecules(mols)
 
