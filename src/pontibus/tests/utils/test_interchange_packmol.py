@@ -35,8 +35,10 @@ from pontibus.utils.system_creation import (
     _check_and_deduplicate_charged_mols,
     _get_force_field,
     _proteincomp_to_topology,
+    _protein_split_combine_interchange,
     interchange_packmol_creation,
 )
+from pontibus.utils.system_manipulation import copy_interchange_with_replacement
 from pontibus.utils.system_solvation import packmol_solvation
 
 
@@ -1021,6 +1023,101 @@ def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
     assert interchange.topology.n_molecules == 1001
 
 
+def test_split_combine_noprotein_error(water_off, protein_ff_settings):
+    with pytest.raises(ValueError, match="without a protein is a bad idea"):
+        _ = _protein_split_combine_interchange(
+            input_topology=Topology.from_molecules(water_off),
+            charge_from_molecules=None,
+            protein_component=None,
+            ffsettings=protein_ff_settings,
+        )
+
+
+def test_split_combine_parameters(thrombin_protein_component, thrombin_protein_offtop, thrombin_ligands_charged):
+    # Prep ligand 6a
+    l_6a = thrombin_ligands_charged['6a']
+    l_6a_off = l_6a.to_openff()
+    l_6a_off.properties['key'] = str(l_6a.key)
+
+    # Prep ligand 6b
+    l_6b = thrombin_ligands_charged['6b']
+    l_6b_off = l_6b.to_openff()
+    l_6b_off.properties['key'] = str(l_6b.key)
+
+    # A water molecule
+    water = Molecule.from_smiles('O')
+    water.generate_conformers(n_conformers=1)
+    water.properties['key'] = 'foo'
+
+    # protein mols
+    protein_mols = [m for m in thrombin_protein_offtop.molecules]
+
+    # stateA topology
+    stateA_top = Topology.from_molecules(
+        protein_mols + [l_6a_off, water]
+    )
+
+    # ffsettings
+    ffsettings = InterchangeFFSettings(
+        forcefields=[
+            "openff-2.0.0.offxml",
+            "ff14sb_off_impropers_0.0.3.offxml",
+            "opc3.offxml",
+        ],
+    )
+
+    # force fields
+    proteinff = ForceField("ff14sb_off_impropers_0.0.3.offxml", "opc3.offxml")
+    proteinff_smirks = [parameter.smirks for parameter in proteinff["vdW"].parameters]
+    ligandff = ForceField("openff-2.0.0.offxml")
+    ligandff_smirks = [parameter.smirks for parameter in ligandff["vdW"].parameters]
+    waterff = ForceField("opc3.offxml")
+    waterff_smirks = [parameter.smirks for parameter in waterff["vdW"].parameters]
+
+    interA = _protein_split_combine_interchange(
+        stateA_top,
+        charge_from_molecules=[l_6a_off],
+        protein_component=thrombin_protein_component,
+        ffsettings=ffsettings,
+    )
+
+    # Probe the vdw parameters and make sure they belong to the right force field
+    for key, val in interA["vdW"].key_map.items():
+        if key.atom_indices[0] < thrombin_protein_offtop.n_atoms:
+            assert val.id in proteinff_smirks
+            if val.id not in ['[#1]-[#8X2H2+0:1]-[#1]', '[#1:1]-[#8X2H2+0]-[#1]']:
+                assert val.id not in ligandff_smirks
+        elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + l_6a_off.n_atoms):
+            assert val.id not in proteinff_smirks
+            assert val.id not in waterff_smirks
+            assert val.id in ligandff_smirks
+        else:
+            assert val.id in waterff_smirks
+
+    # Now get a stateB interchange and do the same check
+    interB = copy_interchange_with_replacement(
+        interchange=interA,
+        del_mol=l_6a_off,
+        insert_mol=l_6b_off,
+        ffsettings=ffsettings,
+        charged_molecules=[l_6b_off],
+        protein_component=thrombin_protein_component
+    )
+
+    # Again probe the contents to make sure we applied the right force field
+    for key, val in interB["vdW"].key_map.items():
+        if key.atom_indices[0] < thrombin_protein_offtop.n_atoms:
+            assert val.id in proteinff_smirks
+            if val.id not in ['[#1]-[#8X2H2+0:1]-[#1]', '[#1:1]-[#8X2H2+0]-[#1]']:
+                assert val.id not in ligandff_smirks
+        elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + water.n_atoms):
+            assert val.id in waterff_smirks
+        else:
+            assert val.id not in proteinff_smirks
+            assert val.id not in waterff_smirks
+            assert val.id in ligandff_smirks
+
+
 class BaseSystemTests:
     @pytest.fixture(scope="class")
     def omm_system(self, interchange_system):
@@ -1715,21 +1812,6 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
             assert e2 == e2
 
 
-# def test_setcharge_coc_solvent(smc_components_benzene):
-#    ...
-#
-# def test_inconsistent_solvent_name(smc_components_benzene):
-#    ...
-#
-#
-# def test_duplicate_named_smcs(smc_components_benzene):
-#    ...
-#
-#
-# def test_box_setting_cube(smc_components_benzene):
-#    ...
-#
-#
 @pytest.mark.parametrize("box_shape", ["dodecahedron", "cube"])
 def test_box_setting_dodecahedron(
     box_shape,
@@ -1797,8 +1879,6 @@ def test_box_setting_dodecahedron(
   - Check we get warned about renaming
 6. Named solvent with inconsistent name
 7. Duplicate named smcs
-10. Cube
-11. Dodecahedron
 12. Check we get the right residues
 13. Check we get the right number of atoms
   - with a solvent w/ virtual sites
