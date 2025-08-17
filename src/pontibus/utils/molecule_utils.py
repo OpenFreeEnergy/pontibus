@@ -165,3 +165,60 @@ def _get_num_residues(offmol: OFFMolecule) -> int:
             num_residx += 1
 
     return num_residx
+
+
+def _check_and_deduplicate_charged_mols(
+    molecules: list[OFFMolecule],
+) -> list[OFFMolecule]:
+    """
+    Checks list of molecules with charges and removes any isomorphic
+    duplicates so that it can be passed to Interchange for partial
+    charge assignment.
+
+    Parameters
+    ----------
+    molecules : list[openff.toolkit.Molecule]
+      A list of molecules with charges.
+
+    Returns
+    -------
+    unique_mols : list[openff.toolkit.Molecule]
+      A list of ismorphically unique molecules with charges.
+
+    Raises
+    ------
+    ValueError
+      If any molecules in the list are isomorphic with different charges.
+      If any molecules in the last have no charges.
+    """
+    if any(m.partial_charges is None for m in molecules):
+        errmsg = (
+            "One or more molecules have been explicitly passed "
+            "for partial charge assignment but do not have "
+            "partial charges"
+        )
+        raise ValueError(errmsg)
+
+    unique_mols: list[OFFMolecule] = []
+
+    for moli in molecules:
+        isomorphic_mols = [molj for molj in unique_mols if moli.is_isomorphic_with(molj)]
+
+        if isomorphic_mols:
+            # If we have any cases where there are isomorphic mols
+            # either:
+            # 1. They have the same charge so we don't add a second entry
+            # 2. They have different charges and it's an error.
+            for molj in isomorphic_mols:
+                if not all(moli.partial_charges == molj.partial_charges):
+                    errmsg = (
+                        f"Isomorphic molecules {moli} and {molj}"
+                        "have been passed for partial charge "
+                        "assignment with different charges. "
+                        "This is not currently allowed."
+                    )
+                    raise ValueError(errmsg)
+        else:
+            unique_mols.append(moli)
+
+    return unique_mols
