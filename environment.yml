@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.6
+  # - gufe >=1.6
   - openff-toolkit >0.16.0
   - openff-interchange >=0.4.4
   - openff-nagl-base >=0.3.3
@@ -35,5 +35,6 @@ dependencies:
   - pytest-xdist
   # docs
   - pip:
-    - git+https://github.com/OpenFreeEnergy/openfe@main
-    - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@a45f3edd5bc3e973c1a01b577c71efa1b62a65d6
+    - git+https://github.com/OpenFreeEnergy/openfe@to_pydantic_v2
+    - git+https://github.com/OpenFreeEnergy/gufe@drop_pydanticv1
+    - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@main
