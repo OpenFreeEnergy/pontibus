@@ -105,15 +105,15 @@ exclude_patterns = [
     "ExampleNotebooks",
 ]
 
-autodoc_mock_imports = [
-    "matplotlib",
-    "mdtraj",
-    "openmmforcefields",
-    "openmmtools",
-    "pymbar",
-    "kartograf",
-    "konnektor",
-]
+# autodoc_mock_imports = [
+#     "matplotlib",
+#     "mdtraj",
+#     "openmmforcefields",
+#     "openmmtools",
+#     "pymbar",
+#     "kartograf",
+#     "konnektor",
+# ]
 
 # Extensions for the myst parser
 myst_enable_extensions = [

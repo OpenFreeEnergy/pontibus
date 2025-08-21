@@ -15,6 +15,14 @@ dependencies:
 - nbsphinx
 - nbsphinx-link
 - myst-parser
+- matplotlib
+- mdtraj
+- openmmforcefields
+- openmmtools
+- pymbar
+- kartograf
+- konnektor
+- lomap2>=3.0.0
 - pip:
   - git+https://github.com/OpenFreeEnergy/openfe@to_pydantic_v2
   - git+https://github.com/OpenFreeEnergy/gufe@drop_pydanticv1
