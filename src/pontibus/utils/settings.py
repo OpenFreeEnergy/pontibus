@@ -8,7 +8,13 @@ Shared pontibus Settings.
 from typing import Annotated, Literal, TypeAlias
 
 from gufe.settings import BaseForceFieldSettings
-from gufe.settings.types import NanometerQuantity, AngstromQuantity, GufeQuantity, GufeArrayQuantity, specify_quantity_units
+from gufe.settings.types import (
+    AngstromQuantity,
+    GufeArrayQuantity,
+    GufeQuantity,
+    NanometerQuantity,
+    specify_quantity_units,
+)
 from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
 )
@@ -17,7 +23,10 @@ from openff.units import unit
 from pydantic.v1 import root_validator, validator
 
 GramsPerMolQuantity: TypeAlias = Annotated[GufeQuantity, specify_quantity_units("grams / mL")]
-NanometerArrayQuantity: TypeAlias = Annotated[GufeArrayQuantity, specify_quantity_units("nanometer")]
+NanometerArrayQuantity: TypeAlias = Annotated[
+    GufeArrayQuantity, specify_quantity_units("nanometer")
+]
+
 
 class InterchangeFFSettings(BaseForceFieldSettings):
     """
