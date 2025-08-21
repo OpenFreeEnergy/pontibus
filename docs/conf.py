@@ -111,9 +111,9 @@ autodoc_mock_imports = [
     "openmmforcefields",
     "openmmtools",
     "pymbar",
-    # "kartograf",
+    "kartograf",
     # "konnektor",
-    "lomap2",
+    # "lomap2",
 ]
 
 # Extensions for the myst parser
