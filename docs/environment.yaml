@@ -8,7 +8,6 @@ dependencies:
 - pip
 - plugcli
 - openff-toolkit
-#- python=3.10
 # - sphinx<7
 - sphinx-click
 - gitpython
@@ -16,11 +15,6 @@ dependencies:
 - nbsphinx
 - nbsphinx-link
 - myst-parser
-- matplotlib
-- mdtraj
-- openmmforcefields
-- openmmtools
-- pymbar
 - kartograf
 - konnektor
 - lomap2>=3.0.0
