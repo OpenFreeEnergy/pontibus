@@ -7,7 +7,7 @@ dependencies:
 - packaging
 - plugcli
 - openff-toolkit
-# - sphinx<7
+- sphinx
 - sphinx-click
 - gitpython
 - libsass
@@ -21,7 +21,6 @@ dependencies:
   - git+https://github.com/OpenFreeEnergy/gufe@drop_pydanticv1
   - sphinx-design
   - sphinx-toolbox
-  - sphinx
   - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@main
 
 # These are added automatically by RTD, so we include them here
