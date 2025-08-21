@@ -5,6 +5,7 @@ dependencies:
 - autodoc-pydantic>=2.0
 # - openfe>=1.1.0
 - packaging
+- pip
 - plugcli
 - openff-toolkit
 #- python=3.10
