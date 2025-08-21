@@ -15,7 +15,6 @@ dependencies:
 - nbsphinx
 - nbsphinx-link
 - myst-parser
-- konnektor
 - lomap2>=3.0.0
 - pip:
   - git+https://github.com/OpenFreeEnergy/openfe@to_pydantic_v2

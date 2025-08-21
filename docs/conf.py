@@ -112,8 +112,7 @@ autodoc_mock_imports = [
     "openmmtools",
     "pymbar",
     "kartograf",
-    # "konnektor",
-    # "lomap2",
+    "konnektor",
 ]
 
 # Extensions for the myst parser
