@@ -177,7 +177,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
                 raise ValueError(errmsg)
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_num_mols_or_padding(cls, values):
         num_solvent = values.get("number_of_solvent_molecules")
         padding = values.get("solvent_padding")
@@ -188,7 +188,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return values
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_target_density_or_box_vectors(cls, values):
         target_density = values.get("target_density")
         box_vectors = values.get("box_vectors")
@@ -199,7 +199,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return values
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_target_density_and_box_shape(cls, values):
         target_density = values.get("target_density")
         box_shape = values.get("box_shape")
@@ -210,7 +210,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return values
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_solvent_padding_or_box_vectors(cls, values):
         box_vectors = values.get("box_vectors")
         padding = values.get("solvent_padding")
