@@ -178,45 +178,45 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         return v
 
     @model_validator(mode="after")
-    def check_num_mols_or_padding(cls, values):
-        num_solvent = values.get("number_of_solvent_molecules")
-        padding = values.get("solvent_padding")
+    def check_num_mols_or_padding(self):
+        num_solvent = self.number_of_solvent_molecules
+        padding = self.solvent_padding
 
         if not (num_solvent is None) ^ (padding is None):
             msg = "Only one of ``number_solvent_molecules`` or ``solvent_padding`` can be defined"
             raise ValueError(msg)
 
-        return values
+        return self
 
     @model_validator(mode="after")
-    def check_target_density_or_box_vectors(cls, values):
-        target_density = values.get("target_density")
-        box_vectors = values.get("box_vectors")
+    def check_target_density_or_box_vectors(self):
+        target_density = self.target_density
+        box_vectors = self.box_vectors
 
         if not (target_density is None) ^ (box_vectors is None):
             msg = "Only one of ``target_density`` or ``box_vectors`` can be defined"
             raise ValueError(msg)
 
-        return values
+        return self
 
     @model_validator(mode="after")
-    def check_target_density_and_box_shape(cls, values):
-        target_density = values.get("target_density")
-        box_shape = values.get("box_shape")
+    def check_target_density_and_box_shape(self):
+        target_density = self.target_density
+        box_shape = self.box_shape
 
         if not (target_density is None) == (box_shape is None):
             msg = "``target_density`` and ``box_shape`` must both be defined"
             raise ValueError(msg)
 
-        return values
+        return self
 
     @model_validator(mode="after")
-    def check_solvent_padding_or_box_vectors(cls, values):
-        box_vectors = values.get("box_vectors")
-        padding = values.get("solvent_padding")
+    def check_solvent_padding_or_box_vectors(self):
+        box_vectors = self.box_vectors
+        padding = self.solvent_padding
 
         if (box_vectors is not None) and (padding is not None):
             msg = "Only one of ``box_vectors`` or ``solvent_padding`` can be defined."
             raise ValueError(msg)
 
-        return values
+        return self
