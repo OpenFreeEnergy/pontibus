@@ -20,7 +20,7 @@ from openfe.protocols.openmm_utils.omm_settings import (
 )
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
 from openff.units import unit
-from pydantic.v1 import root_validator, validator
+from pydantic import field_validator, model_validator
 
 GramsPerMolQuantity: TypeAlias = Annotated[GufeQuantity, specify_quantity_units("grams / mL")]
 NanometerArrayQuantity: TypeAlias = Annotated[
@@ -64,7 +64,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     Default 0.1 * unit.nanometer.
     """
 
-    @validator("nonbonded_method")
+    @field_validator("nonbonded_method")
     def allowed_nonbonded(cls, v):
         # TODO: switch to literal?
         if v.lower() not in ["pme", "nocutoff"]:
@@ -72,7 +72,7 @@ class InterchangeFFSettings(BaseForceFieldSettings):
             raise ValueError(errmsg)
         return v
 
-    @validator("hydrogen_mass", "nonbonded_cutoff", "switch_width")
+    @field_validator("hydrogen_mass", "nonbonded_cutoff", "switch_width")
     def is_positive(cls, v):
         if v <= 0:
             errmsg = "must be a positive value"
@@ -158,7 +158,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined alongside ``box_vectors``
     """
 
-    @validator("number_of_solvent_molecules")
+    @field_validator("number_of_solvent_molecules")
     def positive_solvent_number(cls, v):
         if v is None:
             return v
@@ -169,7 +169,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return v
 
-    @validator("box_vectors")
+    @field_validator("box_vectors")
     def supported_vectors(cls, v):
         if v is not None:
             if not _box_vectors_are_in_reduced_form(v):
@@ -177,7 +177,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
                 raise ValueError(errmsg)
         return v
 
-    @root_validator
+    @model_validator(mode='after')
     def check_num_mols_or_padding(cls, values):
         num_solvent = values.get("number_of_solvent_molecules")
         padding = values.get("solvent_padding")
@@ -188,7 +188,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return values
 
-    @root_validator
+    @model_validator(mode='after')
     def check_target_density_or_box_vectors(cls, values):
         target_density = values.get("target_density")
         box_vectors = values.get("box_vectors")
@@ -199,7 +199,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return values
 
-    @root_validator
+    @model_validator(mode='after')
     def check_target_density_and_box_shape(cls, values):
         target_density = values.get("target_density")
         box_shape = values.get("box_shape")
@@ -210,7 +210,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
 
         return values
 
-    @root_validator
+    @model_validator(mode='after')
     def check_solvent_padding_or_box_vectors(cls, values):
         box_vectors = values.get("box_vectors")
         padding = values.get("solvent_padding")
