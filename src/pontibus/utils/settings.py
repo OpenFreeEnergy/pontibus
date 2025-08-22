@@ -10,6 +10,7 @@ from typing import Annotated, Literal, TypeAlias
 from gufe.settings import BaseForceFieldSettings
 from gufe.settings.types import (
     AngstromQuantity,
+    BoxQuantity,
     GufeArrayQuantity,
     GufeQuantity,
     NanometerQuantity,
@@ -99,7 +100,7 @@ class PackmolSolvationSettings(BaseSolvationSettings):
     * Cannot be defined alongside ``solvent_padding``.
     """
 
-    box_vectors: NanometerArrayQuantity | None = None  # noqa: F821
+    box_vectors: BoxQuantity | None = None  # noqa: F821
     """
     Simulation box vectors.
 
@@ -185,7 +186,6 @@ class PackmolSolvationSettings(BaseSolvationSettings):
         if not (num_solvent is None) ^ (padding is None):
             msg = "Only one of ``number_solvent_molecules`` or ``solvent_padding`` can be defined"
             raise ValueError(msg)
-
         return self
 
     @model_validator(mode="after")
