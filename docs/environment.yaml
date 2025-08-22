@@ -1,23 +1,26 @@
-name: docs
+name: pontibus-docs
 channels:
 - conda-forge
 dependencies:
-- autodoc-pydantic<2.0
-- openfe>=1.1.0
+- autodoc-pydantic>=2.0
+# - openfe>=1.1.0
 - packaging
 - plugcli
-- python=3.10
-- sphinx<7
+- openff-toolkit
+- sphinx
 - sphinx-click
 - gitpython
 - libsass
 - nbsphinx
 - nbsphinx-link
 - myst-parser
+- konnektor
+- lomap2>=3.0.0
 - pip:
+  - git+https://github.com/OpenFreeEnergy/openfe@to_pydantic_v2
+  - git+https://github.com/OpenFreeEnergy/gufe@drop_pydanticv1
   - sphinx-design
   - sphinx-toolbox
-  - sphinx<7
   - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@main
 
 # These are added automatically by RTD, so we include them here

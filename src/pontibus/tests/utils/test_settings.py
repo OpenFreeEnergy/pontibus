@@ -38,7 +38,7 @@ class TestInterchangeFFSettings:
 
 
 class TestPackmolSolvationSettings:
-    @pytest.fixture(scope="class")
+    @pytest.fixture()
     def settings(self):
         return PackmolSolvationSettings()
 
