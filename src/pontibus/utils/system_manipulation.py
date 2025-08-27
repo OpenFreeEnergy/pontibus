@@ -133,9 +133,9 @@ def copy_interchange_with_replacement(
     if charged_molecules is not None:
         charged_molecules = _check_and_deduplicate_charged_mols(charged_molecules)
 
-    if any(["ff14sb" in name for name in ffsettings.forcefields]):
+    if ffsettings.protein_only_forcefields is not None:
         if protein_component is None:
-            raise ValueError("A protein component is necessary with ff14sb")
+            raise ValueError("A protein component is necessary when defining protein_only_forcefields")
         # Check that all protein molecules are contiguous and at the start of
         # the topology
         protein_key = str(protein_component.key)
@@ -151,7 +151,7 @@ def copy_interchange_with_replacement(
             ffsettings=ffsettings,
         )
     else:
-        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+        force_field = _get_force_field(ffsettings=ffsettings, include_proteinff=False)
         new_interchange = force_field.create_interchange(
             topology=new_topology,
             charge_from_molecules=charged_molecules,

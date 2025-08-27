@@ -35,6 +35,9 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     ]
     """List of force field ffxmls to apply"""
 
+    protein_only_forcefields: list[str] | None = None
+    """A list of force fields to be solely applied to the protein"""
+
     nonbonded_method: Literal["pme", "nocutoff"] = "pme"
     """
     Method for treating nonbonded interactions, currently only PME and

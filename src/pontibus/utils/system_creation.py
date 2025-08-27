@@ -130,7 +130,7 @@ def _validate_components(
             raise ValueError(errmsg)
 
 
-def _get_force_field(ffsettings: InterchangeFFSettings, exclude_ff14sb: bool) -> ForceField:
+def _get_force_field(ffsettings: InterchangeFFSettings, include_proteinff: bool) -> ForceField:
     """
     Get a ForceField object based on an input InterchangeFFSettings object.
 
@@ -138,8 +138,8 @@ def _get_force_field(ffsettings: InterchangeFFSettings, exclude_ff14sb: bool) ->
     ----------
     ffsettings : InterchangeFFSettings
       Settings defining how the force field is applied.
-    exclude_ff14sb : bool
-      Whether or not to exclude ff14sb
+    include_proteinff : bool
+      Whether or not to include protein force fields
 
     Returns
     -------
@@ -147,9 +147,9 @@ def _get_force_field(ffsettings: InterchangeFFSettings, exclude_ff14sb: bool) ->
       An OpenFF toolkit ForceField object.
     """
     # forcefields is a list so we unpack it
-    if exclude_ff14sb:
-        ffnames = [name for name in ffsettings.forcefields if "ff14sb" not in name]
-        force_field = ForceField(*ffnames)
+    if include_proteinff:
+        ffs = ffsettings.forcefields + ffsettings.protein_only_forcefields
+        force_field = ForceField(*ffs)
     else:
         force_field = ForceField(*ffsettings.forcefields)
 
@@ -356,8 +356,8 @@ def _protein_split_combine_interchange(
     if protein_component is None:
         raise ValueError("Using ff14SB without a protein is a bad idea")
 
-    protein_ff = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=False)
-    nonprotein_ff = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+    protein_ff = _get_force_field(ffsettings=ffsettings, include_proteinff=True)
+    nonprotein_ff = _get_force_field(ffsettings=ffsettings, include_proteinff=False)
 
     # Get a list of all the protein molecules
     protein_key = str(protein_component.key)
@@ -515,7 +515,7 @@ def interchange_packmol_creation(
         else:
             # Make sure we have library charges for the molecule
             _check_library_charges(
-                _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True), solvent_offmol
+                _get_force_field(ffsettings=ffsettings, include_proteinff=False), solvent_offmol
             )
 
         # Add protein mols if they exist
@@ -547,7 +547,7 @@ def interchange_packmol_creation(
 
     # ff14sb can end up with overlapping parameters, so split things
     # if necessary
-    if any(["ff14sb" in name for name in ffsettings.forcefields]):
+    if ffsettings.protein_only_forcefields is not None:
         interchange = _protein_split_combine_interchange(
             input_topology=topology,
             charge_from_molecules=unique_charged_mols,
@@ -555,7 +555,7 @@ def interchange_packmol_creation(
             ffsettings=ffsettings,
         )
     else:
-        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+        force_field = _get_force_field(ffsettings=ffsettings, include_proteinff=False)
         interchange = force_field.create_interchange(
             topology=topology,
             charge_from_molecules=unique_charged_mols,

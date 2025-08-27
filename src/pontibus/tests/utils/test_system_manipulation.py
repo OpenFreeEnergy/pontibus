@@ -111,7 +111,7 @@ def test_copy_no_del_match(forcefield, insert_molecule, del_molecule):
         )
 
 
-def test_copy_noprotein_ff14sb(forcefield, insert_molecule, del_molecule):
+def test_copy_noprotein_proteinff(forcefield, insert_molecule, del_molecule):
     topology = Topology.from_molecules([del_molecule])
     inter = Interchange.from_smirnoff(forcefield, topology)
 
@@ -121,7 +121,8 @@ def test_copy_noprotein_ff14sb(forcefield, insert_molecule, del_molecule):
             del_mol=del_molecule,
             insert_mol=insert_molecule,
             ffsettings=InterchangeFFSettings(
-                forcefields=["openff-2.0.0.offxml", "ff14sb_off_impropers_0.0.4.offxml"],
+                forcefields=["openff-2.0.0.offxml"],
+                protein_only_forcefields=["ff14sb_off_impropers_0.0.4.offxml"],
             ),
             charged_molecules=None,
             protein_component=None,

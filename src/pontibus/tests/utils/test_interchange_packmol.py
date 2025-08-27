@@ -387,7 +387,7 @@ def test_get_force_field():
         switch_width=0.2 * unit.nanometer,
     )
 
-    ff = _get_force_field(ffsettings, exclude_ff14sb=True)
+    ff = _get_force_field(ffsettings, include_proteinff=False)
 
     assert ff["vdW"].cutoff == ff["Electrostatics"].cutoff == 1.0 * unit.nanometer
     assert ff["vdW"].switch_width == 0.2 * unit.nanometer
@@ -407,7 +407,7 @@ def test_get_force_field_custom():
     ffsettings = InterchangeFFSettings(forcefields=[sage.to_string(), "opc.offxml"])
 
     # Setting exclusion to False purely to check that it still works
-    ff = _get_force_field(ffsettings, exclude_ff14sb=False)
+    ff = _get_force_field(ffsettings, include_proteinff=False)
 
     bonds = ff.get_parameter_handler("Bonds")
     bond_param = bonds[bond_parameter.smirks]
@@ -1061,8 +1061,10 @@ def test_split_combine_parameters(
     ffsettings = InterchangeFFSettings(
         forcefields=[
             "openff-2.0.0.offxml",
-            "ff14sb_off_impropers_0.0.3.offxml",
             "opc3.offxml",
+        ],
+        protein_only_forcefields = [
+            "ff14sb_off_impropers_0.0.3.offxml",
         ],
     )
 
@@ -1575,9 +1577,9 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.3.offxml",
                     "opc3.offxml",
                 ],
+                protein_only_forcefields=["ff14sb_off_impropers_0.0.3.offxml"],
             ),
             solvation_settings=PackmolSolvationSettings(target_density=0.3 * unit.grams / unit.mL),
             smc_components=smc_components,
@@ -1718,9 +1720,9 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.3.offxml",
                     "opc3.offxml",
                 ],
+                protein_only_forcefields=["ff14sb_off_impropers_0.0.3.offxml"],
             ),
             solvation_settings=PackmolSolvationSettings(
                 number_of_solvent_molecules=5000, solvent_padding=None

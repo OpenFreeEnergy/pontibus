@@ -47,7 +47,6 @@ from openff.units.openmm import from_openmm, to_openmm
 from openmm import CMMotionRemover, MonteCarloBarostat, System
 from openmm import unit as omm_unit
 from openmm.app import Topology
-from openmm.app.internal.unitcell import computeLengthsAndAngles
 from openmmtools import multistate
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
@@ -75,7 +74,6 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         topology: mdtraj.Topology,
         selection_indices: list[int],
         atom_classes: dict[str, list[int]],
-        box_vectors,
         filename: pathlib.Path,
     ) -> None:
         """
@@ -89,22 +87,10 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         bfactors[np.in1d(selection_indices, list(atom_classes["core_atoms"]))] = 0.50  # core
         bfactors[np.in1d(selection_indices, list(atom_classes["unique_new_atoms"]))] = 0.75  # lig B
 
-        la, lb, lc, a, b, g = computeLengthsAndAngles(box_vectors)
-
-        lengths = np.array([[
-            la.value_in_unit(omm_unit.nanometer),
-            lb.value_in_unit(omm_unit.nanometer),
-            lc.value_in_unit(omm_unit.nanometer),
-        ]], dtype=float)
-        angles = np.array([[np.rad2deg(a), np.rad2deg(b), np.rad2deg(g)]], dtype=float)
-
         traj = mdtraj.Trajectory(
             positions[selection_indices, :],
             topology.subset(selection_indices),
-            unitcell_lengths=lengths,
-            unitcell_angles=angles
         )
-        traj.image_molecules(inplace=True)
         traj.save_pdb(filename, bfactors=bfactors)
 
     @staticmethod
@@ -553,7 +539,6 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             hybrid_factory.hybrid_topology,
             selection_indices,
             hybrid_factory._atom_classes,
-            hybrid_factory.hybrid_system.getDefaultPeriodicBoxVectors(),
             shared_basepath / output_settings.output_structure,
         )
 
@@ -562,7 +547,6 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
             hybrid_factory.hybrid_topology,
             [i for i in range(hybrid_factory.hybrid_system.getNumParticles())],
             hybrid_factory._atom_classes,
-            hybrid_factory.hybrid_system.getDefaultPeriodicBoxVectors(),
             shared_basepath / f"full_{output_settings.output_structure}",
         )
 
