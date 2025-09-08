@@ -47,6 +47,7 @@ from openff.units.openmm import from_openmm, to_openmm
 from openmm import CMMotionRemover, MonteCarloBarostat, System
 from openmm import unit as omm_unit
 from openmm.app import Topology
+from openmm.app.internal.unitcell import computeLengthsAndAngles
 from openmmtools import multistate
 
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
@@ -71,9 +72,10 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
     @staticmethod
     def _write_hybrid_pdb(
         positions: omm_unit.Quantity,
-        topology: mdtraj.Topology,
+        topology,  #: mdtraj.Topology,
         selection_indices: list[int],
         atom_classes: dict[str, list[int]],
+        box_vectors,
         filename: pathlib.Path,
     ) -> None:
         """
@@ -82,16 +84,71 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         if not len(selection_indices) > 0:
             return
 
-        bfactors = np.zeros_like(selection_indices, dtype=float)
-        bfactors[np.in1d(selection_indices, list(atom_classes["unique_old_atoms"]))] = 0.25  # lig A
-        bfactors[np.in1d(selection_indices, list(atom_classes["core_atoms"]))] = 0.50  # core
-        bfactors[np.in1d(selection_indices, list(atom_classes["unique_new_atoms"]))] = 0.75  # lig B
+        import MDAnalysis as mda
+        import MDAnalysis.transformations as transform
+        from MDAnalysis.coordinates.memory import MemoryReader
+        from MDAnalysis.coordinates.core import triclinic_box
+        from MDAnalysis.converters.OpenMM import _sanitize_box_angles
 
-        traj = mdtraj.Trajectory(
-            positions[selection_indices, :],
-            topology.subset(selection_indices),
+        dims = [v._value * 10 for v in box_vectors]
+
+        u = mda.Universe(
+            topology,
+            np.array(positions._value) * 10,
+            topology_format="OPENMMTOPOLOGY",
+            trajectory_format=MemoryReader,
         )
-        traj.save_pdb(filename, bfactors=bfactors)
+
+        u.dimensions = triclinic_box(*dims)
+        u.dimensions[3:] = _sanitize_box_angles(u.dimensions[3:])
+
+        ligand = u.select_atoms("resname AAA or resname UNK")
+        solutes = u.select_atoms("not water and not resname NA CL")
+        solvent = u.select_atoms("water or resname NA CL")
+
+        # transforms = [
+        #     transform.wrap(u.atoms),
+        #     transform.unwrap(u.atoms),
+        #     transform.center_in_box(solutes, wrap=True),
+        #     transform.wrap(solvent),
+        # ]
+
+        # u.trajectory.add_transformations(*transforms)
+
+        u.atoms.write(filename)
+        u.atoms.write(f"{filename}.xtc")
+        # bfactors = np.zeros_like(selection_indices, dtype=float)
+        # bfactors[np.in1d(selection_indices, list(atom_classes["unique_old_atoms"]))] = 0.25  # lig A
+        # bfactors[np.in1d(selection_indices, list(atom_classes["core_atoms"]))] = 0.50  # core
+        # bfactors[np.in1d(selection_indices, list(atom_classes["unique_new_atoms"]))] = 0.75  # lig B
+
+        # la, lb, lc, a, b, g = computeLengthsAndAngles(box_vectors)
+
+        # lengths = np.array(
+        #     [
+        #         [
+        #             la.value_in_unit(omm_unit.nanometer),
+        #             lb.value_in_unit(omm_unit.nanometer),
+        #             lc.value_in_unit(omm_unit.nanometer),
+        #         ]
+        #     ],
+        #     dtype=float
+        # )
+
+        # angles = np.array([[np.rad2deg(a), np.rad2deg(b), np.rad2deg(g)]], dtype=float)
+
+        # traj = mdtraj.Trajectory(
+        #     positions[selection_indices, :],
+        #     topology.subset(selection_indices),
+        #     unitcell_lengths=lengths,
+        #     unitcell_angles=angles,
+        # )
+        # # protein = topology.select('protein').tolist()
+        # # print(protein)
+        # traj.make_molecules_whole(inplace=True)
+        # traj.center_coordinates()
+        # traj.image_molecules(inplace=True) # , anchor_molecules=protein)
+        # traj.save_pdb(filename, bfactors=bfactors)
 
     @staticmethod
     def _check_position_overlap(
@@ -536,17 +593,19 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         # Write out PDBs of the hybrid state (subsampled and then full)
         self._write_hybrid_pdb(
             hybrid_factory.hybrid_positions,
-            hybrid_factory.hybrid_topology,
+            hybrid_factory.omm_hybrid_topology,
             selection_indices,
             hybrid_factory._atom_classes,
+            hybrid_factory.hybrid_system.getDefaultPeriodicBoxVectors(),
             shared_basepath / output_settings.output_structure,
         )
 
         self._write_hybrid_pdb(
             hybrid_factory.hybrid_positions,
-            hybrid_factory.hybrid_topology,
+            hybrid_factory.omm_hybrid_topology,
             [i for i in range(hybrid_factory.hybrid_system.getNumParticles())],
             hybrid_factory._atom_classes,
+            hybrid_factory.hybrid_system.getDefaultPeriodicBoxVectors(),
             shared_basepath / f"full_{output_settings.output_structure}",
         )
 
@@ -657,7 +716,7 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
                 if verbose:
                     self.logger.info("Running minimization")
 
-                sampler.minimize(max_iterations=sampler_settings.minimization_steps)
+               #  sampler.minimize(max_iterations=sampler_settings.minimization_steps)
 
                 # equilibrate
                 if verbose:
