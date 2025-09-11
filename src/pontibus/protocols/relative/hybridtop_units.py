@@ -55,10 +55,11 @@ from pontibus.utils.molecule_utils import _get_num_residues
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
+    OpenMMSolvationSettings,
 )
 from pontibus.utils.system_creation import (
     _get_force_field,
-    interchange_packmol_creation,
+    interchange_creation_via_openmm as interchange_packmol_creation,
 )
 from pontibus.utils.system_manipulation import (
     adjust_system,

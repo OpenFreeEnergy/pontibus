@@ -25,7 +25,7 @@ from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.system_solvation import packmol_solvation
+from pontibus.utils.system_solvation import packmol_solvation, openmm_solvation
 
 logger = logging.getLogger(__name__)
 
@@ -490,6 +490,75 @@ def interchange_packmol_creation(
         )
     else:  # no solvent case
         topology = Topology.from_molecules(topology_molecules)
+
+    topology, comp_resids = _post_process_topology(
+        pre_topology=topology,
+        smc_components=smc_components,
+        solvent_component=solvent_component,
+        protein_component=protein_component,
+    )
+
+    # Run validation checks on inputs to Interchange
+    # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
+    unique_charged_mols = _check_and_deduplicate_charged_mols(charged_mols)
+
+    interchange = force_field.create_interchange(
+        topology=topology,
+        charge_from_molecules=unique_charged_mols,
+    )
+
+    return interchange, comp_resids
+
+def interchange_creation_via_openmm(
+    ffsettings: InterchangeFFSettings,
+    solvation_settings: PackmolSolvationSettings,
+    smc_components: dict[SmallMoleculeComponent, OFFMolecule],
+    protein_component: ProteinComponent | None,
+    solvent_component: SolventComponent | None,
+    solvent_offmol: OFFMolecule | None,
+) -> tuple[Interchange, dict[Component, npt.NDArray]]:
+    _validate_components(protein_component, solvent_component, solvent_offmol)
+
+    force_field = _get_force_field(ffsettings)
+
+    if protein_component is not None:
+        protein_molecules = [m for m in _proteincomp_to_topology(protein_component).molecules]
+    else:
+        protein_molecules = None
+
+    _assign_comp_resnames_and_keys(
+        smc_components=smc_components,
+        solvent_component=solvent_component,
+        solvent_offmol=solvent_offmol,
+        protein_component=protein_component,
+        protein_molecules=protein_molecules,
+    )
+    
+    topology_molecules = [*smc_components.values()]
+
+    charged_mols = [*smc_components.values()]
+
+    if solvent_component is None:
+        topology = Topology.from_molecules(topology_molecules)
+    else:
+        if solvation_settings.assign_solvent_charges:
+            charged_mols.append(solvent_offmol)
+        else:
+            _check_library_charges(force_field, solvent_offmol)
+
+        if protein_molecules is not None:
+            topology_molecules += protein_molecules
+
+        solute_topology = Topology.from_molecules(topology_molecules)
+
+        topology = openmm_solvation(
+            solute_topology=solute_topology,
+            solvent_offmol=solvent_offmol,
+            solvation_settings=solvation_settings,
+            neutralize=solvent_component.neutralize,
+            ion_concentration=solvent_component.ion_concentration,
+        )
+
 
     topology, comp_resids = _post_process_topology(
         pre_topology=topology,

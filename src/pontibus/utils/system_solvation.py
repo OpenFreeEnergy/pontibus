@@ -24,6 +24,7 @@ from pontibus.utils.molecule_utils import (
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
     PackmolSolvationSettings,
+    OpenMMSolvationSettings,
 )
 
 logger = logging.getLogger(__name__)
@@ -396,12 +397,15 @@ def packmol_solvation(
 def openmm_solvation(
     solute_topology: Topology,
     solvent_offmol: OFFMolecule,
-    solvation_settings: PackmolSolvationSettings,
+    solvation_settings: OpenMMSolvationSettings,
     neutralize: bool,
     ion_concentration: Quantity,
 ) -> Topology:
     import openmm
     import openmm.app
+    from openff.toolkit import Molecule
+
+    ions = [Molecule.from_smiles("[Na+]"), Molecule.from_smiles("[Cl-]")]
 
     def make_vec3(positions: Quantity) -> openmm.Vec3:
         return [
@@ -430,10 +434,18 @@ def openmm_solvation(
             positions=make_vec3(solute_topology.get_positions()),
         )
 
-        modeller.addSolvent(
-            forcefield=openmm.app.ForceField(
+        from openmmforcefields.generators import SMIRNOFFTemplateGenerator
+        
+        forcefield=openmm.app.ForceField(
                 "amber14-all.xml", "amber14/tip3pfb.xml"
-            ),  # just for vdW parameters
+            )
+
+        forcefield.registerTemplateGenerator(
+            SMIRNOFFTemplateGenerator(molecules=solute_topology.molecule(0)).generator
+        )
+    
+        modeller.addSolvent(
+            forcefield=forcefield,
             model="tip3p",
             boxVectors=make_vec3(box_vectors),
             boxShape=solvation_settings.box_shape,
@@ -443,7 +455,10 @@ def openmm_solvation(
             neutralize=True,
         )
 
-        topology = Topology.from_openmm(modeller.topology)
+        topology = Topology.from_openmm(
+            modeller.topology,
+            unique_molecules=[*solute_topology.molecules] + [solvent_offmol] + ions
+        )
 
         solvent_key = solvent_offmol.properties["key"]
 
