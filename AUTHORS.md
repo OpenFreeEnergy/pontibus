@@ -16,3 +16,5 @@ The rules for this file:
 **2024**
 - Irfan Alibay <@IAlibay>
 - Matt Thompson <@mattwthompson>
+**2025**
+- Josh A. Mitchell <@Yoshanuikabundi>

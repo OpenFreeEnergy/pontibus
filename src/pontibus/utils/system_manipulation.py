@@ -1,16 +1,24 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
+from itertools import groupby
+
 import numpy as np
+from openfe import ProteinComponent
 from openff.interchange import Interchange
-from openff.toolkit import ForceField, Molecule, Topology
+from openff.toolkit import Molecule, Topology
 from openmm import Force, System
 
 from pontibus.utils.molecule_utils import (
+    _check_and_deduplicate_charged_mols,
     _get_offmol_metadata,
     _set_offmol_metadata,
 )
-from pontibus.utils.system_creation import _check_and_deduplicate_charged_mols
+from pontibus.utils.settings import InterchangeFFSettings
+from pontibus.utils.system_creation import (
+    _get_force_field,
+    _protein_split_combine_interchange,
+)
 
 
 def adjust_system(
@@ -56,8 +64,9 @@ def copy_interchange_with_replacement(
     interchange: Interchange,
     del_mol: Molecule,
     insert_mol: Molecule,
-    force_field: ForceField,
+    ffsettings: InterchangeFFSettings,
     charged_molecules: list[Molecule] | None,
+    protein_component: ProteinComponent | None = None,
 ) -> Interchange:
     """
     Copy an Interchange deleting one Molecule and appending another.
@@ -70,10 +79,12 @@ def copy_interchange_with_replacement(
       The Molecule to delete from the Interchange.
     insert_mol : Molecule
       The Molecule to insert to the Interchange.
-    force_field : ForceField
-      The ForceField object used to create the initial Interchange.
+    ffsettings : InterchangeFFSettings
+      The force field settings.
     charged_molecules : list[Molecule] | None
       A  list of Molecules which partial charges to use in the new Interchange.
+    protein_component : ProteinComponent | None
+      The ProteinComponent, only necessary if using the ff14sb force field.
 
     Returns
     -------
@@ -122,9 +133,28 @@ def copy_interchange_with_replacement(
     if charged_molecules is not None:
         charged_molecules = _check_and_deduplicate_charged_mols(charged_molecules)
 
-    new_interchange = force_field.create_interchange(
-        topology=new_topology,
-        charge_from_molecules=charged_molecules,
-    )
+    if any(["ff14sb" in name for name in ffsettings.forcefields]):
+        if protein_component is None:
+            raise ValueError("A protein component is necessary with ff14sb")
+        # Check that all protein molecules are contiguous and at the start of
+        # the topology
+        protein_key = str(protein_component.key)
+        mask = [mol.properties["key"] == protein_key for mol in mols]
+        statuses = list(k for k, g in groupby(mask))
+        if len(statuses) != 2 or (statuses[0] is False) or (statuses[-1] is True):
+            raise ValueError("Protein is not at the start of topology")
+
+        new_interchange = _protein_split_combine_interchange(
+            input_topology=new_topology,
+            charge_from_molecules=charged_molecules,
+            protein_component=protein_component,
+            ffsettings=ffsettings,
+        )
+    else:
+        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+        new_interchange = force_field.create_interchange(
+            topology=new_topology,
+            charge_from_molecules=charged_molecules,
+        )
 
     return new_interchange
