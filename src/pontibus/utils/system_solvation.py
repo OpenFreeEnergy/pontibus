@@ -23,9 +23,9 @@ from pontibus.utils.molecule_utils import (
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
-    OpenMMSolvationSettings,
     PackmolSolvationSettings,
 )
+from openfe.protocols.openmm_utils.omm_settings import OpenMMSolvationSettings
 
 logger = logging.getLogger(__name__)
 
