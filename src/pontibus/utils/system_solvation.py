@@ -23,8 +23,8 @@ from pontibus.utils.molecule_utils import (
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
-    PackmolSolvationSettings,
     OpenMMSolvationSettings,
+    PackmolSolvationSettings,
 )
 
 logger = logging.getLogger(__name__)
@@ -435,15 +435,13 @@ def openmm_solvation(
         )
 
         from openmmforcefields.generators import SMIRNOFFTemplateGenerator
-        
-        forcefield=openmm.app.ForceField(
-                "amber14-all.xml", "amber14/tip3pfb.xml"
-            )
+
+        forcefield = openmm.app.ForceField("amber14-all.xml", "amber14/tip3pfb.xml")
 
         forcefield.registerTemplateGenerator(
             SMIRNOFFTemplateGenerator(molecules=solute_topology.molecule(0)).generator
         )
-    
+
         modeller.addSolvent(
             forcefield=forcefield,
             model="tip3p",
@@ -457,15 +455,17 @@ def openmm_solvation(
 
         topology = Topology.from_openmm(
             modeller.topology,
-            unique_molecules=[*solute_topology.molecules] + [solvent_offmol] + ions
+            unique_molecules=[*solute_topology.molecules] + [solvent_offmol] + ions,
+            positions=modeller.getPositions(),
         )
 
         solvent_key = solvent_offmol.properties["key"]
 
         for molecule_index, molecule in enumerate(topology.molecules):
-            if molecule_index < solvent_offmol:
+            if molecule_index < solute_topology.n_molecules:
                 continue
 
+            # all "solvents"  get this key, even if they're ions
             molecule.properties["key"] = solvent_key
             solvent_residue_name = _get_offmol_resname(offmol_water)
             match molecule.n_atoms:
@@ -483,5 +483,14 @@ def openmm_solvation(
                                 f"Unrecognized ion with atomic number {molecule.atom(0).atomic_number}"
                             )
 
+                case _:
+                    raise ValueError(
+                        f"Unrecognized 'solvent' molecule with {molecule.to_smiles()} SMILES"
+                    )
+
     else:
         raise NotImplementedError()
+
+    assert topology.get_positions().m.shape == (topology.n_atoms, 3)
+
+    return topology

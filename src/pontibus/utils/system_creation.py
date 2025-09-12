@@ -26,7 +26,7 @@ from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.system_solvation import packmol_solvation, openmm_solvation
+from pontibus.utils.system_solvation import openmm_solvation, packmol_solvation
 
 logger = logging.getLogger(__name__)
 
@@ -571,6 +571,7 @@ def interchange_packmol_creation(
 
     return interchange, comp_resids
 
+
 def interchange_creation_via_openmm(
     ffsettings: InterchangeFFSettings,
     solvation_settings: PackmolSolvationSettings,
@@ -581,7 +582,7 @@ def interchange_creation_via_openmm(
 ) -> tuple[Interchange, dict[Component, npt.NDArray]]:
     _validate_components(protein_component, solvent_component, solvent_offmol)
 
-    force_field = _get_force_field(ffsettings)
+    force_field = _get_force_field(ffsettings, exclude_ff14sb=True)
 
     if protein_component is not None:
         protein_molecules = [m for m in _proteincomp_to_topology(protein_component).molecules]
@@ -595,7 +596,7 @@ def interchange_creation_via_openmm(
         protein_component=protein_component,
         protein_molecules=protein_molecules,
     )
-    
+
     topology_molecules = [*smc_components.values()]
 
     charged_mols = [*smc_components.values()]
@@ -621,8 +622,7 @@ def interchange_creation_via_openmm(
             ion_concentration=solvent_component.ion_concentration,
         )
 
-
-    topology, comp_resids = _post_process_topology(
+    topology = _post_process_topology(
         pre_topology=topology,
         smc_components=smc_components,
         solvent_component=solvent_component,
@@ -633,9 +633,28 @@ def interchange_creation_via_openmm(
     # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
     unique_charged_mols = _check_and_deduplicate_charged_mols(charged_mols)
 
-    interchange = force_field.create_interchange(
-        topology=topology,
-        charge_from_molecules=unique_charged_mols,
+    # ff14sb can end up with overlapping parameters, so split things
+    # if necessary
+    if any(["ff14sb" in name for name in ffsettings.forcefields]):
+        interchange = _protein_split_combine_interchange(
+            input_topology=topology,
+            charge_from_molecules=unique_charged_mols,
+            protein_component=protein_component,
+            ffsettings=ffsettings,
+        )
+    else:
+        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+        interchange = force_field.create_interchange(
+            topology=topology,
+            charge_from_molecules=unique_charged_mols,
+        )
+
+    # get the comp_resids dict
+    comp_resids = _get_comp_resids(
+        interchange=interchange,
+        smc_components=smc_components,
+        solvent_component=solvent_component,
+        protein_component=protein_component,
     )
 
     return interchange, comp_resids

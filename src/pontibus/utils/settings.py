@@ -11,7 +11,6 @@ from gufe.settings import BaseForceFieldSettings
 from gufe.vendor.openff.models.types import ArrayQuantity, FloatQuantity
 from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
-    OpenMMSolvationSettings,
 )
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
 from openff.units import unit

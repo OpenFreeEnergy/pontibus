@@ -54,12 +54,12 @@ from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
-    OpenMMSolvationSettings,
 )
 from pontibus.utils.system_creation import (
-    _get_force_field,
-    interchange_creation_via_openmm as interchange_packmol_creation,
     _get_comp_resids,
+)
+from pontibus.utils.system_creation import (
+    interchange_creation_via_openmm as interchange_packmol_creation,
 )
 from pontibus.utils.system_manipulation import (
     adjust_system,
