@@ -57,7 +57,9 @@ from pontibus.utils.settings import (
 )
 from pontibus.utils.system_creation import (
     _get_comp_resids,
-    interchange_packmol_creation,
+)
+from pontibus.utils.system_creation import (
+    interchange_creation_via_openmm as interchange_packmol_creation,
 )
 from pontibus.utils.system_manipulation import (
     adjust_system,
