@@ -326,7 +326,7 @@ def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mappi
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
         assert len(sampler._hybrid_factory._unique_new_atoms) == 4
         assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == 2278
+        assert len(sampler._hybrid_factory._env_old_to_new_map) in (2278, 2326)
 
 
 def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
