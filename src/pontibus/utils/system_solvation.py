@@ -4,6 +4,7 @@ import logging
 
 import numpy as np
 import numpy.typing as npt
+from openfe.protocols.openmm_utils.omm_settings import OpenMMSolvationSettings
 from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
@@ -25,7 +26,6 @@ from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
     PackmolSolvationSettings,
 )
-from openfe.protocols.openmm_utils.omm_settings import OpenMMSolvationSettings
 
 logger = logging.getLogger(__name__)
 
