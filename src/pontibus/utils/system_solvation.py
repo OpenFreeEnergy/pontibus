@@ -299,7 +299,7 @@ def _process_inputs(
                 molecules=[solvent_offmol],
                 n_copies=[solvation_settings.number_of_solvent_molecules],
                 solute_topology=solute_topology,
-                target_density=solvation_settings.target_density,  # type: ignore[arg-type]
+                target_density=solvation_settings.target_density,
                 box_shape=box_shape,  # type: ignore[arg-type]
             )
     else:
@@ -308,11 +308,11 @@ def _process_inputs(
             solute_topology=solute_topology,
             solvent=solvent_offmol,
             box_shape=box_shape,  # type: ignore[arg-type]
-            padding=solvation_settings.solvent_padding,  # type: ignore[arg-type]
-            target_density=solvation_settings.target_density,  # type: ignore[arg-type]
+            padding=solvation_settings.solvent_padding,
+            target_density=solvation_settings.target_density,
         )
 
-    return box_shape, n_solvent, box_vectors
+    return box_shape, n_solvent, box_vectors  # type: ignore[return-value]
 
 
 def packmol_solvation(
@@ -410,7 +410,7 @@ def openmm_solvation(
     def make_vec3(positions: Quantity) -> openmm.Vec3:
         return [
             openmm.Vec3(float(row[0]), float(row[1]), float(row[2]))
-            for row in positions.m_as("nanometer")
+            for row in positions.m_as("nanometer")  # type: ignore[union-attr]
         ]
 
     _, n_solvent, box_vectors = _process_inputs(
@@ -449,7 +449,7 @@ def openmm_solvation(
             boxShape=solvation_settings.box_shape,
             positiveIon="Na+",
             negativeIon="Cl-",
-            ionicStrength=ion_concentration.to_openmm(),
+            ionicStrength=ion_concentration.to_openmm(),  # type: ignore[attr-defined]
             neutralize=True,
         )
 
