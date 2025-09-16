@@ -1131,7 +1131,7 @@ def test_split_combine_parameters(
         else:
             assert val.id not in proteinff_smirks
             assert val.id not in waterff_smirks
-            assert val.id.strip("_DUPLICATE") in ligandff_smirks
+            assert val.id in ligandff_smirks
 
 
 class BaseSystemTests:
