@@ -1081,6 +1081,22 @@ def test_split_combine_parameters(
         ffsettings=ffsettings,
     )
 
+    # strip out the waters from this topology since the protein component is
+    # parametrized with only the protein molecule
+    protein_vdw = proteinff.create_interchange(protein_mols[0].to_topology())[
+        "vdW"
+    ].get_system_parameters()
+    ligand_vdw = ligandff.create_interchange(l_6a_off.to_topology())["vdW"].get_system_parameters()
+
+    found_vdw = interA["vdW"].get_system_parameters()
+
+    np.testing.assert_equal(found_vdw[: protein_mols[0].n_atoms, :], protein_vdw)
+
+    np.testing.assert_equal(
+        found_vdw[protein_mols[0].n_atoms : (protein_mols[0].n_atoms + l_6a_off.n_atoms), :],
+        ligand_vdw,
+    )
+
     # Probe the vdw parameters and make sure they belong to the right force field
     for key, val in interA["vdW"].key_map.items():
         if key.atom_indices[0] < thrombin_protein_offtop.n_atoms:
