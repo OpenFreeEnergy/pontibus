@@ -1088,11 +1088,11 @@ def test_split_combine_parameters(
             if val.id not in ["[#1]-[#8X2H2+0:1]-[#1]", "[#1:1]-[#8X2H2+0]-[#1]"]:
                 assert val.id not in ligandff_smirks
         elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + l_6a_off.n_atoms):
-            assert val.id.strip('_DUPLICATE') not in proteinff_smirks
-            assert val.id.strip('_DUPLICATE') not in waterff_smirks
-            assert val.id.strip('_DUPLICATE') in ligandff_smirks
+            assert val.id not in proteinff_smirks
+            assert val.id not in waterff_smirks
+            assert val.id in ligandff_smirks
         else:
-            assert val.id.strip('_DUPLICATE') in waterff_smirks
+            assert val.id.strip("_DUPLICATE") in waterff_smirks
 
     # Now get a stateB interchange and do the same check
     interB = copy_interchange_with_replacement(
@@ -1111,11 +1111,11 @@ def test_split_combine_parameters(
             if val.id not in ["[#1]-[#8X2H2+0:1]-[#1]", "[#1:1]-[#8X2H2+0]-[#1]"]:
                 assert val.id not in ligandff_smirks
         elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + water.n_atoms):
-            assert val.id.strip('_DUPLICATE') in waterff_smirks
+            assert val.id.strip("_DUPLICATE") in waterff_smirks
         else:
             assert val.id not in proteinff_smirks
             assert val.id not in waterff_smirks
-            assert val.id.strip('_DUPLICATE') in ligandff_smirks
+            assert val.id.strip("_DUPLICATE") in ligandff_smirks
 
 
 class BaseSystemTests:
