@@ -4,7 +4,6 @@ import logging
 
 import numpy as np
 import numpy.typing as npt
-from openfe.protocols.openmm_utils.omm_settings import OpenMMSolvationSettings
 from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
@@ -25,6 +24,7 @@ from pontibus.utils.molecule_utils import (
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
     PackmolSolvationSettings,
+    InterchangeOpenMMSolvationSettings,
 )
 
 logger = logging.getLogger(__name__)
@@ -273,12 +273,31 @@ def _neutralize_and_pack_box(
     )
 
 
-def _process_inputs(
-    solute_topology,
-    solvent_offmol,
-    solvation_settings,
-    ion_concentration,
-) -> tuple[str, int, Quantity]:
+def _process_solvation_inputs(
+    solute_topology: Topology,
+    solvent_offmol: OFFMolecule,
+    solvation_settings: PackmolSolvationSettings | InterchangeOpenMMSolvationSettings,
+) -> tuple[npt.NDArray | None, int, Quantity]:
+    """
+    Helper method for solvation methods.
+
+    Parameters
+    ----------
+    solute_topology : openff.toolkit.Topology
+      The solute Topology to solvate.
+    solvent_offmol : openff.toolkit.Molecule
+      The OpenFF Molecule representing the solvent.
+    solvation_settings : PackmolSolvationSettings | InterchangeOpenMMSolvationSettings
+
+    Returns
+    -------
+    box_shape : npt.NDArray | None
+      NumPy array defining the box shape, if defined.
+    n_solvent : int
+      The number of solvent molecules to be added.
+    box_vectors : Quantity
+      The solvated box vectors.
+    """
     # Pick up the user selected box shape
     # todo: switch to calling `get` once we normalize settings
     if solvation_settings.box_shape is not None:
@@ -312,7 +331,7 @@ def _process_inputs(
             target_density=solvation_settings.target_density,
         )
 
-    return box_shape, n_solvent, box_vectors  # type: ignore[return-value]
+    return box_shape, n_solvent, box_vectors
 
 
 def packmol_solvation(
@@ -356,12 +375,12 @@ def packmol_solvation(
       If ``neutralize`` is ``True`` and ``solvent_offmol`` is not water.
       if ``ion_concentration`` is not compatible with mole / liter.
     """
-    box_shape, n_solvent, box_vectors = _process_inputs(
+    box_shape, n_solvent, box_vectors = _process_solvation_inputs(
         solute_topology,
         solvent_offmol,
         solvation_settings,
-        ion_concentration,
     )
+
     if neutralize:
         if not solvent_offmol.is_isomorphic_with(offmol_water):
             errmsg = "Cannot neutralize a system with non-water solvent"
@@ -397,15 +416,14 @@ def packmol_solvation(
 def openmm_solvation(
     solute_topology: Topology,
     solvent_offmol: OFFMolecule,
-    solvation_settings: OpenMMSolvationSettings,
+    solvation_settings: InterchangeOpenMMSolvationSettings,
     neutralize: bool,
     ion_concentration: Quantity,
 ) -> Topology:
     import openmm
     import openmm.app
-    from openff.toolkit import Molecule
 
-    ions = [Molecule.from_smiles("[Na+]"), Molecule.from_smiles("[Cl-]")]
+    ions = [OFFMolecule.from_smiles("[Na+]"), OFFMolecule.from_smiles("[Cl-]")]
 
     def make_vec3(positions: Quantity) -> openmm.Vec3:
         return [
@@ -413,17 +431,20 @@ def openmm_solvation(
             for row in positions.m_as("nanometer")  # type: ignore[union-attr]
         ]
 
-    _, n_solvent, box_vectors = _process_inputs(
+    _, n_solvent, box_vectors = _process_solvation_inputs(
         solute_topology,
         solvent_offmol,
         solvation_settings,
-        ion_concentration,
     )
 
     if not solvent_offmol.is_isomorphic_with(offmol_water):
         errmsg = "Cannot neutralize a system with non-water solvent"
         raise ValueError(errmsg)
 
+    # TODO: IA - we probably don't want to keep using the OpenMM neutralization routine
+    # need to move the SALTCAP neutralization out of pure packmol so we can get the
+    # number of ions directly and only use openmm for placing a set number of waters & ions
+    # in a set box shape
     if neutralize:
         if not ion_concentration.is_compatible_with("mole / liter"):
             errmsg = f"{ion_concentration} is not compatible with mole / liter"
@@ -439,7 +460,9 @@ def openmm_solvation(
         forcefield = openmm.app.ForceField("amber14-all.xml", "amber14/tip3pfb.xml")
 
         forcefield.registerTemplateGenerator(
-            SMIRNOFFTemplateGenerator(molecules=solute_topology.molecule(0)).generator
+            SMIRNOFFTemplateGenerator(
+                molecules=[m for m in solute_topology.molecules]
+            ).generator
         )
 
         modeller.addSolvent(
@@ -460,10 +483,15 @@ def openmm_solvation(
         )
 
         solvent_key = solvent_offmol.properties["key"]
+        solvated_molecules = []
 
         for molecule_index, molecule in enumerate(topology.molecules):
             if molecule_index < solute_topology.n_molecules:
-                continue
+                og_molecule = solute_topology.molecule(molecule_index)
+                if np.allclose(molecule.conformers(0), og_molecule.conformers(0)):
+                    solvated_molecules.append(og_molecule)
+                else:
+                    raise ValueError("Solute molecule positions have changed")
 
             # all "solvents"  get this key, even if they're ions
             molecule.properties["key"] = solvent_key
@@ -488,9 +516,16 @@ def openmm_solvation(
                         f"Unrecognized 'solvent' molecule with {molecule.to_smiles()} SMILES"
                     )
 
+            solvated_molecules.append(molecule)
+
     else:
-        raise NotImplementedError()
+        raise NotImplementedError("Non-neutralized systems with net charge are not supported")
 
-    assert topology.get_positions().m.shape == (topology.n_atoms, 3)
+    final_topology = Topology.from_molecules(solvated_molecules)
+    final_topology.box_vectors = topology.box_vectors
 
-    return topology
+    # TODO: IA - is this check really necessary? Does Topology/Molecule really allow for this?
+    if final_topology.get_positions().m.shape != (final_topology.n_atoms, 3):
+        raise ValueError("Solvated Topology positions do not match")
+
+    return final_topology

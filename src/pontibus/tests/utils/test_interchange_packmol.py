@@ -36,7 +36,7 @@ from pontibus.utils.system_creation import (
     _get_force_field,
     _protein_split_combine_interchange,
     _proteincomp_to_topology,
-    interchange_packmol_creation,
+    interchange_system_creation,
 )
 from pontibus.utils.system_manipulation import copy_interchange_with_replacement
 from pontibus.utils.system_solvation import packmol_solvation
@@ -179,7 +179,7 @@ def test_check_charged_mols(water_off_am1bcc, water_off_named_charged):
 def test_protein_component_nosolv_fail(smc_components_benzene_named, T4_protein_component):
     errmsg = "Must have solvent to have a protein"
     with pytest.raises(ValueError, match=errmsg):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components_benzene_named,
@@ -201,7 +201,7 @@ def test_wrong_solventcomp_settings_nonwater(
     neutralize, ion_conc, smc_components_benzene_named, methanol
 ):
     with pytest.raises(ValueError, match="Counterions are currently not"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components_benzene_named,
@@ -220,7 +220,7 @@ def test_not_neutralize_but_ion_conc(
     water_off,
 ):
     with pytest.raises(ValueError, match="Cannot add ions without"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components_benzene_named,
@@ -241,7 +241,7 @@ def test_bad_ions(
     neg,
 ):
     with pytest.raises(ValueError, match="Can only neutralize with NaCl"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components_benzene_named,
@@ -335,7 +335,7 @@ def test_solv_but_no_solv_offmol(
     smc_components_benzene_named,
 ):
     with pytest.raises(ValueError, match="A solvent offmol"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components_benzene_named,
@@ -351,7 +351,7 @@ def test_solv_mismatch(
 ):
     assert ExtendedSolventComponent().smiles == "[H][O][H]"
     with pytest.raises(ValueError, match="does not match"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components_benzene_named,
@@ -371,7 +371,7 @@ def test_no_solvent_conformers(
     solmol._conformers = []
 
     with pytest.raises(ValueError, match="single conformer"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(assign_solvent_charges=True),
             smc_components=smc_components_benzene_named,
@@ -423,7 +423,7 @@ def test_multiple_solvent_conformers(
     solvent = ExtendedSolventComponent(solvent_molecule=SmallMoleculeComponent.from_openff(solmol))
 
     with pytest.raises(ValueError, match="single conformer"):
-        interchange_packmol_creation(
+        interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(assign_solvent_charges=True),
             smc_components=smc_components_benzene_named,
@@ -451,7 +451,7 @@ def test_charge_assignment_errors(smc_components_benzene_named, assign_charges, 
     solvent_offmol.generate_conformers(n_conformers=1)
 
     with pytest.raises(ValueError, match=errmsg):
-        _, _ = interchange_packmol_creation(
+        _, _ = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
@@ -489,7 +489,7 @@ def test_assign_duplicate_resnames(caplog):
     smcs = {smc_a: a, smc_b: b}
 
     with caplog.at_level(logging.WARNING):
-        _, smc_comps = interchange_packmol_creation(
+        _, smc_comps = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
@@ -566,7 +566,7 @@ def test_nonwater_solvent_short(smc_components_benzene_named, smiles):
         assert_allclose(solvent_offmol.partial_charges, ligand.partial_charges)
         assert all(solvent_offmol.partial_charges == ligand.partial_charges)
 
-    interchange, _ = interchange_packmol_creation(
+    interchange, _ = interchange_system_creation(
         ffsettings=InterchangeFFSettings(
             forcefields=[
                 "openff-2.0.0.offxml",
@@ -996,7 +996,7 @@ def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
     ligand_offmol.assign_partial_charges(partial_charge_method="gasteiger")
     ligand_smc = SmallMoleculeComponent.from_openff(ligand_offmol)
 
-    interchange, _ = interchange_packmol_creation(
+    interchange, _ = interchange_system_creation(
         ffsettings=InterchangeFFSettings(
             forcefields=[
                 "openff-2.0.0.offxml",
@@ -1144,7 +1144,7 @@ class TestVacuumUnamedBenzene(BaseSystemTests):
     @pytest.fixture(scope="class")
     def interchange_system(self, request):
         smc_components = request.getfixturevalue(self.smc_comps)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(),
             solvation_settings=PackmolSolvationSettings(),
             smc_components=smc_components,
@@ -1259,7 +1259,7 @@ class TestSolventOPC3UnamedBenzene(TestVacuumUnamedBenzene):
     @pytest.fixture(scope="class")
     def interchange_system(self, water_off, request):
         smc_components = request.getfixturevalue(self.smc_comps)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
             ),
@@ -1333,7 +1333,7 @@ class TestSolventOPC3NamedChargedButUnAssignedBenzene(TestSolventOPC3UnamedBenze
     @pytest.fixture(scope="class")
     def interchange_system(self, water_off_named_charged, request):
         smc_components = request.getfixturevalue(self.smc_comps)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
             ),
@@ -1359,7 +1359,7 @@ class TestSolventOPC3NamedChargedAssignedBenzene(TestSolventOPC3UnamedBenzene):
     @pytest.fixture(scope="class")
     def interchange_system(self, water_off_named_charged, request):
         smc_components = request.getfixturevalue(self.smc_comps)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
             ),
@@ -1401,7 +1401,7 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
     @pytest.fixture(scope="class")
     def interchange_system(self, water_off, request):
         smc_components = request.getfixturevalue(self.smc_comps)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=["openff-2.0.0.offxml", "opc3.offxml"],
             ),
@@ -1517,7 +1517,7 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
     @pytest.fixture(scope="class")
     def interchange_system(self, water_off, request):
         smc_components = request.getfixturevalue(self.smc_comps)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=["openff-2.0.0.offxml", "opc.offxml"],
             ),
@@ -1571,7 +1571,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
     def interchange_system(self, water_off, request):
         smc_components = request.getfixturevalue(self.smc_comps)
         protein_component = request.getfixturevalue(self.protein_comp)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
@@ -1714,7 +1714,7 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
     def interchange_system(self, water_off, request):
         smc_components = request.getfixturevalue(self.smc_comps)
         protein_component = request.getfixturevalue(self.protein_comp)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
@@ -1828,7 +1828,7 @@ def test_box_setting_dodecahedron(
     )
     assert solvation_settings.box_shape == box_shape
 
-    interchange, _ = interchange_packmol_creation(
+    interchange, _ = interchange_system_creation(
         ffsettings=protein_ff_settings,
         solvation_settings=solvation_settings,
         smc_components=smc_components_benzene_named,
