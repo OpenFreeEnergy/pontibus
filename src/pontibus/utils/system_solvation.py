@@ -20,6 +20,7 @@ from openff.units import Quantity
 from pontibus.utils.molecule_utils import (
     _get_offmol_resname,
     _set_offmol_resname,
+    _get_unique_mols,
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
@@ -459,7 +460,7 @@ def openmm_solvation(
 
         forcefield.registerTemplateGenerator(
             SMIRNOFFTemplateGenerator(
-                molecules=[m for m in solute_topology.molecules]
+                molecules=_get_unique_mols([m for m in solute_topology.molecules])
             ).generator
         )
 
@@ -477,7 +478,9 @@ def openmm_solvation(
 
         topology = Topology.from_openmm(
             modeller.topology,
-            unique_molecules=[*solute_topology.molecules] + [solvent_offmol] + ions,
+            unique_molecules=_get_unique_mols(
+                [*solute_topology.molecules] + [solvent_offmol] + ions
+            ),
             positions=modeller.getPositions(),
         )
 
