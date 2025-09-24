@@ -441,10 +441,8 @@ def openmm_solvation(
         errmsg = "Cannot neutralize a system with non-water solvent"
         raise ValueError(errmsg)
 
-    # TODO: IA - we probably don't want to keep using the OpenMM neutralization routine
-    # need to move the SALTCAP neutralization out of pure packmol so we can get the
-    # number of ions directly and only use openmm for placing a set number of waters & ions
-    # in a set box shape
+    # TODO: IA - work out what we want to do re: ionic strength,
+    # do we just drop SLTCAP completely?
     if neutralize:
         if not ion_concentration.is_compatible_with("mole / liter"):
             errmsg = f"{ion_concentration} is not compatible with mole / liter"
@@ -468,7 +466,8 @@ def openmm_solvation(
         modeller.addSolvent(
             forcefield=forcefield,
             model="tip3p",
-            boxVectors=make_vec3(box_vectors),
+            numAdded=n_solvent,
+            boxVectors=None,  # make_vec3(box_vectors), -- TODO: work out what to do here
             boxShape=solvation_settings.box_shape,
             positiveIon="Na+",
             negativeIon="Cl-",
@@ -488,14 +487,16 @@ def openmm_solvation(
         for molecule_index, molecule in enumerate(topology.molecules):
             if molecule_index < solute_topology.n_molecules:
                 og_molecule = solute_topology.molecule(molecule_index)
-                if np.allclose(molecule.conformers(0), og_molecule.conformers(0)):
+                if np.allclose(molecule.conformers[0], og_molecule.conformers[0]):
                     solvated_molecules.append(og_molecule)
                 else:
                     raise ValueError("Solute molecule positions have changed")
 
+                continue
+
             # all "solvents"  get this key, even if they're ions
             molecule.properties["key"] = solvent_key
-            solvent_residue_name = _get_offmol_resname(offmol_water)
+            solvent_residue_name = _get_offmol_resname(solvent_offmol)
             match molecule.n_atoms:
                 case 3:
                     _set_offmol_resname(molecule, solvent_residue_name)

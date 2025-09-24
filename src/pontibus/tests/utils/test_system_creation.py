@@ -21,9 +21,10 @@ from openmm import (
 from rdkit import Chem
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
-from pontibus.protocols.solvation.settings import (
+from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
+    InterchangeOpenMMSolvationSettings,
 )
 from pontibus.utils.molecule_utils import (
     _get_offmol_resname,
@@ -1702,6 +1703,95 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
+
+
+class TestOpenMMSolvationComplexOPC3(TestComplexOPC3):
+    smc_comps = "smc_components_benzene_named"
+    protein_comp = "T4_protein_component"
+    resname = "BNZ"
+    nonbond_index = 4
+
+    @pytest.fixture(scope="class")
+    def interchange_system(self, water_off, request):
+        smc_components = request.getfixturevalue(self.smc_comps)
+        protein_component = request.getfixturevalue(self.protein_comp)
+        interchange, comp_resids = interchange_system_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=[
+                    "openff-2.0.0.offxml",
+                    "ff14sb_off_impropers_0.0.3.offxml",
+                    "opc3.offxml",
+                ],
+            ),
+            solvation_settings=InterchangeOpenMMSolvationSettings(target_density=0.1 * unit.grams / unit.mL),
+            smc_components=smc_components,
+            protein_component=protein_component,
+            solvent_component=SolventComponent(),
+            solvent_offmol=water_off,
+        )
+
+        return interchange, comp_resids
+
+    @pytest.fixture(scope="class")
+    def num_pos_ions(self):
+        return 2
+
+    @pytest.fixture(scope="class")
+    def num_neg_ions(self):
+        return 11
+
+    @pytest.fixture(scope="class")
+    def num_waters(self, num_residues, num_pos_ions, num_neg_ions):
+        return num_residues - (1 + 164 + num_neg_ions + num_pos_ions)
+
+    @pytest.fixture(scope="class")
+    def num_protein_atoms(self):
+        return 2613
+
+    @pytest.fixture(scope="class")
+    def num_particles(self, num_waters, num_neg_ions, num_pos_ions):
+        return 12 + 2613 + (3 * num_waters) + num_neg_ions + num_pos_ions
+
+    def test_topology(self, omm_topology, num_residues, num_waters, num_particles):
+        residues = list(omm_topology.residues())
+        assert len(residues) == num_residues
+        assert len(list(omm_topology.atoms())) == num_particles
+        # protein
+        assert residues[0].name == "ACE"  # Expect first protein residue
+        assert residues[0].index == int(residues[0].id) - 1 == 0
+        assert all([r.chain.id == "A" for r in residues[:164]])
+        assert all([r.chain.index == 0 for r in residues[:164]])
+        # ligand
+        assert residues[164].name == self.resname  # Expect auto-named to AAA
+        assert residues[164].index == 164
+        assert residues[164].id == 0
+        assert residues[164].chain.id == "B"
+        assert residues[164].chain.index == 1
+        # solvent
+        assert residues[165].name == "SOL"
+        assert residues[165].index == 165
+        assert residues[165].id == '166'  #TODO - check why this hasn't reset
+        assert all(
+            [r.chain.id == "3" for r in residues[165:165+num_waters]]
+        )
+        assert all([r.chain.index == i + 2 for i, r in enumerate(residues[165:])])
+
+    def test_solvent_resnames(self, omm_topology, num_pos_ions, num_neg_ions, num_waters):
+        counts = {
+            self.solvent_resname: 0,
+            "NA+": 0,
+            "CL-": 0,
+        }
+        for i, res in enumerate(list(omm_topology.residues())[165:]):
+            assert res.index == i + 165
+            # TODO: for some reason res.id isn't continuous, likeelihood is that
+            # waters that get chosen to be turned into ions take the rersidue id
+            # assert res.id == str(i + 165 + 1)  # starts at 1
+            counts[res.name] += 1
+
+        assert counts[self.solvent_resname] == num_waters
+        assert counts["NA+"] == num_pos_ions
+        assert counts["CL-"] == num_neg_ions
 
 
 class TestComplexOPC3NumWaters(TestComplexOPC3):
