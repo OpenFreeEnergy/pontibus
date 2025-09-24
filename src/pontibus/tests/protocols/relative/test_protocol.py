@@ -23,8 +23,9 @@ from openmmtools.multistate import MultiStateSampler
 from rdkit import Chem
 
 from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolUnit
-from pontibus.protocols.solvation.settings import (
+from pontibus.utils.settings import (
     PackmolSolvationSettings,
+    InterchangeOpenMMSolvationSettings
 )
 
 
@@ -265,11 +266,18 @@ def test_dry_core_element_change(tmpdir):
         assert cnf.getInteractionGroupParameters(7) == [(7,), (7,)]
 
 
-def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mapping, tmpdir):
+@pytest.mark.parametrize('solv_backend, n_atoms', [
+    ['packmol', 2294],
+    ['openmm', 2294],
+])
+def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mapping, solv_backend, n_atoms, tmpdir):
     # this might be a bit time consuming
     settings = HybridTopProtocol.default_settings()
     settings.protocol_repeats = 1
     settings.output_settings.output_indices = "resname AAA"
+
+    if solv_backend == 'openmm':
+        settings.solvation_settings = InterchangeOpenMMSolvationSettings()
 
     protocol = HybridTopProtocol(
         settings=settings,
@@ -292,7 +300,7 @@ def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mappi
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 16
         pdb = mdt.load_pdb("full_hybrid_system.pdb")
-        assert pdb.n_atoms in (2342, 2294)  # 2294 was envelope math?
+        assert pdb.n_atoms == n_atoms
 
         # Check system forces
         system = sampler._hybrid_factory.hybrid_system
@@ -326,7 +334,7 @@ def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mappi
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
         assert len(sampler._hybrid_factory._unique_new_atoms) == 4
         assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) in (2278, 2326)
+        assert len(sampler._hybrid_factory._env_old_to_new_map) == (n_atoms - 16)
 
 
 def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
@@ -463,8 +471,9 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
 
 
 @pytest.mark.cpuvslow
+@pytest.mark.parametrize('solv_backend', ['openmm', 'packmol'])
 def test_dry_run_complex(
-    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, tmpdir
+    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, solv_backend, tmpdir
 ):  # pragma: no cover
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
@@ -474,6 +483,9 @@ def test_dry_run_complex(
         "openff-2.2.1.offxml",
         "ff14sb_off_impropers_0.0.3.offxml",
     ]
+
+    if solv_backend == 'openmm':
+        settings.solvation_settings = InterchangeOpenMMSolvationSettings()
 
     protocol = HybridTopProtocol(settings=settings)
     dag = protocol.create(
@@ -603,14 +615,20 @@ def test_dry_run_complex_setnwaters(
 
 
 @pytest.mark.cpuvslow
+@pytest.mark.parametrize('solv_backend', ['openmm', 'packmol'])
 def test_dry_run_complex_cofactor(
     eg5_complex_systemA,
     eg5_complex_systemB,
     eg5_ligands_mapping,
+    solv_backend,
     tmpdir,
 ):  # pragma: no cover
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
+
+    if solv_backend == 'openmm':
+        settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+
     settings.protocol_repeats = 1
     settings.output_settings.output_indices = "protein or resname AAA"
     settings.solvation_settings.box_shape = "dodecahedron"
