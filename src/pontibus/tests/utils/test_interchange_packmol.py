@@ -1051,7 +1051,9 @@ def test_split_combine_parameters(
     water.generate_conformers(n_conformers=1)
     water.properties["key"] = "foo"
 
-    # protein mols
+    # Protein
+    # Note: don't have to assign key to thrombin_protein_offtop
+    # that's already done in the fixture
     protein_mols = [m for m in thrombin_protein_offtop.molecules]
 
     # stateA topology
@@ -1081,19 +1083,16 @@ def test_split_combine_parameters(
         ffsettings=ffsettings,
     )
 
-    # strip out the waters from this topology since the protein component is
-    # parametrized with only the protein molecule
-    protein_vdw = proteinff.create_interchange(protein_mols[0].to_topology())[
-        "vdW"
-    ].get_system_parameters()
+    protein_vdw = proteinff.create_interchange(thrombin_protein_offtop)["vdW"].get_system_parameters()
     ligand_vdw = ligandff.create_interchange(l_6a_off.to_topology())["vdW"].get_system_parameters()
 
     found_vdw = interA["vdW"].get_system_parameters()
 
-    np.testing.assert_equal(found_vdw[: protein_mols[0].n_atoms, :], protein_vdw)
+    protein_atoms = thrombin_protein_offtop.n_atoms
+    np.testing.assert_equal(found_vdw[: protein_atoms, :], protein_vdw)
 
     np.testing.assert_equal(
-        found_vdw[protein_mols[0].n_atoms : (protein_mols[0].n_atoms + l_6a_off.n_atoms), :],
+        found_vdw[protein_atoms : (protein_atoms + l_6a_off.n_atoms), :],
         ligand_vdw,
     )
 
