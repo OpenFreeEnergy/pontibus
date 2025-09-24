@@ -1083,6 +1083,9 @@ def test_split_combine_parameters(
         ffsettings=ffsettings,
     )
 
+    # Work around https://github.com/openforcefield/openff-interchange/issues/1337
+    proteinff.combine(waterff)
+
     protein_vdw = proteinff.create_interchange(thrombin_protein_offtop)["vdW"].get_system_parameters()
     ligand_vdw = ligandff.create_interchange(l_6a_off.to_topology())["vdW"].get_system_parameters()
 
