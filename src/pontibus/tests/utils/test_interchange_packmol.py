@@ -1051,7 +1051,9 @@ def test_split_combine_parameters(
     water.generate_conformers(n_conformers=1)
     water.properties["key"] = "foo"
 
-    # protein mols
+    # Protein
+    # Note: don't have to assign key to thrombin_protein_offtop
+    # that's already done in the fixture
     protein_mols = [m for m in thrombin_protein_offtop.molecules]
 
     # stateA topology
@@ -1079,6 +1081,19 @@ def test_split_combine_parameters(
         charge_from_molecules=[l_6a_off],
         protein_component=thrombin_protein_component,
         ffsettings=ffsettings,
+    )
+
+    protein_vdw = proteinff.create_interchange(thrombin_protein_offtop)["vdW"].get_system_parameters()
+    ligand_vdw = ligandff.create_interchange(l_6a_off.to_topology())["vdW"].get_system_parameters()
+
+    found_vdw = interA["vdW"].get_system_parameters()
+
+    protein_atoms = thrombin_protein_offtop.n_atoms
+    np.testing.assert_equal(found_vdw[: protein_atoms, :], protein_vdw)
+
+    np.testing.assert_equal(
+        found_vdw[protein_atoms : (protein_atoms + l_6a_off.n_atoms), :],
+        ligand_vdw,
     )
 
     # Probe the vdw parameters and make sure they belong to the right force field
