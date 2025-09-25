@@ -528,8 +528,4 @@ def openmm_solvation(
     final_topology = Topology.from_molecules(solvated_molecules)
     final_topology.box_vectors = topology.box_vectors
 
-    # TODO: IA - is this check really necessary? Does Topology/Molecule really allow for this?
-    if final_topology.get_positions().m.shape != (final_topology.n_atoms, 3):
-        raise ValueError("Solvated Topology positions do not match")
-
     return final_topology
