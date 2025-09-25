@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - main
+      - "openmm-solvation"
     paths-ignore:
       - "docs/*"
   push:

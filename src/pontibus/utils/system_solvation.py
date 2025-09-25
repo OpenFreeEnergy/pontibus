@@ -4,7 +4,6 @@ import logging
 
 import numpy as np
 import numpy.typing as npt
-from openfe.protocols.openmm_utils.omm_settings import OpenMMSolvationSettings
 from openff.interchange.components._packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
@@ -20,10 +19,12 @@ from openff.units import Quantity
 
 from pontibus.utils.molecule_utils import (
     _get_offmol_resname,
+    _get_unique_mols,
     _set_offmol_resname,
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
+    InterchangeOpenMMSolvationSettings,
     PackmolSolvationSettings,
 )
 
@@ -273,12 +274,31 @@ def _neutralize_and_pack_box(
     )
 
 
-def _process_inputs(
-    solute_topology,
-    solvent_offmol,
-    solvation_settings,
-    ion_concentration,
-) -> tuple[str, int, Quantity]:
+def _process_solvation_inputs(
+    solute_topology: Topology,
+    solvent_offmol: OFFMolecule,
+    solvation_settings: PackmolSolvationSettings | InterchangeOpenMMSolvationSettings,
+) -> tuple[npt.NDArray | None, int, Quantity]:
+    """
+    Helper method for solvation methods.
+
+    Parameters
+    ----------
+    solute_topology : openff.toolkit.Topology
+      The solute Topology to solvate.
+    solvent_offmol : openff.toolkit.Molecule
+      The OpenFF Molecule representing the solvent.
+    solvation_settings : PackmolSolvationSettings | InterchangeOpenMMSolvationSettings
+
+    Returns
+    -------
+    box_shape : npt.NDArray | None
+      NumPy array defining the box shape, if defined.
+    n_solvent : int
+      The number of solvent molecules to be added.
+    box_vectors : Quantity
+      The solvated box vectors.
+    """
     # Pick up the user selected box shape
     # todo: switch to calling `get` once we normalize settings
     if solvation_settings.box_shape is not None:
@@ -312,7 +332,7 @@ def _process_inputs(
             target_density=solvation_settings.target_density,
         )
 
-    return box_shape, n_solvent, box_vectors  # type: ignore[return-value]
+    return box_shape, n_solvent, box_vectors
 
 
 def packmol_solvation(
@@ -356,12 +376,12 @@ def packmol_solvation(
       If ``neutralize`` is ``True`` and ``solvent_offmol`` is not water.
       if ``ion_concentration`` is not compatible with mole / liter.
     """
-    box_shape, n_solvent, box_vectors = _process_inputs(
+    box_shape, n_solvent, box_vectors = _process_solvation_inputs(
         solute_topology,
         solvent_offmol,
         solvation_settings,
-        ion_concentration,
     )
+
     if neutralize:
         if not solvent_offmol.is_isomorphic_with(offmol_water):
             errmsg = "Cannot neutralize a system with non-water solvent"
@@ -397,15 +417,14 @@ def packmol_solvation(
 def openmm_solvation(
     solute_topology: Topology,
     solvent_offmol: OFFMolecule,
-    solvation_settings: OpenMMSolvationSettings,
+    solvation_settings: InterchangeOpenMMSolvationSettings,
     neutralize: bool,
     ion_concentration: Quantity,
 ) -> Topology:
     import openmm
     import openmm.app
-    from openff.toolkit import Molecule
 
-    ions = [Molecule.from_smiles("[Na+]"), Molecule.from_smiles("[Cl-]")]
+    ions = [OFFMolecule.from_smiles("[Na+]"), OFFMolecule.from_smiles("[Cl-]")]
 
     def make_vec3(positions: Quantity) -> openmm.Vec3:
         return [
@@ -413,17 +432,18 @@ def openmm_solvation(
             for row in positions.m_as("nanometer")  # type: ignore[union-attr]
         ]
 
-    _, n_solvent, box_vectors = _process_inputs(
+    _, n_solvent, box_vectors = _process_solvation_inputs(
         solute_topology,
         solvent_offmol,
         solvation_settings,
-        ion_concentration,
     )
 
     if not solvent_offmol.is_isomorphic_with(offmol_water):
         errmsg = "Cannot neutralize a system with non-water solvent"
         raise ValueError(errmsg)
 
+    # TODO: IA - work out what we want to do re: ionic strength,
+    # do we just drop SLTCAP completely?
     if neutralize:
         if not ion_concentration.is_compatible_with("mole / liter"):
             errmsg = f"{ion_concentration} is not compatible with mole / liter"
@@ -439,13 +459,16 @@ def openmm_solvation(
         forcefield = openmm.app.ForceField("amber14-all.xml", "amber14/tip3pfb.xml")
 
         forcefield.registerTemplateGenerator(
-            SMIRNOFFTemplateGenerator(molecules=solute_topology.molecule(0)).generator
+            SMIRNOFFTemplateGenerator(
+                molecules=_get_unique_mols([m for m in solute_topology.molecules])
+            ).generator
         )
 
         modeller.addSolvent(
             forcefield=forcefield,
             model="tip3p",
-            boxVectors=make_vec3(box_vectors),
+            numAdded=n_solvent,
+            boxVectors=None,  # make_vec3(box_vectors), -- TODO: work out what to do here
             boxShape=solvation_settings.box_shape,
             positiveIon="Na+",
             negativeIon="Cl-",
@@ -455,19 +478,28 @@ def openmm_solvation(
 
         topology = Topology.from_openmm(
             modeller.topology,
-            unique_molecules=[*solute_topology.molecules] + [solvent_offmol] + ions,
+            unique_molecules=_get_unique_mols(
+                [*solute_topology.molecules] + [solvent_offmol] + ions
+            ),
             positions=modeller.getPositions(),
         )
 
         solvent_key = solvent_offmol.properties["key"]
+        solvated_molecules = []
 
         for molecule_index, molecule in enumerate(topology.molecules):
             if molecule_index < solute_topology.n_molecules:
+                og_molecule = solute_topology.molecule(molecule_index)
+                if np.allclose(molecule.conformers[0], og_molecule.conformers[0]):
+                    solvated_molecules.append(og_molecule)
+                else:
+                    raise ValueError("Solute molecule positions have changed")
+
                 continue
 
             # all "solvents"  get this key, even if they're ions
             molecule.properties["key"] = solvent_key
-            solvent_residue_name = _get_offmol_resname(offmol_water)
+            solvent_residue_name = _get_offmol_resname(solvent_offmol)
             match molecule.n_atoms:
                 case 3:
                     _set_offmol_resname(molecule, solvent_residue_name)
@@ -488,9 +520,12 @@ def openmm_solvation(
                         f"Unrecognized 'solvent' molecule with {molecule.to_smiles()} SMILES"
                     )
 
+            solvated_molecules.append(molecule)
+
     else:
-        raise NotImplementedError()
+        raise NotImplementedError("Non-neutralized systems with net charge are not supported")
 
-    assert topology.get_positions().m.shape == (topology.n_atoms, 3)
+    final_topology = Topology.from_molecules(solvated_molecules)
+    final_topology.box_vectors = topology.box_vectors
 
-    return topology
+    return final_topology
