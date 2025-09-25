@@ -24,8 +24,8 @@ from pontibus.utils.molecule_utils import (
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
     InterchangeFFSettings,
-    PackmolSolvationSettings,
     InterchangeOpenMMSolvationSettings,
+    PackmolSolvationSettings,
 )
 from pontibus.utils.system_solvation import openmm_solvation, packmol_solvation
 
@@ -527,7 +527,7 @@ def interchange_system_creation(
 
         solvation_method = {
             PackmolSolvationSettings: packmol_solvation,
-            InterchangeOpenMMSolvationSettings: openmm_solvation
+            InterchangeOpenMMSolvationSettings: openmm_solvation,
         }
 
         try:

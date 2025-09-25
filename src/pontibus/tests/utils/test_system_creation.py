@@ -21,16 +21,16 @@ from openmm import (
 from rdkit import Chem
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
-from pontibus.utils.settings import (
-    InterchangeFFSettings,
-    PackmolSolvationSettings,
-    InterchangeOpenMMSolvationSettings,
-)
 from pontibus.utils.molecule_utils import (
     _get_offmol_resname,
     _set_offmol_resname,
 )
 from pontibus.utils.molecules import WATER
+from pontibus.utils.settings import (
+    InterchangeFFSettings,
+    InterchangeOpenMMSolvationSettings,
+    PackmolSolvationSettings,
+)
 from pontibus.utils.system_creation import (
     _assign_comp_resnames_and_keys,
     _check_and_deduplicate_charged_mols,
@@ -1723,7 +1723,9 @@ class TestOpenMMSolvationComplexOPC3(TestComplexOPC3):
                     "opc3.offxml",
                 ],
             ),
-            solvation_settings=InterchangeOpenMMSolvationSettings(target_density=0.1 * unit.grams / unit.mL),
+            solvation_settings=InterchangeOpenMMSolvationSettings(
+                target_density=0.1 * unit.grams / unit.mL
+            ),
             smc_components=smc_components,
             protein_component=protein_component,
             solvent_component=SolventComponent(),
@@ -1770,10 +1772,8 @@ class TestOpenMMSolvationComplexOPC3(TestComplexOPC3):
         # solvent
         assert residues[165].name == "SOL"
         assert residues[165].index == 165
-        assert residues[165].id == '166'  #TODO - check why this hasn't reset
-        assert all(
-            [r.chain.id == "3" for r in residues[165:165+num_waters]]
-        )
+        assert residues[165].id == "166"  # TODO - check why this hasn't reset
+        assert all([r.chain.id == "3" for r in residues[165 : 165 + num_waters]])
         assert all([r.chain.index == i + 2 for i, r in enumerate(residues[165:])])
 
     def test_solvent_resnames(self, omm_topology, num_pos_ions, num_neg_ions, num_waters):
@@ -1995,10 +1995,8 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
         # solvent
         assert residues[358].name == "SOL"
         assert residues[358].index == 358
-        assert residues[358].id == '359'  #TODO - check why this hasn't reset
-        assert all(
-            [r.chain.id == "11" for r in residues[358:358+num_waters]]
-        )
+        assert residues[358].id == "359"  # TODO - check why this hasn't reset
+        assert all([r.chain.id == "11" for r in residues[358 : 358 + num_waters]])
         assert all([r.chain.index == i + 10 for i, r in enumerate(residues[358:])])
 
     def test_solvent_resnames(self, omm_topology, num_pos_ions, num_neg_ions, num_waters):
@@ -2034,7 +2032,9 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
             assert s1 == s2
             assert e2 == e2
 
-    def test_comp_resids(self, interchange_system, request, num_residues, eg5_ligands, eg5_cofactor):
+    def test_comp_resids(
+        self, interchange_system, request, num_residues, eg5_ligands, eg5_cofactor
+    ):
         _, comp_resids = interchange_system
 
         ligand, _ = eg5_ligands

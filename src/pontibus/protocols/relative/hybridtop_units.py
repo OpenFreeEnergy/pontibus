@@ -53,8 +53,8 @@ from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
 from pontibus.utils.settings import (
     InterchangeFFSettings,
-    PackmolSolvationSettings,
     InterchangeOpenMMSolvationSettings,
+    PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import (
     _get_comp_resids,
@@ -333,7 +333,9 @@ class HybridTopProtocolUnit(RelativeHybridTopologyProtocolUnit):
         alchem_settings: AlchemicalSettings = protocol_settings.alchemical_settings
         lambda_settings: LambdaSettings = protocol_settings.lambda_settings
         charge_settings: BasePartialChargeSettings = protocol_settings.partial_charge_settings
-        solvation_settings: InterchangeOpenMMSolvationSettings | PackmolSolvationSettings = protocol_settings.solvation_settings
+        solvation_settings: InterchangeOpenMMSolvationSettings | PackmolSolvationSettings = (
+            protocol_settings.solvation_settings
+        )
         sampler_settings: MultiStateSimulationSettings = protocol_settings.simulation_settings
         output_settings: MultiStateOutputSettings = protocol_settings.output_settings
         integrator_settings: IntegratorSettings = protocol_settings.integrator_settings

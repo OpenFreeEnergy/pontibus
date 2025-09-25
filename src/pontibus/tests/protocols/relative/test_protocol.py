@@ -23,10 +23,7 @@ from openmmtools.multistate import MultiStateSampler
 from rdkit import Chem
 
 from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolUnit
-from pontibus.utils.settings import (
-    PackmolSolvationSettings,
-    InterchangeOpenMMSolvationSettings
-)
+from pontibus.utils.settings import InterchangeOpenMMSolvationSettings, PackmolSolvationSettings
 
 
 def test_create_default_settings():
@@ -266,17 +263,22 @@ def test_dry_core_element_change(tmpdir):
         assert cnf.getInteractionGroupParameters(7) == [(7,), (7,)]
 
 
-@pytest.mark.parametrize('solv_backend, n_atoms', [
-    ['packmol', 2294],
-    ['openmm', 2294],
-])
-def test_dry_run_ligand(benzene_system, toluene_system, benzene_to_toluene_mapping, solv_backend, n_atoms, tmpdir):
+@pytest.mark.parametrize(
+    "solv_backend, n_atoms",
+    [
+        ["packmol", 2294],
+        ["openmm", 2294],
+    ],
+)
+def test_dry_run_ligand(
+    benzene_system, toluene_system, benzene_to_toluene_mapping, solv_backend, n_atoms, tmpdir
+):
     # this might be a bit time consuming
     settings = HybridTopProtocol.default_settings()
     settings.protocol_repeats = 1
     settings.output_settings.output_indices = "resname AAA"
 
-    if solv_backend == 'openmm':
+    if solv_backend == "openmm":
         settings.solvation_settings = InterchangeOpenMMSolvationSettings()
 
     protocol = HybridTopProtocol(
@@ -471,7 +473,7 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
 
 
 @pytest.mark.cpuvslow
-@pytest.mark.parametrize('solv_backend', ['openmm', 'packmol'])
+@pytest.mark.parametrize("solv_backend", ["openmm", "packmol"])
 def test_dry_run_complex(
     benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, solv_backend, tmpdir
 ):  # pragma: no cover
@@ -484,7 +486,7 @@ def test_dry_run_complex(
         "ff14sb_off_impropers_0.0.3.offxml",
     ]
 
-    if solv_backend == 'openmm':
+    if solv_backend == "openmm":
         settings.solvation_settings = InterchangeOpenMMSolvationSettings()
 
     protocol = HybridTopProtocol(settings=settings)
@@ -615,7 +617,7 @@ def test_dry_run_complex_setnwaters(
 
 
 @pytest.mark.cpuvslow
-@pytest.mark.parametrize('solv_backend', ['openmm', 'packmol'])
+@pytest.mark.parametrize("solv_backend", ["openmm", "packmol"])
 def test_dry_run_complex_cofactor(
     eg5_complex_systemA,
     eg5_complex_systemB,
@@ -626,7 +628,7 @@ def test_dry_run_complex_cofactor(
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
 
-    if solv_backend == 'openmm':
+    if solv_backend == "openmm":
         settings.solvation_settings = InterchangeOpenMMSolvationSettings()
 
     settings.protocol_repeats = 1

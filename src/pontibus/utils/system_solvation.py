@@ -19,13 +19,13 @@ from openff.units import Quantity
 
 from pontibus.utils.molecule_utils import (
     _get_offmol_resname,
-    _set_offmol_resname,
     _get_unique_mols,
+    _set_offmol_resname,
 )
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
-    PackmolSolvationSettings,
     InterchangeOpenMMSolvationSettings,
+    PackmolSolvationSettings,
 )
 
 logger = logging.getLogger(__name__)
