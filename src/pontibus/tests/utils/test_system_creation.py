@@ -1719,7 +1719,7 @@ class TestOpenMMSolvationComplexOPC3(TestComplexOPC3):
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.3.offxml",
+                    "ff14sb_off_impropers_0.0.4.offxml",
                     "opc3.offxml",
                 ],
             ),
