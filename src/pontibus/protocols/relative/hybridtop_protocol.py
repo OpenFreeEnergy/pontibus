@@ -41,7 +41,7 @@ from openff.units import unit
 
 from pontibus.protocols.relative.hybridtop_units import HybridTopProtocolUnit
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
-from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings
+from pontibus.utils.settings import InterchangeFFSettings, PackmolSolvationSettings, InterchangeOpenMMSolvationSettings
 
 
 class HybridTopProtocolResult(RelativeHybridTopologyProtocolResult):

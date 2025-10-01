@@ -18,6 +18,7 @@ from openfe.protocols.openmm_rfe.equil_rfe_settings import (
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
+    InterchangeOpenMMSolvationSettings,
 )
 
 
@@ -34,5 +35,5 @@ class HybridTopProtocolSettings(RelativeHybridTopologyProtocolSettings):
     forcefield_settings: InterchangeFFSettings
     """Parameters to set up in the force field"""
 
-    solvation_settings: PackmolSolvationSettings
+    solvation_settings: PackmolSolvationSettings | InterchangeOpenMMSolvationSettings
     """Settings for solvating the system."""
