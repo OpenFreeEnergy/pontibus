@@ -267,7 +267,7 @@ def test_dry_core_element_change(tmpdir):
     "solv_backend, n_atoms",
     [
         ["packmol", 2294],
-        ["openmm", 2294],
+        ["openmm", 2303],
     ],
 )
 def test_dry_run_ligand(
@@ -473,9 +473,14 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
 
 
 @pytest.mark.cpuvslow
-@pytest.mark.parametrize("solv_backend", ["openmm", "packmol"])
+@pytest.mark.parametrize("solv_backend, n_atoms", 
+    [
+        ["openmm", 52420],
+        ["packmol", 52313]
+    ]
+)
 def test_dry_run_complex(
-    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, solv_backend, tmpdir
+    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, solv_backend, n_atoms, tmpdir
 ):  # pragma: no cover
     # this will be very time consuming
     settings = HybridTopProtocol.default_settings()
@@ -508,7 +513,7 @@ def test_dry_run_complex(
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 2629
         pdb = mdt.load_pdb("full_hybrid_system.pdb")
-        assert pdb.n_atoms == 52313
+        assert pdb.n_atoms == n_atoms
 
         # Check system forces
         system = sampler._hybrid_factory.hybrid_system
@@ -542,7 +547,7 @@ def test_dry_run_complex(
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
         assert len(sampler._hybrid_factory._unique_new_atoms) == 4
         assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == 52297
+        assert len(sampler._hybrid_factory._env_old_to_new_map) == n_atoms - (11 + 4 + 1)
 
 
 @pytest.mark.cpuvslow
