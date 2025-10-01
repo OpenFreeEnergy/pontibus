@@ -9,8 +9,7 @@ import pytest
 from gufe import SmallMoleculeComponent, SolventComponent
 from numpy.testing import assert_allclose, assert_equal
 from openff.interchange.interop.openmm import to_openmm_positions
-from openff.toolkit import ForceField, Molecule, Topology
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, Quantity, Topology, unit
 from openff.units.openmm import from_openmm, to_openmm
 from openmm import (
     HarmonicAngleForce,
@@ -1052,7 +1051,9 @@ def test_split_combine_parameters(
     water.generate_conformers(n_conformers=1)
     water.properties["key"] = "foo"
 
-    # protein mols
+    # Protein
+    # Note: don't have to assign key to thrombin_protein_offtop
+    # that's already done in the fixture
     protein_mols = [m for m in thrombin_protein_offtop.molecules]
 
     # stateA topology
@@ -1082,6 +1083,40 @@ def test_split_combine_parameters(
         ffsettings=ffsettings,
     )
 
+    # Work around https://github.com/openforcefield/openff-interchange/issues/1337
+    # this is just dummy parameters which should only match water and do nothing physically
+    proteinff["Bonds"].add_parameter(
+        {
+            "smirks": "[#1:1]-[#8X2H2+0:2]-[#1]",
+            "id": "dummy_water_bond",
+            "length": Quantity(0.9572, "angstrom"),
+            "k": Quantity(0.0, "kilocalorie / angstrom ** 2 / mole"),  # dummy
+        }
+    )
+    proteinff["Angles"].add_parameter(
+        {
+            "smirks": "[#1:1]-[#8X2H2+0:2]-[#1:3]",
+            "id": "dummy_water_angle",
+            "angle": Quantity(104.52, "degree"),
+            "k": Quantity(0.0, "kilocalorie / mol /radian ** 2"),  # dummy
+        }
+    )
+
+    protein_vdw = proteinff.create_interchange(thrombin_protein_offtop)[
+        "vdW"
+    ].get_system_parameters()
+    ligand_vdw = ligandff.create_interchange(l_6a_off.to_topology())["vdW"].get_system_parameters()
+
+    found_vdw = interA["vdW"].get_system_parameters()
+
+    protein_atoms = thrombin_protein_offtop.n_atoms
+    np.testing.assert_equal(found_vdw[:protein_atoms, :], protein_vdw)
+
+    np.testing.assert_equal(
+        found_vdw[protein_atoms : (protein_atoms + l_6a_off.n_atoms), :],
+        ligand_vdw,
+    )
+
     # Probe the vdw parameters and make sure they belong to the right force field
     for key, val in interA["vdW"].key_map.items():
         if key.atom_indices[0] < thrombin_protein_offtop.n_atoms:
@@ -1093,7 +1128,7 @@ def test_split_combine_parameters(
             assert val.id not in waterff_smirks
             assert val.id in ligandff_smirks
         else:
-            assert val.id in waterff_smirks
+            assert val.id.strip("_DUPLICATE") in waterff_smirks
 
     # Now get a stateB interchange and do the same check
     interB = copy_interchange_with_replacement(
@@ -1112,7 +1147,7 @@ def test_split_combine_parameters(
             if val.id not in ["[#1]-[#8X2H2+0:1]-[#1]", "[#1:1]-[#8X2H2+0]-[#1]"]:
                 assert val.id not in ligandff_smirks
         elif key.atom_indices[0] < (thrombin_protein_offtop.n_atoms + water.n_atoms):
-            assert val.id in waterff_smirks
+            assert val.id.strip("_DUPLICATE") in waterff_smirks
         else:
             assert val.id not in proteinff_smirks
             assert val.id not in waterff_smirks
