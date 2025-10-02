@@ -622,12 +622,18 @@ def test_dry_run_complex_setnwaters(
 
 
 @pytest.mark.cpuvslow
-@pytest.mark.parametrize("solv_backend", ["openmm", "packmol"])
+@pytest.mark.parametrize("solv_backend, n_atoms",
+    [
+        ["openmm", 63668],
+        ["packmol", 63493]
+    ]
+)
 def test_dry_run_complex_cofactor(
     eg5_complex_systemA,
     eg5_complex_systemB,
     eg5_ligands_mapping,
     solv_backend,
+    n_atoms,
     tmpdir,
 ):  # pragma: no cover
     # this will be very time consuming
@@ -696,4 +702,4 @@ def test_dry_run_complex_cofactor(
         assert len(sampler._hybrid_factory._unique_old_atoms) == 1
         assert len(sampler._hybrid_factory._unique_new_atoms) == 1
         assert len(sampler._hybrid_factory._core_old_to_new_map) == 51
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == 63440
+        assert len(sampler._hybrid_factory._env_old_to_new_map) == n_atoms - (51 + 1 + 1)
