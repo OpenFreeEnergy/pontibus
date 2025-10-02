@@ -17,8 +17,8 @@ from openfe.protocols.openmm_rfe.equil_rfe_settings import (
 
 from pontibus.utils.settings import (
     InterchangeFFSettings,
-    PackmolSolvationSettings,
     InterchangeOpenMMSolvationSettings,
+    PackmolSolvationSettings,
 )
 
 
