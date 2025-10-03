@@ -1105,7 +1105,10 @@ def test_split_combine_parameters(
     protein_vdw = proteinff.create_interchange(thrombin_protein_offtop)[
         "vdW"
     ].get_system_parameters()
-    ligand_vdw = ligandff.create_interchange(l_6a_off.to_topology())["vdW"].get_system_parameters()
+    ligand_vdw = ligandff.create_interchange(
+            l_6a_off.to_topology(),
+            charge_from_molecules=[l_6a_off]
+    )["vdW"].get_system_parameters()
 
     found_vdw = interA["vdW"].get_system_parameters()
 
