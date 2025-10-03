@@ -47,7 +47,7 @@ def protein_ff_settings():
     return InterchangeFFSettings(
         forcefields=[
             "openff-2.0.0.offxml",
-            "ff14sb_off_impropers_0.0.3.offxml",
+            "ff14sb_off_impropers_0.0.4.offxml",
         ],
     )
 
@@ -1063,13 +1063,13 @@ def test_split_combine_parameters(
     ffsettings = InterchangeFFSettings(
         forcefields=[
             "openff-2.0.0.offxml",
-            "ff14sb_off_impropers_0.0.3.offxml",
+            "ff14sb_off_impropers_0.0.4.offxml",
             "opc3.offxml",
         ],
     )
 
     # force fields
-    proteinff = ForceField("ff14sb_off_impropers_0.0.3.offxml", "opc3.offxml")
+    proteinff = ForceField("ff14sb_off_impropers_0.0.4.offxml", "opc3.offxml")
     proteinff_smirks = [parameter.smirks for parameter in proteinff["vdW"].parameters]
     ligandff = ForceField("openff-2.0.0.offxml")
     ligandff_smirks = [parameter.smirks for parameter in ligandff["vdW"].parameters]
@@ -1614,7 +1614,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.3.offxml",
+                    "ff14sb_off_impropers_0.0.4.offxml",
                     "opc3.offxml",
                 ],
             ),
@@ -1847,7 +1847,7 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.3.offxml",
+                    "ff14sb_off_impropers_0.0.4.offxml",
                     "opc3.offxml",
                 ],
             ),
@@ -1957,7 +1957,7 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
             ffsettings=InterchangeFFSettings(
                 forcefields=[
                     "openff-2.0.0.offxml",
-                    "ff14sb_off_impropers_0.0.3.offxml",
+                    "ff14sb_off_impropers_0.0.4.offxml",
                     "opc3.offxml",
                 ],
             ),
