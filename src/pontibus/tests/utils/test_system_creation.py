@@ -1107,8 +1107,7 @@ def test_split_combine_parameters(
         "vdW"
     ].get_system_parameters()
     ligand_vdw = ligandff.create_interchange(
-            l_6a_off.to_topology(),
-            charge_from_molecules=[l_6a_off]
+        l_6a_off.to_topology(), charge_from_molecules=[l_6a_off]
     )["vdW"].get_system_parameters()
 
     found_vdw = interA["vdW"].get_system_parameters()
