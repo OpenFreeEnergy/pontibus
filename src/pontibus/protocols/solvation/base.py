@@ -32,7 +32,7 @@ from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )
 from pontibus.utils.protocol_utils import _get_and_charge_solvent_offmol
-from pontibus.utils.system_creation import interchange_packmol_creation
+from pontibus.utils.system_creation import interchange_system_creation
 from pontibus.utils.system_manipulation import adjust_system
 
 logger = logging.getLogger(__name__)
@@ -129,7 +129,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # Create your interchange object
         with without_oechem_backend():
-            interchange, comp_resids = interchange_packmol_creation(
+            interchange, comp_resids = interchange_system_creation(
                 ffsettings=settings["forcefield_settings"],
                 solvation_settings=settings["solvation_settings"],
                 smc_components=smc_components,

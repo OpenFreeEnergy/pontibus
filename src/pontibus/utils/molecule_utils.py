@@ -167,6 +167,34 @@ def _get_num_residues(offmol: OFFMolecule) -> int:
     return num_residx
 
 
+def _get_unique_mols(molecules: list[OFFMolecule]) -> list[OFFMolecule]:
+    """
+    Get a list of unique molecules purely by isomorphism
+
+    Parameters
+    ----------
+    molecules : list[openff.toolkit.Molecule]
+      A list of molecules to deduplicate
+
+    Returns
+    -------
+    unique_mols : list[openff.toolkit.Molecule]
+      A list of unique molecules (by isomorphism).
+    """
+    unique_mols: list[OFFMolecule] = []
+
+    for mol in molecules:
+        unique = True
+        for umol in unique_mols:
+            if mol.is_isomorphic_with(umol):
+                unique = False
+
+        if unique:
+            unique_mols.append(mol)
+
+    return unique_mols
+
+
 def _check_and_deduplicate_charged_mols(
     molecules: list[OFFMolecule],
 ) -> list[OFFMolecule]:
