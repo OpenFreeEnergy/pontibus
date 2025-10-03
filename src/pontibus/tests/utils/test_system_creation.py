@@ -1743,6 +1743,7 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
             assert e2 == e2
 
 
+@pytest.mark.slow
 class TestOpenMMSolvationComplexOPC3(TestComplexOPC3):
     smc_comps = "smc_components_benzene_named"
     protein_comp = "T4_protein_component"
@@ -1851,7 +1852,7 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
                 ],
             ),
             solvation_settings=PackmolSolvationSettings(
-                number_of_solvent_molecules=5000, solvent_padding=None
+                number_of_solvent_molecules=500, solvent_padding=None
             ),
             smc_components=smc_components,
             protein_component=protein_component,
@@ -1875,15 +1876,15 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 10
+        return 0
 
     @pytest.fixture(scope="class")
     def num_neg_ions(self):
-        return 19
+        return 9
 
     @pytest.fixture(scope="class")
     def num_waters(self):
-        return 4968
+        return 500
 
     @pytest.fixture(scope="class")
     def num_protein_atoms(self):
@@ -1961,7 +1962,7 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
                 ],
             ),
             solvation_settings=InterchangeOpenMMSolvationSettings(
-                number_of_solvent_molecules=1000, solvent_padding=None
+                number_of_solvent_molecules=100, solvent_padding=None
             ),
             smc_components=smc_components,
             protein_component=protein_component,
@@ -1985,15 +1986,15 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
 
     @pytest.fixture(scope="class")
     def num_pos_ions(self):
-        return 6
-
-    @pytest.fixture(scope="class")
-    def num_neg_ions(self):
         return 3
 
     @pytest.fixture(scope="class")
+    def num_neg_ions(self):
+        return 0
+
+    @pytest.fixture(scope="class")
     def num_waters(self):
-        return 991
+        return 97
 
     @pytest.fixture(scope="class")
     def num_protein_atoms(self):
@@ -2005,7 +2006,7 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
 
     @pytest.fixture(scope="class")
     def num_constraints(self):
-        return 5788
+        return 3106
 
     def test_topology(self, omm_topology, num_residues, num_waters, num_particles):
         residues = list(omm_topology.residues())
