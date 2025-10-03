@@ -319,7 +319,7 @@ def _process_solvation_inputs(
                 molecules=[solvent_offmol],
                 n_copies=[solvation_settings.number_of_solvent_molecules],
                 solute_topology=solute_topology,
-                target_density=solvation_settings.target_density,
+                target_density=solvation_settings.target_density,  # type: ignore[arg-type]
                 box_shape=box_shape,  # type: ignore[arg-type]
             )
     else:
@@ -328,8 +328,8 @@ def _process_solvation_inputs(
             solute_topology=solute_topology,
             solvent=solvent_offmol,
             box_shape=box_shape,  # type: ignore[arg-type]
-            padding=solvation_settings.solvent_padding,
-            target_density=solvation_settings.target_density,
+            padding=solvation_settings.solvent_padding,  # type: ignore[arg-type]
+            target_density=solvation_settings.target_density,  # type: ignore[arg-type]
         )
 
     return box_shape, n_solvent, box_vectors

@@ -525,20 +525,23 @@ def interchange_system_creation(
 
         solute_topology = Topology.from_molecules(topology_molecules)
 
-        solvation_method = {
-            PackmolSolvationSettings: packmol_solvation,
-            InterchangeOpenMMSolvationSettings: openmm_solvation,
-        }
-
-        try:
-            topology = solvation_method[type(solvation_settings)](
+        if isinstance(solvation_settings, PackmolSolvationSettings):
+            topology = packmol_solvation(
                 solute_topology=solute_topology,
                 solvent_offmol=solvent_offmol,
                 solvation_settings=solvation_settings,
                 neutralize=solvent_component.neutralize,
                 ion_concentration=solvent_component.ion_concentration,
             )
-        except KeyError:
+        elif isinstance(solvation_settings, InterchangeOpenMMSolvationSettings):
+            topology = openmm_solvation(
+                solute_topology=solute_topology,
+                solvent_offmol=solvent_offmol,
+                solvation_settings=solvation_settings,
+                neutralize=solvent_component.neutralize,
+                ion_concentration=solvent_component.ion_concentration,
+            )
+        else:
             raise ValueError("Unknown solvation method")
 
     else:  # no solvent case

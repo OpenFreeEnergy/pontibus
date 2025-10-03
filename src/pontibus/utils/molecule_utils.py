@@ -181,15 +181,13 @@ def _get_unique_mols(molecules: list[OFFMolecule]) -> list[OFFMolecule]:
     unique_mols : list[openff.toolkit.Molecule]
       A list of unique molecules (by isomorphism).
     """
-    unique_mols = []
+    unique_mols: list[OFFMolecule] = []
 
     for mol in molecules:
         unique = True
         for umol in unique_mols:
-            # Match by n_atoms: avoid doing isomorphic checks on big molecules
-            if mol.n_atoms == umol.n_atoms:
-                if mol.is_isomorphic_with(umol):
-                    unique = False
+            if mol.is_isomorphic_with(umol):
+                unique = False
 
         if unique:
             unique_mols.append(mol)
