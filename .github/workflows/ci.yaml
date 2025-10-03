@@ -71,7 +71,7 @@ jobs:
           PONTIBUS_SLOW_TESTS: ${{ fromJSON('{"false":"false","true":"true"}')[github.event_name != 'pull_request'] }}
           DUECREDIT_ENABLE: 'yes'
         run: |
-          pytest -n logical -vx --cov=pontibus --cov-report=xml --durations=10
+          pytest -n logical -v --cov=pontibus --cov-report=xml --durations=10
 
       - name: codecov-pr
         if: ${{ github.repository == 'OpenFreeEnergy/pontibus'
