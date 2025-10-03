@@ -17,6 +17,7 @@ from openmm import (
     NonbondedForce,
     PeriodicTorsionForce,
 )
+from openmm import unit as omm_unit
 from rdkit import Chem
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
@@ -1345,16 +1346,16 @@ class TestSolventOPC3UnamedBenzene(TestVacuumUnamedBenzene):
         for index in range(12, num_particles - num_waters, 3):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
-            assert from_openmm(c) == -0.89517 * unit.elementary_charge
-            assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+            assert c.value_in_unit(omm_unit.elementary_charge) == pytest.approx(-0.89517)
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.683690704)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
-            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1.value_in_unit(omm_unit.elementary_charge) == pytest.approx(0.447585)
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
@@ -1420,15 +1421,15 @@ class TestSolventOPC3NamedChargedAssignedBenzene(TestSolventOPC3UnamedBenzene):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
             assert from_openmm(c) == water_off_named_charged.partial_charges[0]
-            assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.683690704)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
             assert from_openmm(c1) == water_off_named_charged.partial_charges[1]
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
@@ -1511,16 +1512,16 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
         for index in range(7, 7 + num_waters, 3):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
-            assert from_openmm(c) == -0.89517 * unit.elementary_charge
-            assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+            assert c.value_in_unit(omm_unit.elementary_charge) == pytest.approx(-0.89517)
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.683690704)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
-            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1.value_in_unit(omm_unit.elementary_charge) == pytest.approx(0.447585)
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
@@ -1532,12 +1533,12 @@ class TestSolventOPC3AceticAcidNeutralize(TestSolventOPC3UnamedBenzene):
             assert abs(charge.m) == 1
 
             if charge.m == 1:
-                assert from_openmm(e).m == pytest.approx(0.1260287744)
-                assert from_openmm(s).m_as(unit.angstroms) == pytest.approx(2.617460434)
+                assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.1260287744)
+                assert s.value_in_unit(omm_unit.angstroms) == pytest.approx(2.617460434)
 
             if charge.m == -1:
-                assert from_openmm(e).m == pytest.approx(2.68724395648)
-                assert from_openmm(s).m_as(unit.angstroms) == pytest.approx(4.108824888)
+                assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(2.68724395648)
+                assert s.value_in_unit(omm_unit.angstroms) == pytest.approx(4.108824888)
 
     def test_system_total_charge(self, nonbonds, omm_system):
         total_charge = 0.0
@@ -1577,16 +1578,16 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
         for index in range(12, num_particles - num_waters, 3):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
-            assert from_openmm(c) == 0 * unit.elementary_charge
-            assert from_openmm(e).m == pytest.approx(0.890358601)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.16655208)
+            assert c.value_in_unit(omm_unit.elementary_charge) == 0
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.890358601)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.16655208)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
-            assert from_openmm(c1) == 0.679142 * unit.elementary_charge
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1.value_in_unit(omm_unit.elementary_charge) == 0.679142
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
@@ -1728,16 +1729,16 @@ class TestComplexOPC3(TestSolventOPC3UnamedBenzene):
         for index in range(solute_count, solute_count + num_waters, 3):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
-            assert from_openmm(c) == -0.89517 * unit.elementary_charge
-            assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+            assert c.value_in_unit(omm_unit.elementary_charge) == pytest.approx(-0.89517)
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.683690704)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
-            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1.value_in_unit(omm_unit.elementary_charge) == pytest.approx(0.447585)
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
@@ -1926,16 +1927,16 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
         for index in range(solute_count, solute_count + num_waters, 3):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
-            assert from_openmm(c) == -0.89517 * unit.elementary_charge
-            assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+            assert c.value_in_unit(omm_unit.elementary_charge) == pytest.approx(-0.89517)
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.683690704)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
-            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1.value_in_unit(omm_unit.elementary_charge) == pytest.approx(0.447585)
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2
@@ -2057,16 +2058,16 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
         for index in range(solute_count, solute_count + num_waters, 3):
             # oxygen
             c, s, e = nonbonds[0].getParticleParameters(index)
-            assert from_openmm(c) == -0.89517 * unit.elementary_charge
-            assert from_openmm(e).m == pytest.approx(0.683690704)
-            assert from_openmm(s).m_as(unit.angstrom) == pytest.approx(3.1742703509365926)
+            assert c.value_in_unit(omm_unit.elementary_charge) == pytest.approx(-0.89517)
+            assert e.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.683690704)
+            assert s.value_in_unit(omm_unit.angstrom) == pytest.approx(3.1742703509365926)
 
             # hydrogens
             c1, s1, e1 = nonbonds[0].getParticleParameters(index + 1)
             c2, s2, e2 = nonbonds[0].getParticleParameters(index + 2)
-            assert from_openmm(c1) == 0.447585 * unit.elementary_charge
-            assert from_openmm(e1) == 0 * unit.kilocalorie_per_mole
-            assert from_openmm(s1).m == pytest.approx(0.17817974)
+            assert c1.value_in_unit(omm_unit.elementary_charge) == pytest.approx(0.447585)
+            assert e1.value_in_unit(omm_unit.kilocalorie_per_mole) == 0
+            assert s1.value_in_unit(omm_unit.angstrom) == pytest.approx(1.7817974)
             assert c1 == c2
             assert s1 == s2
             assert e2 == e2

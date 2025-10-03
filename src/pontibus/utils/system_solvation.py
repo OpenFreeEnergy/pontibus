@@ -442,8 +442,7 @@ def openmm_solvation(
         errmsg = "Cannot neutralize a system with non-water solvent"
         raise ValueError(errmsg)
 
-    # TODO: IA - work out what we want to do re: ionic strength,
-    # do we just drop SLTCAP completely?
+    # MAYBE TODO: Note we don't use SLTCAP here (Issue #148)
     if neutralize:
         if not ion_concentration.is_compatible_with("mole / liter"):
             errmsg = f"{ion_concentration} is not compatible with mole / liter"
@@ -464,11 +463,18 @@ def openmm_solvation(
             ).generator
         )
 
+        # To avoid a clash, set the box vectors to None if a shape is already
+        # defined. Otherwise, use the vectors
+        if solvation_settings.box_shape is not None:
+            box_vectors = None
+        else:
+            box_vectors = make_vec3(box_vectors)
+
         modeller.addSolvent(
             forcefield=forcefield,
             model="tip3p",
             numAdded=n_solvent,
-            boxVectors=None,  # make_vec3(box_vectors), -- TODO: work out what to do here
+            boxVectors=box_vectors,
             boxShape=solvation_settings.box_shape,
             positiveIon="Na+",
             negativeIon="Cl-",
