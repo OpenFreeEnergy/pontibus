@@ -466,7 +466,7 @@ def openmm_solvation(
         # To avoid a clash, set the box vectors to None if a shape is already
         # defined. Otherwise, use the vectors
         if solvation_settings.box_shape is not None:
-            box_vectors = None
+            box_vectors = None  # type: ignore[assignment]
         else:
             box_vectors = make_vec3(box_vectors)
 
