@@ -24,9 +24,10 @@ from pontibus.utils.molecule_utils import (
 from pontibus.utils.molecules import offmol_water
 from pontibus.utils.settings import (
     InterchangeFFSettings,
+    InterchangeOpenMMSolvationSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.system_solvation import packmol_solvation
+from pontibus.utils.system_solvation import openmm_solvation, packmol_solvation
 
 logger = logging.getLogger(__name__)
 
@@ -446,9 +447,9 @@ def _get_comp_resids(
     return comp_resids
 
 
-def interchange_packmol_creation(
+def interchange_system_creation(
     ffsettings: InterchangeFFSettings,
-    solvation_settings: PackmolSolvationSettings,
+    solvation_settings: PackmolSolvationSettings | InterchangeOpenMMSolvationSettings,
     smc_components: dict[SmallMoleculeComponent, OFFMolecule],
     protein_component: ProteinComponent | None,
     solvent_component: SolventComponent | None,
@@ -462,7 +463,7 @@ def interchange_packmol_creation(
     ----------
     ffsettings : InterchangeFFSettings
       Settings defining how the force field is applied.
-    solvation_settings : PackmolSolvationSettings
+    solvation_settings : PackmolSolvationSettings | InterchangeOpenMMSolvationSettings
       Settings defining how the system will be solvated.
     smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
       Solute SmallMoleculeComponents.
@@ -524,13 +525,25 @@ def interchange_packmol_creation(
 
         solute_topology = Topology.from_molecules(topology_molecules)
 
-        topology = packmol_solvation(
-            solute_topology=solute_topology,
-            solvent_offmol=solvent_offmol,
-            solvation_settings=solvation_settings,
-            neutralize=solvent_component.neutralize,
-            ion_concentration=solvent_component.ion_concentration,
-        )
+        if isinstance(solvation_settings, PackmolSolvationSettings):
+            topology = packmol_solvation(
+                solute_topology=solute_topology,
+                solvent_offmol=solvent_offmol,
+                solvation_settings=solvation_settings,
+                neutralize=solvent_component.neutralize,
+                ion_concentration=solvent_component.ion_concentration,
+            )
+        elif isinstance(solvation_settings, InterchangeOpenMMSolvationSettings):
+            topology = openmm_solvation(
+                solute_topology=solute_topology,
+                solvent_offmol=solvent_offmol,
+                solvation_settings=solvation_settings,
+                neutralize=solvent_component.neutralize,
+                ion_concentration=solvent_component.ion_concentration,
+            )
+        else:
+            raise ValueError("Unknown solvation method")
+
     else:  # no solvent case
         topology = Topology.from_molecules(topology_molecules)
 
