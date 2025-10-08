@@ -280,6 +280,8 @@ def test_dry_run_ligand(
 
     if solv_backend == "openmm":
         settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+    else:
+        settings.solvation_settings = PackmolSolvationSettings()
 
     protocol = HybridTopProtocol(
         settings=settings,
@@ -493,6 +495,8 @@ def test_dry_run_complex(
 
     if solv_backend == "openmm":
         settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+    else:
+        settings.solvation_settings = PackmolSolvationSettings()
 
     protocol = HybridTopProtocol(settings=settings)
     dag = protocol.create(
@@ -636,6 +640,8 @@ def test_dry_run_complex_cofactor(
 
     if solv_backend == "openmm":
         settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+    else:
+        settings.solvation_settings = PackmolSolvationSettings()
 
     settings.protocol_repeats = 1
     settings.output_settings.output_indices = "protein or resname AAA"
