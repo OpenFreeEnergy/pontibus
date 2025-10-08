@@ -4,6 +4,20 @@ pontibus Change Log
 
 .. current developments
 
+v0.2.0
+====================
+
+**Added:**
+
+* The ability to solvate systems using OpenMM for the RFE Protocol (PR #140).
+
+**Changed:**
+
+* The default solvation backend for RFE calculations is now OpenMM and
+  the target density is 0.75 g/L.
+
+
+
 v0.1
 ====================
 
