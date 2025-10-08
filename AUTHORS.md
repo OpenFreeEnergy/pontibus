@@ -20,3 +20,4 @@ The rules for this file:
 **2025**
 - Josh A. Mitchell <@Yoshanuikabundi>
 - Jeffrey Wagner <@j-wags>
+- Michael M. Henry <@mikemhenry>
