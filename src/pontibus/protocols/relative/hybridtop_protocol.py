@@ -44,6 +44,7 @@ from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
+    InterchangeOpenMMSolvationSettings
 )
 
 
@@ -93,7 +94,9 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
                 pressure=1 * unit.bar,
             ),
             partial_charge_settings=OpenFFPartialChargeSettings(),
-            solvation_settings=PackmolSolvationSettings(),
+            solvation_settings=InterchangeOpenMMSolvationSettings(
+                target_density= 0.75 * unit.grams / unit.mL
+            ),
             alchemical_settings=AlchemicalSettings(softcore_LJ="gapsys"),
             lambda_settings=LambdaSettings(),
             simulation_settings=MultiStateSimulationSettings(
