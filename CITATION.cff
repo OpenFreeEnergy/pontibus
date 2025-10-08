@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- given-names: "Irfan"
+  family-names: "Alibay"
+  orcid: "https://orcid.org/0000-0001-5787-9130"
+- given-names: "Matthew"
+  family-names: "Thompson"
+  orcid: "https://orcid.org/0000-0002-1460-3983"
+- given-names: "Joshua A."
+  family-names: "Mitchell"
+  orcid: "https://orcid.org/0000-0002-8246-5113"
+- given-names: "Jeffrey"
+  family-names: "Wagner"
+  orcid: "https://orcid.org/0000-0001-6448-0873"
+- given-names: "Michael M."
+  family-names: "Henry"
+  orcid: "https://orcid.org/0000-0002-3870-9993"
+title: "Pontibus: Experimental OpenFE Protocols for Force Field Development"
+version: 0.2.0
+date-released: 2025-10-08
+url: "https://openfree.energy/"
+repository-code: "https://github.com/OpenFreeEnergy/pontibus"
+doi: 10.5281/zenodo.16896171
