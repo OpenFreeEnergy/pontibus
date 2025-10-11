@@ -18,7 +18,7 @@ dependencies:
   - rdkit
   - packaging
   - pip
-  - pydantic >=2.0
+  - pydantic >=2.0,<2.12
   - pyyaml
   - coverage
   - cinnabar ~=0.5.0
