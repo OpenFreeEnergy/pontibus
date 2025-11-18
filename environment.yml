@@ -3,12 +3,12 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.6
+  - gufe =1.6
   - openff-toolkit >0.16.0
   - openff-interchange >=0.4.8
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
-  - openfe >=1.6
+  - openfe
   - duecredit<0.10
   - kartograf>=1.0.0
   - konnektor
@@ -18,7 +18,7 @@ dependencies:
   - rdkit
   - packaging
   - pip
-  - pydantic >=2.0
+  - pydantic
   - pyyaml
   - coverage
   - cinnabar ~=0.5.0
