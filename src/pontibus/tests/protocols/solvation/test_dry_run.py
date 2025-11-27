@@ -90,7 +90,7 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
     s.protocol_repeats = 1
     s.solvent_output_settings.output_indices = "resname AAA"
     # Set a random barostat frequency to make sure it goes all the way
-    s.integrator_settings.barostat_frequency = 125
+    s.integrator_settings.barostat_frequency = 125 * unit.timestep
     s.alchemical_settings.experimental = experimental
 
     protocol = ASFEProtocol(
