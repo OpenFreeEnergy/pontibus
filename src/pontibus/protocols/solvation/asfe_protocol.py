@@ -175,7 +175,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         *,
         stateA: ChemicalSystem,
         stateB: ChemicalSystem,
-        mappping: gufe.ComponentMapping | list[gufe.ComponentMapping] | None = None,
+        mapping: gufe.ComponentMapping | list[gufe.ComponentMapping] | None = None,
         extends: gufe.ProtocolDAGResult | None = None,
     ):
         # Check we're not extending

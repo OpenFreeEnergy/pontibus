@@ -181,7 +181,7 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
             msg = "Only one of ``number_solvent_molecules`` or ``solvent_padding`` can be defined"
             raise ValueError(msg)
 
-        return values
+        return self
 
     @model_validator(mode="after")
     def check_target_density_or_box_vectors(self):
@@ -189,7 +189,7 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
             msg = "Only one of ``target_density`` or ``box_vectors`` can be defined"
             raise ValueError(msg)
 
-        return values
+        return self
 
     @model_validator(mode="after")
     def check_target_density_and_box_shape(self):
@@ -197,15 +197,15 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
             msg = "``target_density`` and ``box_shape`` must both be defined"
             raise ValueError(msg)
 
-        return values
+        return self
 
     @model_validator(mode="after")
     def check_solvent_padding_or_box_vectors(self):
-        if (self.box_vectors is not None) and (self.padding is not None):
+        if (self.box_vectors is not None) and (self.solvent_padding is not None):
             msg = "Only one of ``box_vectors`` or ``solvent_padding`` can be defined."
             raise ValueError(msg)
 
-        return values
+        return self
 
 
 class PackmolSolvationSettings(BasePontibusSolvationSettings):
