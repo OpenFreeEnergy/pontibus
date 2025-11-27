@@ -228,6 +228,17 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 errmsg = "NVT equilibration cannot be run in vacuum simulation"
                 raise ValueError(errmsg)
 
+        # Validate integrator things
+        settings_validation.validate_timestep(
+            self.settings.vacuum_forcefield_settings.hydrogen_mass,
+            self.settings.integrator_settings.timestep,
+        )
+
+        settings_validation.validate_timestep(
+            self.settings.solvent_forcefield_settings.hydrogen_mass,
+            self.settings.integrator_settings.timestep,
+        )
+
     def _create(
         self,
         stateA: ChemicalSystem,
