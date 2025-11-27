@@ -2,6 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import uuid
+import warnings
 
 import gufe
 import numpy as np
