@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseASFEUnit(BaseAbsoluteUnit):
-    _simtype: str
+    simtype: str
 
     @staticmethod
     def _validate_vsites(system: openmm.System, integrator_settings: IntegratorSettings) -> None:
@@ -61,15 +61,15 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         -----
         * Small placeholder for a larger thing.
         """
-        has_virtual_sites: bool = False
-        for ix in range(system.getNumParticles()):
-            if system.isVirtualSite(ix):
-                has_virtual_sites = True
-
-        if has_virtual_sites:
-            if not integrator_settings.reassign_velocities:
+        if not integrator_settings.reassign_velocities:
+            has_vsite = any(
+                system.isVirtualSite(i)
+                for i in range(system.getNumParticles())
+            )
+            if has_vsite:
                 errmsg = (
-                    "Simulations with virtual sites without velocity reassignments are unstable"
+                    "Simulations with virtual sites without "
+                    "velocity reassignment are unstable"
                 )
                 raise ValueError(errmsg)
 
@@ -265,19 +265,3 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 comp_resids,
                 alchem_comps,
             )
-
-    def _execute(
-        self,
-        ctx: gufe.Context,
-        **kwargs,
-    ) -> dict[str, Any]:
-        log_system_probe(logging.INFO, paths=[ctx.scratch])
-
-        outputs = self.run(scratch_basepath=ctx.scratch, shared_basepath=ctx.shared)
-
-        return {
-            "repeat_id": self._inputs["repeat_id"],
-            "generation": self._inputs["generation"],
-            "simtype": self._simtype,
-            **outputs,
-        }
