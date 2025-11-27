@@ -16,7 +16,7 @@ import numpy as np
 import openmmtools
 from gufe import SmallMoleculeComponent, SolventComponent
 from gufe.settings import ThermoSettings
-from gufe.settings.types import GufeArrayQuantity
+from gufe.settings.typing import GufeArrayQuantity
 from openfe.protocols.openmm_rfe import _rfe_utils
 from openfe.protocols.openmm_rfe.equil_rfe_methods import (
     RelativeHybridTopologyProtocolUnit,
