@@ -21,3 +21,4 @@ The rules for this file:
 - Josh A. Mitchell <@Yoshanuikabundi>
 - Jeffrey Wagner <@j-wags>
 - Michael M. Henry <@mikemhenry>
+- Alyssa Travitz <@atravitz>

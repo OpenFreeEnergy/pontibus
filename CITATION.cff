@@ -16,9 +16,12 @@ authors:
 - given-names: "Michael M."
   family-names: "Henry"
   orcid: "https://orcid.org/0000-0002-3870-9993"
+- given-names: Alyssa
+  family-names: Travitz
+  orcid: 'https://orcid.org/0000-0001-5953-8807'
 title: "Pontibus: Experimental OpenFE Protocols for Force Field Development"
-version: 0.2.0
-date-released: 2025-10-08
+version: 0.3.0
+date-released: 2025-11-28
 url: "https://openfree.energy/"
 repository-code: "https://github.com/OpenFreeEnergy/pontibus"
 doi: 10.5281/zenodo.16896171
