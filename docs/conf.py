@@ -50,7 +50,7 @@ extensions = [
     "sphinx_design",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
-    "docs._ext.sass",
+    # "docs._ext.sass",
     "myst_parser",
     "nbsphinx",
     "nbsphinx_link",
@@ -140,7 +140,7 @@ html_theme_options = {
             "type": "fontawesome",
         }
     ],
-    "accent_color": "DarkGoldenYellow",
+    # "accent_color": "DarkGoldenYellow",
     "navigation_with_keys": False,
 }
 html_logo = "_static/Squaredcircle.svg"
