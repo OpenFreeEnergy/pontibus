@@ -429,8 +429,6 @@ def _get_comp_resids(
         key = mol.properties["key"]
         num_residx = _get_num_residues(mol)
         residx_range = [r for r in range(residx, residx + num_residx)]
-
-        residx_range = [r for r in range(residx, residx + num_residx)]
         if key not in compkey_residx:
             compkey_residx[key] = residx_range
         else:
