@@ -352,16 +352,15 @@ def packmol_solvation(
     solvent_offmol : OFFMolecule
       An OpenFF Molecule representing the solvent.
     solvation_settings : PackmolSolvationSettings
-      Settings for how to solvate the system.
+      Settings for how to solvate the system using
+      the packmol interface.
     neutralize : bool
-      Whether or not the system should be neutralized. Note
-      that this can only happen if ``number_of_solvent_molecules``
-      is not defined in ``solvation_settings`` and the ``solvent_offmol``
-      is water.
+      Whether or not the system should be neutralized.
     ion_concentration : Quantity
       The concentration of NaCl to add to the system when
       neutralizing. Note that this is ignored if neutralize
-      if False. Must be compatible with mole / liter.
+      if False. Must be compatible with mole / liter. Addition
+      of ions is done through the SLTCAP method.
 
     Returns
     -------
@@ -371,8 +370,6 @@ def packmol_solvation(
     Raises
     ------
     ValueError
-      If ``neutralize`` is ``True`` and ``number_of_solvent_molecules`` is
-      defined.
       If ``neutralize`` is ``True`` and ``solvent_offmol`` is not water.
       if ``ion_concentration`` is not compatible with mole / liter.
     """
@@ -421,6 +418,34 @@ def openmm_solvation(
     neutralize: bool,
     ion_concentration: Quantity,
 ) -> Topology:
+    """
+    Solvate solute Topology using OpenMM's Modeller.
+
+    Parameters
+    ----------
+    solute_topology : openff.toolkit.Topology
+      The Topology of the solute to solvate.
+    solvent_offmol : openff.toolkit.Molecule
+      An OpenFF Molecule representing the solvent species.
+    solvation_settings : InterchangeOpenMMSolvationSettings
+      Settings defining how the system will be solvated.
+    neutralize : bool
+      Whether or not the system should be neutralized.
+    ion_concentration : openff.unit.Quantity
+      The concentration of NaCl to add to the system
+      when neutralizing. Note that this is ignored if
+      ``neutralize`` is ``False``. Must be compatible
+      with mole / liter. Note that this method, unlike the
+      packmol interchange, uses the add neutralize method rather
+      than SLTCAP.
+
+    Raises
+    ------
+    ValueError
+      * If neutralizing with a non-waterr solvent.
+      * If ``ion_concentration`` is not compatible with ``mole / liter``
+      * If ``neutralize`` is ``False`` and the system has a net charge.
+    """
     import openmm
     import openmm.app
 

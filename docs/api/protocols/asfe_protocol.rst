@@ -3,7 +3,7 @@ Absolute Solvation Free Energy (ASFE) Protocol
 
 .. _asfe protocol api:
 
-A Protocol for running arbitrary solvent solvation free energy calculations.
+A Protocol for running solvation free energy calculations with any arbitrary single composition solvent.
 
 
 Protocol API Specification
