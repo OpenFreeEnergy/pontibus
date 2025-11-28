@@ -5,6 +5,8 @@ Pontibus system creation and solvation utilities
 
 Utility methods for creating systems in Pontibus Protocols.
 
+.. _system generation api:
+
 System creation
 ---------------
 
@@ -18,6 +20,7 @@ Methods used to build systems with OpenFF Interchange & OpenMM.
 
    interchange_system_creation
 
+.. _system solvation api:
 
 System solvation
 ----------------
