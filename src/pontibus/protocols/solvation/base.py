@@ -2,9 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
-from typing import Any
 
-import gufe
 import numpy.typing as npt
 import openmm
 from gufe import (
@@ -18,7 +16,7 @@ from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
 )
-from openfe.utils import log_system_probe, without_oechem_backend
+from openfe.utils import without_oechem_backend
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units.openmm import to_openmm
@@ -39,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseASFEUnit(BaseAbsoluteUnit):
-    _simtype: str
+    simtype: str
 
     @staticmethod
     def _validate_vsites(system: openmm.System, integrator_settings: IntegratorSettings) -> None:
@@ -61,16 +59,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         -----
         * Small placeholder for a larger thing.
         """
-        has_virtual_sites: bool = False
-        for ix in range(system.getNumParticles()):
-            if system.isVirtualSite(ix):
-                has_virtual_sites = True
-
-        if has_virtual_sites:
-            if not integrator_settings.reassign_velocities:
-                errmsg = (
-                    "Simulations with virtual sites without velocity reassignments are unstable"
-                )
+        if not integrator_settings.reassign_velocities:
+            has_vsite = any(system.isVirtualSite(i) for i in range(system.getNumParticles()))
+            if has_vsite:
+                errmsg = "Simulations with virtual sites without velocity reassignment are unstable"
                 raise ValueError(errmsg)
 
     def _get_omm_objects(
@@ -265,19 +257,3 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 comp_resids,
                 alchem_comps,
             )
-
-    def _execute(
-        self,
-        ctx: gufe.Context,
-        **kwargs,
-    ) -> dict[str, Any]:
-        log_system_probe(logging.INFO, paths=[ctx.scratch])
-
-        outputs = self.run(scratch_basepath=ctx.scratch, shared_basepath=ctx.shared)
-
-        return {
-            "repeat_id": self._inputs["repeat_id"],
-            "generation": self._inputs["generation"],
-            "simtype": self._simtype,
-            **outputs,
-        }

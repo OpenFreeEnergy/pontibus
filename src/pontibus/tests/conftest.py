@@ -162,6 +162,17 @@ def benzene_modifications_charged():
 
 
 @pytest.fixture(scope="session")
+def benzene_modifications_net_charge():
+    files = {}
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
+        fn = str(d / "benzenes_with_net_charge.sdf")
+        supp = Chem.SDMolSupplier(str(fn), removeHs=False)
+        for rdmol in supp:
+            files[rdmol.GetProp("_Name")] = SmallMoleculeComponent(rdmol)
+    return files
+
+
+@pytest.fixture(scope="session")
 def thrombin_ligands_charged():
     files = {}
     with resources.as_file(resources.files("pontibus.tests.data")) as d:

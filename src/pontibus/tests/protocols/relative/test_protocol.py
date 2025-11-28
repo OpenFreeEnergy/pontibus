@@ -26,6 +26,23 @@ from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolUnit
 from pontibus.utils.settings import InterchangeOpenMMSolvationSettings, PackmolSolvationSettings
 
 
+@pytest.fixture()
+def vac_settings():
+    settings = HybridTopProtocol.default_settings()
+    settings.forcefield_settings.nonbonded_method = "nocutoff"
+    settings.engine_settings.compute_platform = None
+    settings.protocol_repeats = 1
+    return settings
+
+
+@pytest.fixture()
+def solv_settings():
+    settings = HybridTopProtocol.default_settings()
+    settings.engine_settings.compute_platform = None
+    settings.protocol_repeats = 1
+    return settings
+
+
 def test_create_default_settings():
     settings = HybridTopProtocol.default_settings()
 
@@ -78,12 +95,14 @@ def test_position_overlap_warn():
 
 @pytest.mark.parametrize("method", ["repex", "sams", "independent", "InDePeNdENT"])
 def test_dry_run_default_vacuum(
-    benzene_vacuum_system, toluene_vacuum_system, benzene_to_toluene_mapping, method, tmpdir
+    benzene_vacuum_system,
+    toluene_vacuum_system,
+    benzene_to_toluene_mapping,
+    vac_settings,
+    method,
+    tmpdir,
 ):
-    vac_settings = HybridTopProtocol.default_settings()
-    vac_settings.forcefield_settings.nonbonded_method = "nocutoff"
     vac_settings.simulation_settings.sampler_method = method
-    vac_settings.protocol_repeats = 1
 
     protocol = HybridTopProtocol(
         settings=vac_settings,
@@ -217,7 +236,7 @@ $$$$
 """
 
 
-def test_dry_core_element_change(tmpdir):
+def test_dry_core_element_change(vac_settings, tmpdir):
     benz = openfe.SmallMoleculeComponent(Chem.MolFromMolBlock(BENZ, removeHs=False))
     pyr = openfe.SmallMoleculeComponent(Chem.MolFromMolBlock(PYRIDINE, removeHs=False))
 
@@ -225,11 +244,8 @@ def test_dry_core_element_change(tmpdir):
         benz, pyr, {0: 0, 1: 10, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 9, 9: 8, 10: 7, 11: 6}
     )
 
-    settings = HybridTopProtocol.default_settings()
-    settings.forcefield_settings.nonbonded_method = "nocutoff"
-
     protocol = HybridTopProtocol(
-        settings=settings,
+        settings=vac_settings,
     )
 
     dag = protocol.create(
@@ -271,20 +287,24 @@ def test_dry_core_element_change(tmpdir):
     ],
 )
 def test_dry_run_ligand(
-    benzene_system, toluene_system, benzene_to_toluene_mapping, solv_backend, n_atoms, tmpdir
+    benzene_system,
+    toluene_system,
+    benzene_to_toluene_mapping,
+    solv_backend,
+    n_atoms,
+    solv_settings,
+    tmpdir,
 ):
     # this might be a bit time consuming
-    settings = HybridTopProtocol.default_settings()
-    settings.protocol_repeats = 1
-    settings.output_settings.output_indices = "resname AAA"
+    solv_settings.output_settings.output_indices = "resname AAA"
 
     if solv_backend == "openmm":
-        settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+        solv_settings.solvation_settings = InterchangeOpenMMSolvationSettings()
     else:
-        settings.solvation_settings = PackmolSolvationSettings()
+        solv_settings.solvation_settings = PackmolSolvationSettings()
 
     protocol = HybridTopProtocol(
-        settings=settings,
+        settings=solv_settings,
     )
     dag = protocol.create(
         stateA=benzene_system,
@@ -341,16 +361,12 @@ def test_dry_run_ligand(
         assert len(sampler._hybrid_factory._env_old_to_new_map) == (n_atoms - 16)
 
 
-def test_dry_run_vacuum_user_charges(benzene_modifications, tmpdir):
+def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir):
     """
     Create a hybrid system with a set of fictitious user supplied charges
     and ensure that they are properly passed through to the constructed
     hybrid topology.
     """
-    vac_settings = HybridTopProtocol.default_settings()
-    vac_settings.forcefield_settings.nonbonded_method = "nocutoff"
-    vac_settings.protocol_repeats = 1
-
     protocol = HybridTopProtocol(
         settings=vac_settings,
     )
@@ -480,25 +496,24 @@ def test_dry_run_complex(
     benzene_complex_system,
     toluene_complex_system,
     benzene_to_toluene_mapping,
+    solv_settings,
     solv_backend,
     n_atoms,
     tmpdir,
 ):  # pragma: no cover
     # this will be very time consuming
-    settings = HybridTopProtocol.default_settings()
-    settings.protocol_repeats = 1
-    settings.output_settings.output_indices = "protein or resname AAA"
-    settings.forcefield_settings.forcefields = [
+    solv_settings.output_settings.output_indices = "protein or resname AAA"
+    solv_settings.forcefield_settings.forcefields = [
         "openff-2.2.1.offxml",
         "ff14sb_off_impropers_0.0.3.offxml",
     ]
 
     if solv_backend == "openmm":
-        settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+        solv_settings.solvation_settings = InterchangeOpenMMSolvationSettings()
     else:
-        settings.solvation_settings = PackmolSolvationSettings()
+        solv_settings.solvation_settings = PackmolSolvationSettings()
 
-    protocol = HybridTopProtocol(settings=settings)
+    protocol = HybridTopProtocol(settings=solv_settings)
     dag = protocol.create(
         stateA=benzene_complex_system,
         stateB=toluene_complex_system,
@@ -556,22 +571,24 @@ def test_dry_run_complex(
 
 @pytest.mark.cpuvslow
 def test_dry_run_complex_setnwaters(
-    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, tmpdir
+    benzene_complex_system,
+    toluene_complex_system,
+    benzene_to_toluene_mapping,
+    solv_settings,
+    tmpdir,
 ):  # pragma: no cover
     # this will be very time consuming
-    settings = HybridTopProtocol.default_settings()
-    settings.protocol_repeats = 1
-    settings.output_settings.output_indices = "protein or resname AAA"
-    settings.forcefield_settings.forcefields = [
+    solv_settings.output_settings.output_indices = "protein or resname AAA"
+    solv_settings.forcefield_settings.forcefields = [
         "openff-2.2.1.offxml",
         "ff14sb_off_impropers_0.0.3.offxml",
     ]
-    settings.solvation_settings = PackmolSolvationSettings(
+    solv_settings.solvation_settings = PackmolSolvationSettings(
         number_of_solvent_molecules=15000,
         solvent_padding=None,
     )
 
-    protocol = HybridTopProtocol(settings=settings)
+    protocol = HybridTopProtocol(settings=solv_settings)
     dag = protocol.create(
         stateA=benzene_complex_system,
         stateB=toluene_complex_system,
@@ -631,28 +648,26 @@ def test_dry_run_complex_cofactor(
     eg5_complex_systemA,
     eg5_complex_systemB,
     eg5_ligands_mapping,
+    solv_settings,
     solv_backend,
     n_atoms,
     tmpdir,
 ):  # pragma: no cover
     # this will be very time consuming
-    settings = HybridTopProtocol.default_settings()
-
     if solv_backend == "openmm":
-        settings.solvation_settings = InterchangeOpenMMSolvationSettings()
+        solv_settings.solvation_settings = InterchangeOpenMMSolvationSettings()
     else:
-        settings.solvation_settings = PackmolSolvationSettings()
+        solv_settings.solvation_settings = PackmolSolvationSettings()
 
-    settings.protocol_repeats = 1
-    settings.output_settings.output_indices = "protein or resname AAA"
-    settings.solvation_settings.box_shape = "dodecahedron"
-    settings.solvation_settings.solvent_padding = 1.0 * unit.nanometer
-    settings.forcefield_settings.forcefields = [
+    solv_settings.output_settings.output_indices = "protein or resname AAA"
+    solv_settings.solvation_settings.box_shape = "dodecahedron"
+    solv_settings.solvation_settings.solvent_padding = 1.0 * unit.nanometer
+    solv_settings.forcefield_settings.forcefields = [
         "openff-2.2.1.offxml",
         "ff14sb_off_impropers_0.0.3.offxml",
     ]
 
-    protocol = HybridTopProtocol(settings=settings)
+    protocol = HybridTopProtocol(settings=solv_settings)
     dag = protocol.create(
         stateA=eg5_complex_systemA,
         stateB=eg5_complex_systemB,

@@ -21,14 +21,21 @@ from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
 
 
+@pytest.fixture()
+def dry_settings():
+    settings = ASFEProtocol.default_settings()
+    settings.protocol_repeats = 1
+    settings.vacuum_engine_settings.compute_platform = None
+    settings.solvent_engine_settings.compute_platform = None
+    return settings
+
+
 @pytest.mark.parametrize("method", ["repex", "sams", "independent", "InDePeNdENT"])
-def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
-    s = ASFEProtocol.default_settings()
-    s.protocol_repeats = 1
-    s.vacuum_simulation_settings.sampler_method = method
+def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
+    dry_settings.vacuum_simulation_settings.sampler_method = method
 
     protocol = ASFEProtocol(
-        settings=s,
+        settings=dry_settings,
     )
 
     stateA = ChemicalSystem(
@@ -85,16 +92,14 @@ def test_dry_run_vacuum_benzene(charged_benzene, method, tmpdir):
 
 
 @pytest.mark.parametrize("experimental", [True, False])
-def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
-    s = ASFEProtocol.default_settings()
-    s.protocol_repeats = 1
-    s.solvent_output_settings.output_indices = "resname AAA"
-    # Set a random barostat frequency to make sure it goes all the way
-    s.integrator_settings.barostat_frequency = 125
-    s.alchemical_settings.experimental = experimental
+def test_dry_run_solv_benzene(experimental, charged_benzene, dry_settings, tmpdir):
+    dry_settings.solvent_output_settings.output_indices = "resname AAA"
+    # Set a non-default barostat frequency to make sure it goes all the way
+    dry_settings.integrator_settings.barostat_frequency = 125 * unit.timestep
+    dry_settings.alchemical_settings.experimental = experimental
 
     protocol = ASFEProtocol(
-        settings=s,
+        settings=dry_settings,
     )
 
     stateA = ChemicalSystem(
@@ -153,28 +158,31 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, tmpdir):
         for force in system.getForces():
             if isinstance(force, MonteCarloBarostat):
                 assert force.getFrequency() == 125
-                assert from_openmm(force.getDefaultPressure()) == s.thermo_settings.pressure
-                assert from_openmm(force.getDefaultTemperature()) == s.thermo_settings.temperature
+                assert (
+                    from_openmm(force.getDefaultPressure()) == dry_settings.thermo_settings.pressure
+                )
+                assert (
+                    from_openmm(force.getDefaultTemperature())
+                    == dry_settings.thermo_settings.temperature
+                )
 
         # Check the nonbonded force is PME
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
 
 
-def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, tmpdir):
+def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, dry_settings, tmpdir):
     """
     A basic user charges test - i.e. will it retain _some_ charges passed
     through.
 
     TODO: something a bit more intensive.
     """
-    s = ASFEProtocol.default_settings()
-    s.protocol_repeats = 1
-    s.solvent_output_settings.output_indices = "resname AAA"
-    s.solvation_settings.assign_solvent_charges = True
+    dry_settings.solvent_output_settings.output_indices = "resname AAA"
+    dry_settings.solvation_settings.assign_solvent_charges = True
 
     protocol = ASFEProtocol(
-        settings=s,
+        settings=dry_settings,
     )
 
     stateA = ChemicalSystem(
@@ -230,21 +238,19 @@ def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, tmpdir):
             assert pytest.approx(c) == prop_chgs[benzene_idx]
 
 
-def test_dry_run_solv_benzene_opc(charged_benzene, tmpdir):
+def test_dry_run_solv_benzene_opc(charged_benzene, dry_settings, tmpdir):
     # TODO: validation tests
     # - hmass
     # - timestep
-    s = ASFEProtocol.default_settings()
-    s.protocol_repeats = 1
-    s.vacuum_forcefield_settings.forcefields = ["openff-2.0.0.offxml", "opc.offxml"]
-    s.vacuum_forcefield_settings.hydrogen_mass = 1.0
-    s.solvent_forcefield_settings.forcefields = ["openff-2.0.0.offxml", "opc.offxml"]
-    s.solvent_forcefield_settings.hydrogen_mass = 1.007947
-    s.integrator_settings.reassign_velocities = True
-    s.integrator_settings.timestep = 2 * unit.femtosecond
+    dry_settings.vacuum_forcefield_settings.forcefields = ["openff-2.0.0.offxml", "opc.offxml"]
+    dry_settings.vacuum_forcefield_settings.hydrogen_mass = 1.0
+    dry_settings.solvent_forcefield_settings.forcefields = ["openff-2.0.0.offxml", "opc.offxml"]
+    dry_settings.solvent_forcefield_settings.hydrogen_mass = 1.007947
+    dry_settings.integrator_settings.reassign_velocities = True
+    dry_settings.integrator_settings.timestep = 2 * unit.femtosecond
 
     protocol = ASFEProtocol(
-        settings=s,
+        settings=dry_settings,
     )
 
     stateA = ChemicalSystem(
@@ -279,13 +285,10 @@ def test_dry_run_solv_benzene_opc(charged_benzene, tmpdir):
         assert pdb.n_atoms == 12
 
 
-def test_confgen_fail_AFE(benzene_modifications, tmpdir):
+def test_confgen_fail_AFE(benzene_modifications, dry_settings, tmpdir):
     # check system parametrisation works even if confgen fails
-    s = ASFEProtocol.default_settings()
-    s.protocol_repeats = 1
-
     protocol = ASFEProtocol(
-        settings=s,
+        settings=dry_settings,
     )
 
     stateA = ChemicalSystem(

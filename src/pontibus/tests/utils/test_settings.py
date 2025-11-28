@@ -38,7 +38,7 @@ class TestInterchangeFFSettings:
 
 
 class TestPackmolSolvationSettings:
-    @pytest.fixture(scope="class")
+    @pytest.fixture()
     def settings(self):
         return PackmolSolvationSettings()
 
@@ -64,7 +64,7 @@ class TestPackmolSolvationSettings:
         msg = "Only one of ``box_vectors`` or ``solvent_padding`` can be defined."
         with pytest.raises(ValueError, match=msg):
             _ = PackmolSolvationSettings(
-                box_vectors=UNIT_CUBE,
+                box_vectors=UNIT_CUBE * unit.nanometer,
                 solvent_padding=1.2 * unit.nanometer,
                 target_density=None,
                 box_shape=None,
@@ -74,7 +74,7 @@ class TestPackmolSolvationSettings:
         msg = "Only one of ``target_density`` or ``box_vectors`` can be defined"
         with pytest.raises(ValueError, match=msg):
             _ = PackmolSolvationSettings(
-                box_vectors=UNIT_CUBE,
+                box_vectors=UNIT_CUBE * unit.nanometer,
                 solvent_padding=None,
                 target_density=0.95 * unit.grams / unit.mL,
                 number_of_solvent_molecules=2,
@@ -86,12 +86,15 @@ class TestPackmolSolvationSettings:
             settings.box_shape = None
 
     def test_bad_vectors(self):
-        bad_vector = np.asarray(
-            [
-                [0.5, 0.5, np.sqrt(2.0) / 2.0],
-                [0.0, 1.0, 0.0],
-                [1.0, 0.0, 0.0],
-            ],
+        bad_vector = (
+            np.asarray(
+                [
+                    [0.5, 0.5, np.sqrt(2.0) / 2.0],
+                    [0.0, 1.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+            )
+            * unit.nanometer
         )
         with pytest.raises(ValueError, match="not in OpenMM reduced form"):
             _ = PackmolSolvationSettings(

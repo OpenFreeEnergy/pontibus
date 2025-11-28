@@ -3,12 +3,12 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.6
+  - gufe >=1.7
   - openff-toolkit >0.16.0
   - openff-interchange >=0.4.8
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
-  - openfe >=1.6
+  - openfe >=1.7
   - duecredit<0.10
   - kartograf>=1.0.0
   - konnektor
@@ -24,7 +24,7 @@ dependencies:
   - cinnabar ~=0.5.0
   - click
   - typing-extensions
-  - openmm >=8.0.0,!=8.1.0,<8.4.0
+  - openmm >=8.0.0,!=8.1.0,<8.3.0
   - openmmtools >=0.25.0
   - openmmforcefields
   - openfe-analysis >=0.3.1
@@ -34,6 +34,3 @@ dependencies:
   - pytest
   - pytest-cov
   - pytest-xdist
-  # docs
-  - pip:
-    - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@a45f3edd5bc3e973c1a01b577c71efa1b62a65d6

@@ -2,6 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import uuid
+import warnings
 
 import gufe
 import numpy as np
@@ -77,52 +78,16 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
             alchemical_settings=ExperimentalAlchemicalSettings(),
             lambda_settings=LambdaSettings(
                 lambda_elec=[
-                    0.0,
-                    0.25,
-                    0.5,
-                    0.75,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
+                    0.0, 0.25, 0.5, 0.75, 1.0,
+                    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                 ],
                 lambda_vdw=[
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.12,
-                    0.24,
-                    0.36,
-                    0.48,
-                    0.6,
-                    0.7,
-                    0.77,
-                    0.85,
-                    1.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.12, 0.24, 0.36, 0.48, 0.6, 0.7, 0.77, 0.85, 1.0,
                 ],
                 lambda_restraints=[
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
             ),
             partial_charge_settings=OpenFFPartialChargeSettings(),
@@ -170,7 +135,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 output_filename="vacuum.nc",
                 checkpoint_storage_filename="vacuum_checkpoint.nc",
             ),
-        )
+        )  # fmt: skip
 
     @staticmethod
     def _validate_solvent(state: ChemicalSystem, nonbonded_method: str):
@@ -192,7 +157,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
           * If there is a SolventComponent and the `nonbonded_method` is
             `nocutoff`.
         """
-        solv = [comp for comp in state.values() if isinstance(comp, SolventComponent)]
+        solv = state.get_components_of_type(SolventComponent)
 
         if len(solv) > 0 and nonbonded_method.lower() == "nocutoff":
             errmsg = "nocutoff cannot be used for solvent transformations"
@@ -206,38 +171,47 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
             errmsg = "Multiple SolventComponent found, only one is supported"
             raise ValueError(errmsg)
 
-    def _create(
+    def _validate(
         self,
+        *,
         stateA: ChemicalSystem,
         stateB: ChemicalSystem,
         mapping: gufe.ComponentMapping | list[gufe.ComponentMapping] | None = None,
         extends: gufe.ProtocolDAGResult | None = None,
-    ) -> list[gufe.ProtocolUnit]:
-        # TODO: extensions
-        if extends:  # pragma: no-cover
-            raise NotImplementedError("Can't extend simulations yet")
+    ):
+        # Check we're not extending
+        if extends is not None:
+            # This should be a NotImplementedError, but the underlying
+            # `validate` method wraps a call to `_validate` around a
+            # NotImplementedError exception guard
+            raise ValueError("Can't extend simulations yet")
 
-        # Validate components and get alchemical components
-        self._validate_solvent_endstates(stateA, stateB)
-        alchem_comps = system_validation.get_alchemical_components(
-            stateA,
-            stateB,
-        )
-        self._validate_alchemical_components(alchem_comps)
+        # Check we're not using a mapping, since we're not doing anything with it
+        if mapping is not None:
+            wmsg = "A mapping was passed but is not used by this Protocol."
+            warnings.warn(wmsg)
+
+        # Validate the endstates & alchemical components
+        self._validate_endstates(stateA, stateB)
 
         # Validate the lambda schedule
-        self._validate_lambda_schedule(
-            self.settings.lambda_settings, self.settings.solvent_simulation_settings
-        )
-        self._validate_lambda_schedule(
-            self.settings.lambda_settings, self.settings.vacuum_simulation_settings
-        )
+        for solv_sets in (
+            self.settings.solvent_simulation_settings,
+            self.settings.vacuum_simulation_settings,
+        ):
+            self._validate_lambda_schedule(
+                self.settings.lambda_settings,
+                solv_sets,
+            )
 
         # Check nonbond & solvent compatibility
         solv_nonbonded_method = self.settings.solvent_forcefield_settings.nonbonded_method
         vac_nonbonded_method = self.settings.vacuum_forcefield_settings.nonbonded_method
+
         # Use the more complete system validation solvent checks
+        # Note: we have to use a special version for arbitrary solvent for now
         self._validate_solvent(stateA, solv_nonbonded_method)
+
         # Gas phase is always gas phase
         if vac_nonbonded_method.lower() != "nocutoff":
             errmsg = (
@@ -254,7 +228,33 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 errmsg = "NVT equilibration cannot be run in vacuum simulation"
                 raise ValueError(errmsg)
 
-        # Get the name of the alchemical species
+        # Validate integrator things
+        settings_validation.validate_timestep(
+            self.settings.vacuum_forcefield_settings.hydrogen_mass,
+            self.settings.integrator_settings.timestep,
+        )
+
+        settings_validation.validate_timestep(
+            self.settings.solvent_forcefield_settings.hydrogen_mass,
+            self.settings.integrator_settings.timestep,
+        )
+
+    def _create(
+        self,
+        stateA: ChemicalSystem,
+        stateB: ChemicalSystem,
+        mapping: gufe.ComponentMapping | list[gufe.ComponentMapping] | None = None,
+        extends: gufe.ProtocolDAGResult | None = None,
+    ) -> list[gufe.ProtocolUnit]:
+        # Run validation
+        self.validate(stateA=stateA, stateB=stateB, mapping=mapping, extends=extends)
+
+        # Get the alchemical components and the name of the alchemical smc
+        alchem_comps = system_validation.get_alchemical_components(
+            stateA,
+            stateB,
+        )
+
         alchname = alchem_comps["stateA"][0].name
 
         # Create list units for vacuum and solvent transforms
@@ -292,7 +292,7 @@ class ASFEVacuumUnit(BaseASFEUnit):
     Protocol Unit for the vacuum phase of an absolute solvation free energy
     """
 
-    _simtype: str = "vacuum"
+    simtype: str = "vacuum"
 
     def _get_components(self):
         """
@@ -376,7 +376,7 @@ class ASFESolventUnit(BaseASFEUnit):
     Protocol Unit for the solvent phase of an absolute solvation free energy
     """
 
-    _simtype: str = "solvent"
+    simtype: str = "solvent"
 
     def _get_components(self):
         """
