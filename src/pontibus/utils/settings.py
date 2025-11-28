@@ -126,10 +126,10 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
     Notes
     -----
     * If no partial charges are set in the input molecule, the molecule
-    will be charged using the approach defined in ``partial_charge_settings``.
+      will be charged using the approach defined in ``partial_charge_settings``.
     * If not using ``ExtendedSolventComponent``, the input molecule will
-    be created using ``SolventComponent.smiles`` and partial charges will
-    be set using the approach defined in ``partial_charge_settings``.
+      be created using ``SolventComponent.smiles`` and partial charges will
+      be set using the approach defined in ``partial_charge_settings``.
     """
 
     packing_tolerance: NanometerQuantity = 0.2 * unit.nanometer  # noqa: F821

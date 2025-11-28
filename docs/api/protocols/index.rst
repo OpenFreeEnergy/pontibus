@@ -1,4 +1,4 @@
-.. _api:
+.. _protocols api:
 
 
 Pontibus Protocols API Reference

@@ -1,7 +1,7 @@
-Getting Started
-===============
+Installing Pontibus
+===================
 
-This page details how to get started with pontibus.
+**pontibus** is tightly linked to **openfe** and is usually compatible with the same range as dependencies at it is.
 
 User Install
 ************

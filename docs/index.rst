@@ -10,7 +10,7 @@ aimed specifically at facilitating the validation of OpenFF Force Fields.
    :maxdepth: 2
    :caption: Contents:
 
-   getting_started
+   installation
    CHANGELOG
    api
 

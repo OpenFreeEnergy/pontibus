@@ -1,4 +1,4 @@
-.. _api:
+.. _utils api:
 
 
 Pontibus Utilities API Reference
