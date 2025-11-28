@@ -21,11 +21,7 @@ from openff.interchange.components._packmol import _box_vectors_are_in_reduced_f
 from openff.units import unit
 from pydantic import field_validator, model_validator
 
-
-GramsPerMolQuantity: TypeAlias = Annotated[
-    GufeQuantity,
-    specify_quantity_units("grams / mL")
-]
+GramsPerMolQuantity: TypeAlias = Annotated[GufeQuantity, specify_quantity_units("grams / mL")]
 """
 Pydantic type that requires a ``pint.Quantity`` compatible with grams / mL.
 Input will be converter to grams / mL upon model validation.
@@ -88,6 +84,7 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
     """
     Base settings for use with Pontibus
     """
+
     number_of_solvent_molecules: int | None = None
     """
     The number of solvent molecules to add.

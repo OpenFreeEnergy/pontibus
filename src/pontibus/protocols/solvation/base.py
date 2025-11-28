@@ -2,9 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
-from typing import Any
 
-import gufe
 import numpy.typing as npt
 import openmm
 from gufe import (
@@ -18,7 +16,7 @@ from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
 )
-from openfe.utils import log_system_probe, without_oechem_backend
+from openfe.utils import without_oechem_backend
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units.openmm import to_openmm
@@ -62,15 +60,9 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         * Small placeholder for a larger thing.
         """
         if not integrator_settings.reassign_velocities:
-            has_vsite = any(
-                system.isVirtualSite(i)
-                for i in range(system.getNumParticles())
-            )
+            has_vsite = any(system.isVirtualSite(i) for i in range(system.getNumParticles()))
             if has_vsite:
-                errmsg = (
-                    "Simulations with virtual sites without "
-                    "velocity reassignment are unstable"
-                )
+                errmsg = "Simulations with virtual sites without velocity reassignment are unstable"
                 raise ValueError(errmsg)
 
     def _get_omm_objects(

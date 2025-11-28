@@ -95,7 +95,12 @@ def test_position_overlap_warn():
 
 @pytest.mark.parametrize("method", ["repex", "sams", "independent", "InDePeNdENT"])
 def test_dry_run_default_vacuum(
-    benzene_vacuum_system, toluene_vacuum_system, benzene_to_toluene_mapping, vac_settings, method, tmpdir
+    benzene_vacuum_system,
+    toluene_vacuum_system,
+    benzene_to_toluene_mapping,
+    vac_settings,
+    method,
+    tmpdir,
 ):
     vac_settings.simulation_settings.sampler_method = method
 
@@ -282,7 +287,13 @@ def test_dry_core_element_change(vac_settings, tmpdir):
     ],
 )
 def test_dry_run_ligand(
-    benzene_system, toluene_system, benzene_to_toluene_mapping, solv_backend, n_atoms, solv_settings, tmpdir
+    benzene_system,
+    toluene_system,
+    benzene_to_toluene_mapping,
+    solv_backend,
+    n_atoms,
+    solv_settings,
+    tmpdir,
 ):
     # this might be a bit time consuming
     solv_settings.output_settings.output_indices = "resname AAA"
@@ -560,7 +571,11 @@ def test_dry_run_complex(
 
 @pytest.mark.cpuvslow
 def test_dry_run_complex_setnwaters(
-    benzene_complex_system, toluene_complex_system, benzene_to_toluene_mapping, solv_settings, tmpdir
+    benzene_complex_system,
+    toluene_complex_system,
+    benzene_to_toluene_mapping,
+    solv_settings,
+    tmpdir,
 ):  # pragma: no cover
     # this will be very time consuming
     solv_settings.output_settings.output_indices = "protein or resname AAA"

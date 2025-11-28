@@ -86,13 +86,16 @@ class TestPackmolSolvationSettings:
             settings.box_shape = None
 
     def test_bad_vectors(self):
-        bad_vector = np.asarray(
-            [
-                [0.5, 0.5, np.sqrt(2.0) / 2.0],
-                [0.0, 1.0, 0.0],
-                [1.0, 0.0, 0.0],
-            ],
-        ) * unit.nanometer
+        bad_vector = (
+            np.asarray(
+                [
+                    [0.5, 0.5, np.sqrt(2.0) / 2.0],
+                    [0.0, 1.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                ],
+            )
+            * unit.nanometer
+        )
         with pytest.raises(ValueError, match="not in OpenMM reduced form"):
             _ = PackmolSolvationSettings(
                 box_vectors=bad_vector,

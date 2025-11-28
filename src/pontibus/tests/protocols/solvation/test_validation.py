@@ -2,11 +2,11 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import pytest
 from gufe import LigandAtomMapping, ProtocolDAGResult
+from openfe import ChemicalSystem, SolventComponent
+from openfe.protocols.openmm_utils import system_validation
 from openff.units import unit as offunit
 
-from openfe import ChemicalSystem, SolventComponent
 from pontibus.protocols.solvation import ASFEProtocol
-from openfe.protocols.openmm_utils import system_validation
 
 
 @pytest.fixture()

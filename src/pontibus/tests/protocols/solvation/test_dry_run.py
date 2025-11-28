@@ -158,8 +158,13 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, dry_settings, tmpdi
         for force in system.getForces():
             if isinstance(force, MonteCarloBarostat):
                 assert force.getFrequency() == 125
-                assert from_openmm(force.getDefaultPressure()) == dry_settings.thermo_settings.pressure
-                assert from_openmm(force.getDefaultTemperature()) == dry_settings.thermo_settings.temperature
+                assert (
+                    from_openmm(force.getDefaultPressure()) == dry_settings.thermo_settings.pressure
+                )
+                assert (
+                    from_openmm(force.getDefaultTemperature())
+                    == dry_settings.thermo_settings.temperature
+                )
 
         # Check the nonbonded force is PME
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
