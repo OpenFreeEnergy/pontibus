@@ -8,3 +8,4 @@ Pontibus Protocols API Reference
     :maxdepth: 2
 
     asfe_protocol
+    rbfe_protocol
