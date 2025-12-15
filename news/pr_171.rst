@@ -1,0 +1,25 @@
+**Added:**
+
+* AbsoluteAlchemicalFactory options to control LJ softcore parameters
+  are now exposed in the settings and can be used with both the standard
+  and experimental factory (PR #171).
+
+**Changed:**
+
+* <news item>
+
+**Deprecated:**
+
+* <news item>
+
+**Removed:**
+
+* <news item>
+
+**Fixed:**
+
+* <news item>
+
+**Security:**
+
+* <news item>
