@@ -73,10 +73,12 @@ def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
     assert len(sol_unit) == 1
 
     with tmpdir.as_cwd():
-        vac_sampler = vac_unit[0].run(dry=True)["debug"]["sampler"]
+        debug = vac_unit[0].run(dry=True)["debug"]
+        vac_sampler = debug["sampler"]
         assert not vac_sampler.is_periodic
 
-        system = vac_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
+        system = debug["alchem_system"]
+
         assert len(system.getForces()) == 12
 
         _assert_num_forces(system, NonbondedForce, 1)
@@ -149,13 +151,14 @@ def test_dry_run_solv_benzene(
     assert len(sol_unit) == 1
 
     with tmpdir.as_cwd():
-        sol_sampler = sol_unit[0].run(dry=True)["debug"]["sampler"]
+        debug = sol_unit[0].run(dry=True)["debug"]
+        sol_sampler = debug["sampler"]
         assert sol_sampler.is_periodic
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
 
-        system = sol_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
+        system = debug["alchem_system"]
         assert len(system.getForces()) == 9
 
         _assert_num_forces(system, NonbondedForce, 1)
@@ -185,7 +188,7 @@ def test_dry_run_solv_benzene(
         # Check custom steric force contents
         stericsf = [
             f
-            for f in alchem_system.getForces()
+            for f in system.getForces()
             if isinstance(f, CustomNonbondedForce) and "U_sterics" in f.getEnergyFunction()
         ]
 
