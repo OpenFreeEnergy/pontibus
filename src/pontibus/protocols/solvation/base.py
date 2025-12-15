@@ -12,8 +12,8 @@ from gufe import (
     SolventComponent,
 )
 from gufe.settings import SettingsBaseModel
-from openfe.protocols.openmm_afe.equil_afe_settings import AlchemicalSettings
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
+from openfe.protocols.openmm_afe.equil_afe_settings import AlchemicalSettings
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
 )
@@ -164,7 +164,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         system: openmm.System,
         comp_resids: dict[Component, npt.NDArray],
         alchem_comps: dict[str, list[Component]],
-        alchemical_settings : AlchemicalSettings,
+        alchemical_settings: AlchemicalSettings,
     ) -> tuple[ExperimentalAbsoluteAlchemicalFactory, openmm.System, list[int]]:
         """
         Get an alchemically modified system and its associated factory using
@@ -235,7 +235,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         system: openmm.System,
         comp_resids: dict[Component, npt.NDArray],
         alchem_comps: dict[str, list[Component]],
-        alchemical_settings : AlchemicalSettings,
+        alchemical_settings: AlchemicalSettings,
     ) -> tuple[AbsoluteAlchemicalFactory, openmm.System, list[int]]:
         """
         Get an alchemically modified system and its associated factory.

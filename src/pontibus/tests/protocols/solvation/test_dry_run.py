@@ -5,6 +5,10 @@ from unittest import mock
 import mdtraj as mdt
 import pytest
 from gufe import ChemicalSystem
+from openfe.tests.protocols.openmm_ahfe.test_ahfe_protocol import (
+    _assert_num_forces,
+    _verify_alchemical_sterics_force_parameters,
+)
 from openff.units import unit
 from openff.units.openmm import ensure_quantity, from_openmm
 from openmm import (
@@ -15,10 +19,6 @@ from openmm import (
     MonteCarloBarostat,
     NonbondedForce,
     PeriodicTorsionForce,
-)
-from openfe.tests.protocols.openmm_ahfe.test_ahfe_protocol import (
-    _assert_num_forces,
-    _verify_alchemical_sterics_force_parameters,
 )
 
 from pontibus.components import ExtendedSolventComponent
@@ -102,9 +102,7 @@ def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
     ],
 )
 def test_dry_run_solv_benzene(
-    experimental,
-    alpha, a, b, c, correction,
-    charged_benzene, dry_settings, tmpdir
+    experimental, alpha, a, b, c, correction, charged_benzene, dry_settings, tmpdir
 ):
     dry_settings.solvent_output_settings.output_indices = "resname AAA"
     # Set a non-default barostat frequency to make sure it goes all the way
