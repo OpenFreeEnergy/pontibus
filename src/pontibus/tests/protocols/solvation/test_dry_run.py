@@ -16,6 +16,10 @@ from openmm import (
     NonbondedForce,
     PeriodicTorsionForce,
 )
+from openfe.tests.protocols.openmm_ahfe.test_ahfe_protocol import (
+    _assert_num_forces,
+    _verify_alchemical_sterics_force_parameters,
+)
 
 from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
@@ -75,16 +79,12 @@ def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
         system = vac_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
         assert len(system.getForces()) == 12
 
-        def assert_force_num(system, forcetype, number):
-            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
-            assert len(forces) == number
-
-        assert_force_num(system, NonbondedForce, 1)
-        assert_force_num(system, CustomNonbondedForce, 4)
-        assert_force_num(system, CustomBondForce, 4)
-        assert_force_num(system, HarmonicBondForce, 1)
-        assert_force_num(system, HarmonicAngleForce, 1)
-        assert_force_num(system, PeriodicTorsionForce, 1)
+        _assert_num_forces(system, NonbondedForce, 1)
+        _assert_num_forces(system, CustomNonbondedForce, 4)
+        _assert_num_forces(system, CustomBondForce, 4)
+        _assert_num_forces(system, HarmonicBondForce, 1)
+        _assert_num_forces(system, HarmonicAngleForce, 1)
+        _assert_num_forces(system, PeriodicTorsionForce, 1)
 
         # Check the nonbonded force is NoCutoff
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
@@ -92,11 +92,27 @@ def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
 
 
 @pytest.mark.parametrize("experimental", [True, False])
-def test_dry_run_solv_benzene(experimental, charged_benzene, dry_settings, tmpdir):
+@pytest.mark.parametrize(
+    "alpha, a, b, c, correction",
+    [
+        [0.2, 2, 2, 1, True],
+        [0.35, 2.2, 1.5, 0, False],
+    ],
+)
+def test_dry_run_solv_benzene(
+    experimental,
+    alpha, a, b, c, correction,
+    charged_benzene, dry_settings, tmpdir
+):
     dry_settings.solvent_output_settings.output_indices = "resname AAA"
     # Set a non-default barostat frequency to make sure it goes all the way
     dry_settings.integrator_settings.barostat_frequency = 125 * unit.timestep
     dry_settings.alchemical_settings.experimental = experimental
+    dry_settings.alchemical_settings.softcore_alpha = alpha
+    dry_settings.alchemical_settings.softcore_a = a
+    dry_settings.alchemical_settings.softcore_b = b
+    dry_settings.alchemical_settings.softcore_c = c
+    dry_settings.alchemical_settings.disable_alchemical_dispersion_correction = correction
 
     protocol = ASFEProtocol(
         settings=dry_settings,
@@ -142,17 +158,13 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, dry_settings, tmpdi
         system = sol_sampler._thermodynamic_states[0].get_system(remove_thermostat=True)
         assert len(system.getForces()) == 9
 
-        def assert_force_num(system, forcetype, number):
-            forces = [f for f in system.getForces() if isinstance(f, forcetype)]
-            assert len(forces) == number
-
-        assert_force_num(system, NonbondedForce, 1)
-        assert_force_num(system, CustomNonbondedForce, 2)
-        assert_force_num(system, CustomBondForce, 2)
-        assert_force_num(system, HarmonicBondForce, 1)
-        assert_force_num(system, HarmonicAngleForce, 1)
-        assert_force_num(system, PeriodicTorsionForce, 1)
-        assert_force_num(system, MonteCarloBarostat, 1)
+        _assert_num_forces(system, NonbondedForce, 1)
+        _assert_num_forces(system, CustomNonbondedForce, 2)
+        _assert_num_forces(system, CustomBondForce, 2)
+        _assert_num_forces(system, HarmonicBondForce, 1)
+        _assert_num_forces(system, HarmonicAngleForce, 1)
+        _assert_num_forces(system, PeriodicTorsionForce, 1)
+        _assert_num_forces(system, MonteCarloBarostat, 1)
 
         # Check the initial barostat made it all the way through
         for force in system.getForces():
@@ -169,6 +181,23 @@ def test_dry_run_solv_benzene(experimental, charged_benzene, dry_settings, tmpdi
         # Check the nonbonded force is PME
         nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
         assert nonbond[0].getNonbondedMethod() == NonbondedForce.PME
+
+        # Check custom steric force contents
+        stericsf = [
+            f
+            for f in alchem_system.getForces()
+            if isinstance(f, CustomNonbondedForce) and "U_sterics" in f.getEnergyFunction()
+        ]
+
+        for force in stericsf:
+            _verify_alchemical_sterics_force_parameters(
+                force,
+                long_range=not correction,
+                alpha=alpha,
+                a=a,
+                b=b,
+                c=c,
+            )
 
 
 def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, dry_settings, tmpdir):
