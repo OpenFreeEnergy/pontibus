@@ -242,9 +242,8 @@ def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, dry_settings, 
     sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
 
     with tmpdir.as_cwd():
-        sampler = sol_unit[0].run(dry=True)["debug"]["sampler"]
-
-        system = sampler._thermodynamic_states[0].system
+        debug = sol_unit[0].run(dry=True)["debug"]
+        system = debug["alchem_system"]
 
         # Should be benzenes all the way down
         assert system.getNumParticles() % 12 == 0
@@ -310,7 +309,8 @@ def test_dry_run_solv_benzene_opc(charged_benzene, dry_settings, tmpdir):
     sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
 
     with tmpdir.as_cwd():
-        sol_sampler = sol_unit[0].run(dry=True)["debug"]["sampler"]
+        debug = sol_unit[0].run(dry=True)["debug"]
+        sol_sampler = debug["sampler"]
         assert sol_sampler.is_periodic
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
