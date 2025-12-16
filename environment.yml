@@ -8,7 +8,7 @@ dependencies:
   - openff-interchange >=0.4.8
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
-  - openfe >=1.7
+  - openfe >=1.8
   - duecredit<0.10
   - kartograf>=1.0.0
   - konnektor
