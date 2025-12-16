@@ -180,6 +180,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           A dictionary of residues for each component in the System.
         alchem_comps : dict[str, list[Component]]
           A dictionary of alchemical components for each end state.
+        alchemical_settings : AlchemicalSettings
+          Settings controlling how the alchemical system is built.
 
         Returns
         -------
@@ -190,8 +192,6 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         alchemical_indices : list[int]
           A list of atom indices for the alchemically modified
           species in the system.
-        alchemical_settings : AlchemicalSettings
-          Settings controlling how the alchemical system is built.
 
         Notes
         -----
