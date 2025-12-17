@@ -4,6 +4,17 @@ pontibus Change Log
 
 .. current developments
 
+vv0.4.0
+====================
+
+**Added:**
+
+* AbsoluteAlchemicalFactory options to control LJ softcore parameters
+  are now exposed in the settings and can be used with both the standard
+  and experimental factory (PR #171).
+
+
+
 v0.3.0
 ====================
 
