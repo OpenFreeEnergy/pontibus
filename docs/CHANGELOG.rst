@@ -4,7 +4,7 @@ pontibus Change Log
 
 .. current developments
 
-vv0.4.0
+v0.4.0
 ====================
 
 **Added:**
