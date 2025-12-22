@@ -4,6 +4,34 @@ pontibus Change Log
 
 .. current developments
 
+v0.4.0
+====================
+
+**Added:**
+
+* AbsoluteAlchemicalFactory options to control LJ softcore parameters
+  are now exposed in the settings and can be used with both the standard
+  and experimental factory (PR #171).
+
+
+
+v0.3.0
+====================
+
+**Added:**
+
+* Updated API documentation (PR #166)
+* ASFEProtocol now has a fully implemented `validate` method,
+  you can now call these ahead of Transformation execution
+  to check that input parameters work with the Protocol (PR #163).
+
+**Fixed:**
+
+* Pontibus is now compatible with new GufeQuantity
+  changes introduced with gufe v1.7 (PR #163).
+
+
+
 v0.2.0
 ====================
 

@@ -50,7 +50,7 @@ extensions = [
     "sphinx_design",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
-    "docs._ext.sass",
+    # "docs._ext.sass",
     "myst_parser",
     "nbsphinx",
     "nbsphinx_link",
@@ -140,10 +140,15 @@ html_theme_options = {
             "type": "fontawesome",
         }
     ],
-    "accent_color": "DarkGoldenYellow",
+    "accent_color": "cantina-purple",
     "navigation_with_keys": False,
 }
-html_logo = "_static/Squaredcircle.svg"
+html_logo = "_static/OFE-color-icon.svg"
+html_favicon = "_static/OFE-color-icon.svg"
+html_sidebars = {
+    "installation": [],
+    "CHANGELOG": [],
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

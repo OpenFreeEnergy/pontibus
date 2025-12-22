@@ -13,6 +13,7 @@ from gufe import (
 )
 from gufe.settings import SettingsBaseModel
 from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
+from openfe.protocols.openmm_afe.equil_afe_settings import AlchemicalSettings
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
 )
@@ -163,6 +164,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         system: openmm.System,
         comp_resids: dict[Component, npt.NDArray],
         alchem_comps: dict[str, list[Component]],
+        alchemical_settings: AlchemicalSettings,
     ) -> tuple[ExperimentalAbsoluteAlchemicalFactory, openmm.System, list[int]]:
         """
         Get an alchemically modified system and its associated factory using
@@ -178,6 +180,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           A dictionary of residues for each component in the System.
         alchem_comps : dict[str, list[Component]]
           A dictionary of alchemical components for each end state.
+        alchemical_settings : AlchemicalSettings
+          Settings controlling how the alchemical system is built.
 
         Returns
         -------
@@ -201,9 +205,26 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         alchemical_region = AlchemicalRegion(
             alchemical_atoms=alchemical_indices,
+            softcore_alpha=alchemical_settings.softcore_alpha,
+            annihilate_electrostatics=True,
+            annihilate_sterics=alchemical_settings.annihilate_sterics,
+            softcore_a=alchemical_settings.softcore_a,
+            softcore_b=alchemical_settings.softcore_b,
+            softcore_c=alchemical_settings.softcore_c,
+            softcore_beta=0.0,
+            softcore_d=1.0,
+            softcore_e=1.0,
+            softcore_f=2.0,
         )
 
-        alchemical_factory = ExperimentalAbsoluteAlchemicalFactory()
+        alchemical_factory = ExperimentalAbsoluteAlchemicalFactory(
+            consistent_exceptions=False,
+            switch_width=1.0 * openmm.unit.angstroms,
+            alchemical_pme_treatment="exact",
+            alchemical_rf_treatment="switched",
+            disable_alchemical_dispersion_correction=alchemical_settings.disable_alchemical_dispersion_correction,
+            split_alchemical_forces=True,
+        )
         alchemical_system = alchemical_factory.create_alchemical_system(system, alchemical_region)
 
         return alchemical_factory, alchemical_system, alchemical_indices
@@ -214,6 +235,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         system: openmm.System,
         comp_resids: dict[Component, npt.NDArray],
         alchem_comps: dict[str, list[Component]],
+        alchemical_settings: AlchemicalSettings,
     ) -> tuple[AbsoluteAlchemicalFactory, openmm.System, list[int]]:
         """
         Get an alchemically modified system and its associated factory.
@@ -242,6 +264,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         alchemical_indices : list[int]
           A list of atom indices for the alchemically modified
           species in the system.
+        alchemical_settings : AlchemicalSettings
+          Settings controlling how the alchemical system is built.
         """
         if self._inputs["protocol"].settings.alchemical_settings.experimental:
             return self._get_experimental_alchemical_system(
@@ -249,6 +273,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 system,
                 comp_resids,
                 alchem_comps,
+                alchemical_settings,
             )
         else:
             return super()._get_alchemical_system(
@@ -256,4 +281,5 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 system,
                 comp_resids,
                 alchem_comps,
+                alchemical_settings,
             )
