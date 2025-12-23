@@ -577,6 +577,7 @@ def test_nonwater_solvent_short(smc_components_benzene_named, smiles):
             solvent_padding=None,
             number_of_solvent_molecules=100,
             assign_solvent_charges=True,
+            target_density=0.715 * unit.grams / unit.mL,
         ),
         smc_components=smc_components_benzene_named,
         protein_component=None,
@@ -1007,6 +1008,7 @@ def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
             solvent_padding=None,
             number_of_solvent_molecules=1000,
             assign_solvent_charges=True,
+            target_density=0.715 * unit.grams / unit.mL,
         ),
         smc_components={ligand_smc: ligand_offmol},
         protein_component=None,
@@ -1852,7 +1854,9 @@ class TestComplexOPC3NumWaters(TestComplexOPC3):
                 ],
             ),
             solvation_settings=PackmolSolvationSettings(
-                number_of_solvent_molecules=500, solvent_padding=None
+                number_of_solvent_molecules=500,
+                solvent_padding=None,
+                target_density=0.715 * unit.grams / unit.mL,
             ),
             smc_components=smc_components,
             protein_component=protein_component,
@@ -1962,7 +1966,9 @@ class TestOpenMMSolvationCofactorOPC3NumWaters(TestOpenMMSolvationComplexOPC3):
                 ],
             ),
             solvation_settings=InterchangeOpenMMSolvationSettings(
-                number_of_solvent_molecules=100, solvent_padding=None
+                number_of_solvent_molecules=100,
+                solvent_padding=None,
+                target_density=0.715 * unit.grams / unit.mL,
             ),
             smc_components=smc_components,
             protein_component=protein_component,
