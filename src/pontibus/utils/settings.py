@@ -142,11 +142,12 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
     target_density: GramsPerMolQuantity | None = 0.95 * unit.grams / unit.mL  # noqa: F821
     """
     Target mass density for the solvated system in units compatible with g / mL.
-    Generally a ``target_density`` value of 0.95 * unit.grams / unit.mL is
-    sufficient, although you may have to aim for a lower value should you find
-    it difficult to pack your system.
+    A ``target_density`` value of 0.95 * unit.grams / unit.mL works in many cases,
+    but may lead to an overly dense system. This is especially true when
+    defining ``number_of_solvent_molecules``, in this case a value of
+    0.715 * unit.grams / unit.mL is recommended.
 
-    Default: 0.95 * unit.grams / unit.mL.
+    Default: 0.715 * unit.grams / unit.mL.
 
     Notes
     -----

@@ -586,6 +586,7 @@ def test_dry_run_complex_setnwaters(
     solv_settings.solvation_settings = PackmolSolvationSettings(
         number_of_solvent_molecules=15000,
         solvent_padding=None,
+        target_density=0.715 * unit.grams / unit.mL,
     )
 
     protocol = HybridTopProtocol(settings=solv_settings)
