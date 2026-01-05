@@ -106,7 +106,7 @@ def _box_density_from_mols(
     """
     Approximate box size with known number and type of molecules.
 
-        Generate an approximate box size based on the number and molecular
+    Generate an approximate box size based on the number and molecular
     weight of the molecules present, and a target density for the final
     solvated mixture.
 
@@ -145,7 +145,7 @@ def _box_density_from_mols(
     total_mass = molecules_total_mass + solute_total_mass
     volume = total_mass / target_density
 
-    return _scale_box(box_shape, volume)
+    return _scale_box(box_shape, volume, box_scaleup_factor=1.0)
 
 
 def _neutralize_and_pack_box(
