@@ -1,13 +1,8 @@
-name: "Lastest deps CI"
+name: "CI - main branch of deps"
 on:
-  # pull_request:
-  #   branches:
-  #     - main
-  #   paths-ignore:
-  #     - "docs/*"
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
   schedule:
     # At 07:00 UTC on Monday and Thursday
     - cron: "0 7 * * *"
@@ -29,9 +24,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macos-latest"]
+        os: ["ubuntu-latest"]
         python-version:
-          - "3.13"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,7 +36,7 @@ jobs:
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-file: devtools/latest_environment.yml
-          environment-name: pontibus
+          environment-name: pontibus-dev
           create-args: >-
             python=${{ matrix.python-version }}
           init-shell: bash
