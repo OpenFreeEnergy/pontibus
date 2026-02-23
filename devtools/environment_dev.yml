@@ -1,9 +1,9 @@
-name: pontibus
+# env for testing against pre-release versions of openfe (and any other dependencies).
+name: pontibus-dev
 channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.7
   - openff-toolkit >0.16.0
   - openff-interchange >=0.4.8
   - openff-nagl-base >=0.3.3
@@ -36,3 +36,5 @@ dependencies:
   # pip deps
   - pip:
     - git+https://github.com/OpenFreeEnergy/openfe@main
+    - git+https://github.com/OpenFreeEnergy/gufe@main
+
