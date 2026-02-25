@@ -2,8 +2,9 @@ name: pontibus-docs
 channels:
 - conda-forge
 dependencies:
-- autodoc-pydantic>=2.0
-- openfe>=1.7.0
+# strict pinning to avoid excessive memory error on RTD
+- autodoc-pydantic==2.1.0
+- openfe==1.8.1
 - packaging
 - plugcli
 - python=3.11
