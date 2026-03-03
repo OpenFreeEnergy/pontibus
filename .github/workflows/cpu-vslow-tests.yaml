@@ -28,7 +28,7 @@ jobs:
           aws_home_dir: /home/ubuntu
           aws_root_device_size: 125
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.AWS_RUNNERS}}
 
   self-hosted-test:
     runs-on: self-hosted
