@@ -5,16 +5,16 @@ dependencies:
 # strict pinning to avoid excessive memory error on RTD
 - autodoc-pydantic==2.1.0
 - openfe==1.8.1
-- packaging==26.0
-- plugcli==0.2.1
+- packaging
+- plugcli
 - python=3.11
-- sphinx==9.0.4
-- sphinx-click==6.2.0
-- gitpython==3.1.46
-- libsass==0.23.0
-- nbsphinx==0.9.8
-- nbsphinx-link==1.3.0
-- myst-parser==5.0.0
+- sphinx
+- sphinx-click
+- gitpython
+- libsass
+- nbsphinx
+- nbsphinx-link
+- myst-parser
 - pip:
   - sphinx-design
   - sphinx-toolbox
