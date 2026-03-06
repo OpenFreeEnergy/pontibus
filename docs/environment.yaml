@@ -6,13 +6,13 @@ dependencies:
 - openfe>=1.7.0
 - packaging
 - plugcli
-- python=3.12
-- sphinx
-- sphinx-click
-- gitpython
-- libsass
-- nbsphinx
-- nbsphinx-link
+#- python=3.12
+#- sphinx
+#- sphinx-click
+#- gitpython
+#- libsass
+#- nbsphinx
+#- nbsphinx-link
 - myst-parser
 - pip
 # These are added automatically by RTD, so we include them here
