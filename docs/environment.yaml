@@ -14,6 +14,7 @@ dependencies:
 - nbsphinx
 - nbsphinx-link
 - myst-parser
+- pip
 - pip:
   - sphinx-design
   - sphinx-toolbox
