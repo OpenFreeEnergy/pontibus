@@ -13,7 +13,7 @@ dependencies:
   - kartograf>=1.0.0
   - konnektor
   - lomap2>=3.0.0
-  - numpy
+  - numpy <2.4  # unpin once #184 is resolved
   - networkx
   - rdkit
   - packaging
