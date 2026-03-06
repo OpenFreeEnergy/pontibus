@@ -26,5 +26,7 @@ dependencies:
   - sphinx-toolbox
   - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@main
   - git+https://github.com/OpenFreeEnergy/openfe@v1.8.1
+  - git+https://github.com/OpenFreeEnergy/gufe@v1.7.0
+
 
 
