@@ -6,7 +6,7 @@ dependencies:
 - openfe>=1.7.0
 - packaging
 - plugcli
-- python=3.11
+- python=3.12
 - sphinx
 - sphinx-click
 - gitpython
