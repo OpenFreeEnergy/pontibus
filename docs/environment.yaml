@@ -3,7 +3,7 @@ channels:
 - conda-forge
 dependencies:
 #- autodoc-pydantic>=2.0
-#- openfe>=1.7.0
+- openfe>=1.7.0
 - packaging
 - plugcli
 - python=3.12
@@ -17,8 +17,8 @@ dependencies:
 - pip
 # These are added automatically by RTD, so we include them here
 # for a consistent environment.
-#- mock
-#- pillow
+- mock
+- pillow
 - pip:
   - sphinx-design
   - sphinx-toolbox
