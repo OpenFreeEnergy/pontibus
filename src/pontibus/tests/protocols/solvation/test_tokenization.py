@@ -123,7 +123,7 @@ class TestSolventSimUnit(ModifiedGufeTokenizableTestsMixin):
         return solvent_protocol_sim_unit
 
 
-class TestSolventSetupUnit(ModifiedGufeTokenizableTestsMixin):
+class TestSolventAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFESolventAnalysisUnit
     repr = "ASFESolventAnalysisUnit(ASFE Analysis: benzene solvent leg"
     key = None
@@ -153,7 +153,7 @@ class TestVacuumSimUnit(ModifiedGufeTokenizableTestsMixin):
         return vacuum_protocol_sim_unit
 
 
-class TestVacuumSetupUnit(ModifiedGufeTokenizableTestsMixin):
+class TestVacuumAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEVacuumAnalysisUnit
     repr = "ASFEVacuumAnalysisUnit(ASFE Analysis: benzene vacuum leg"
     key = None
