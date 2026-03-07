@@ -5,7 +5,9 @@ import json
 import gufe
 import pytest
 
-pytestmark = pytest.mark.skip(reason="Fixtures use old key format (nc/last_checkpoint); regenerate to re-enable")
+pytestmark = pytest.mark.skip(
+    reason="Fixtures use old key format (nc/last_checkpoint); regenerate to re-enable"
+)
 import numpy as np
 import openfe
 import pytest

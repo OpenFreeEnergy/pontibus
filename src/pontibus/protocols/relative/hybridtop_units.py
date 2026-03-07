@@ -5,11 +5,8 @@ ProtocolUnit implementations for the HybridTopProtocol.
 """
 
 import logging
-import pathlib
 import warnings
-from typing import Any
 
-import mdtraj
 import numpy as np
 import numpy.typing as npt
 from gufe import SmallMoleculeComponent, SolventComponent
@@ -17,7 +14,6 @@ from gufe.settings import ThermoSettings
 from gufe.settings.typing import GufeArrayQuantity
 from openfe.protocols.openmm_rfe import _rfe_utils
 from openfe.protocols.openmm_rfe.hybridtop_units import HybridTopologySetupUnit
-from openfe.protocols.openmm_utils import settings_validation, system_validation
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
 )
@@ -34,8 +30,6 @@ from openmm.app import Topology
 from pontibus.protocols.solvation.base import _get_and_charge_solvent_offmol
 from pontibus.utils.settings import (
     InterchangeFFSettings,
-    InterchangeOpenMMSolvationSettings,
-    PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import (
     _get_comp_resids,
@@ -431,5 +425,3 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
             stateB_positions,
             system_mappings,
         )
-
-

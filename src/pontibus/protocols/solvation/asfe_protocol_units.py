@@ -24,7 +24,9 @@ class ASFEVacuumSetupUnit(VacuumComponentsMixin, VacuumSettingsMixin, BaseASFEUn
     simtype: str = "vacuum"
 
 
-class ASFEVacuumSimUnit(VacuumComponentsMixin, VacuumSettingsMixin, BaseAbsoluteMultiStateSimulationUnit):
+class ASFEVacuumSimUnit(
+    VacuumComponentsMixin, VacuumSettingsMixin, BaseAbsoluteMultiStateSimulationUnit
+):
     """
     Protocol Unit for running the vacuum phase multistate simulation of an
     absolute solvation free energy transformation.
@@ -51,7 +53,9 @@ class ASFESolventSetupUnit(SolventComponentsMixin, SolventSettingsMixin, BaseASF
     simtype: str = "solvent"
 
 
-class ASFESolventSimUnit(SolventComponentsMixin, SolventSettingsMixin, BaseAbsoluteMultiStateSimulationUnit):
+class ASFESolventSimUnit(
+    SolventComponentsMixin, SolventSettingsMixin, BaseAbsoluteMultiStateSimulationUnit
+):
     """
     Protocol Unit for running the solvent phase multistate simulation of an
     absolute solvation free energy transformation.
