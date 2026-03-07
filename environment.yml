@@ -8,12 +8,12 @@ dependencies:
   - openff-interchange >=0.4.8
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
-  - openfe >=1.8
+  - openfe ~= 1.8.0
   - duecredit<0.10
   - kartograf>=1.0.0
   - konnektor
   - lomap2>=3.0.0
-  - numpy
+  - numpy <2.4 # unpin once #184 is fixed
   - networkx
   - rdkit
   - packaging
