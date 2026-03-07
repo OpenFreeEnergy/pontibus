@@ -22,7 +22,7 @@ from openmm import (
 )
 
 from pontibus.components import ExtendedSolventComponent
-from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
+from pontibus.protocols.solvation import ASFEProtocol, ASFESolventSetupUnit, ASFEVacuumSetupUnit
 
 
 @pytest.fixture()
@@ -64,20 +64,18 @@ def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
     )
     prot_units = list(dag.protocol_units)
 
-    assert len(prot_units) == 2
+    assert len(prot_units) == 6
 
-    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumUnit)]
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
+    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumSetupUnit)]
+    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventSetupUnit)]
 
     assert len(vac_unit) == 1
     assert len(sol_unit) == 1
 
     with tmpdir.as_cwd():
-        debug = vac_unit[0].run(dry=True)["debug"]
-        vac_sampler = debug["sampler"]
-        assert not vac_sampler.is_periodic
-
-        system = debug["alchem_system"]
+        result = vac_unit[0].run(dry=True)
+        system = result["alchem_system"]
+        assert not system.usesPeriodicBoundaryConditions()
 
         assert len(system.getForces()) == 12
 
@@ -140,23 +138,22 @@ def test_dry_run_solv_benzene(
     )
     prot_units = list(dag.protocol_units)
 
-    assert len(prot_units) == 2
+    assert len(prot_units) == 6
 
-    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumUnit)]
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
+    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumSetupUnit)]
+    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventSetupUnit)]
 
     assert len(vac_unit) == 1
     assert len(sol_unit) == 1
 
     with tmpdir.as_cwd():
-        debug = sol_unit[0].run(dry=True)["debug"]
-        sol_sampler = debug["sampler"]
-        assert sol_sampler.is_periodic
+        result = sol_unit[0].run(dry=True)
+        system = result["alchem_system"]
+        assert system.usesPeriodicBoundaryConditions()
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
 
-        system = debug["alchem_system"]
         assert len(system.getForces()) == 9
 
         _assert_num_forces(system, NonbondedForce, 1)
@@ -237,11 +234,11 @@ def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, dry_settings, 
     )
     prot_units = list(dag.protocol_units)
 
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
+    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventSetupUnit)]
 
     with tmpdir.as_cwd():
-        debug = sol_unit[0].run(dry=True)["debug"]
-        system = debug["alchem_system"]
+        result = sol_unit[0].run(dry=True)
+        system = result["alchem_system"]
 
         # Should be benzenes all the way down
         assert system.getNumParticles() % 12 == 0
@@ -304,12 +301,12 @@ def test_dry_run_solv_benzene_opc(charged_benzene, dry_settings, tmpdir):
     )
     prot_units = list(dag.protocol_units)
 
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
+    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventSetupUnit)]
 
     with tmpdir.as_cwd():
-        debug = sol_unit[0].run(dry=True)["debug"]
-        sol_sampler = debug["sampler"]
-        assert sol_sampler.is_periodic
+        result = sol_unit[0].run(dry=True)
+        system = result["alchem_system"]
+        assert system.usesPeriodicBoundaryConditions()
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
@@ -342,13 +339,13 @@ def test_confgen_fail_AFE(benzene_modifications, dry_settings, tmpdir):
         mapping=None,
     )
     prot_units = list(dag.protocol_units)
-    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumUnit)]
+    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumSetupUnit)]
 
     with tmpdir.as_cwd():
         with mock.patch("rdkit.Chem.AllChem.EmbedMultipleConfs", return_value=0):
-            vac_sampler = vac_unit[0].run(dry=True)["debug"]["sampler"]
+            result = vac_unit[0].run(dry=True)
 
-            assert vac_sampler
+            assert result
 
 
 """

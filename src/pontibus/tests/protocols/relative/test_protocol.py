@@ -19,10 +19,9 @@ from openmm import (
     PeriodicTorsionForce,
 )
 from openmm import unit as omm_unit
-from openmmtools.multistate import MultiStateSampler
 from rdkit import Chem
 
-from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolUnit
+from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolSetupUnit
 from pontibus.utils.settings import InterchangeOpenMMSolvationSettings, PackmolSolvationSettings
 
 
@@ -73,7 +72,7 @@ def test_position_overlap_fail():
     positionsB = np.array([[1, 1, 2.1]] * 4) * unit.angstrom
 
     with pytest.raises(ValueError, match="deviates by more than"):
-        HybridTopProtocolUnit._check_position_overlap(
+        HybridTopProtocolSetupUnit._check_position_overlap(
             mapping,
             positionsA,
             positionsB,
@@ -86,7 +85,7 @@ def test_position_overlap_warn():
     positionsB = np.array([[1, 1, 2.1]] * 4) * unit.angstrom
 
     with pytest.warns(UserWarning, match="deviates by more than"):
-        HybridTopProtocolUnit._check_position_overlap(
+        HybridTopProtocolSetupUnit._check_position_overlap(
             mapping,
             positionsA,
             positionsB,
@@ -117,13 +116,11 @@ def test_dry_run_default_vacuum(
     dag_unit = list(dag.protocol_units)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
-        assert isinstance(sampler, MultiStateSampler)
-        assert not sampler.is_periodic
-        assert sampler._thermodynamic_states[0].barostat is None
-
-        # Check hybrid OMM and MDTtraj Topologies
-        htf = sampler._hybrid_factory
+        result = dag_unit.run(dry=True)
+        htf = result["hybrid_factory"]
+        assert not htf.hybrid_system.usesPeriodicBoundaryConditions()
+        barostats = [f for f in htf.hybrid_system.getForces() if isinstance(f, MonteCarloBarostat)]
+        assert len(barostats) == 0
         # 16 atoms:
         # 11 common atoms, 1 extra hydrogen in benzene, 4 extra in toluene
         # 12 bonds in benzene + 4 extra toluene bonds
@@ -265,8 +262,8 @@ def test_dry_core_element_change(vac_settings, tmpdir):
     dag_unit = list(dag.protocol_units)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
-        system = sampler._hybrid_factory.hybrid_system
+        result = dag_unit.run(dry=True)
+        system = result["hybrid_factory"].hybrid_system
         assert system.getNumParticles() == 12
         # Average mass between nitrogen and carbon
         assert pytest.approx(system.getParticleMass(1)._value) == 12.0008030
@@ -314,11 +311,11 @@ def test_dry_run_ligand(
     dag_unit = list(dag.protocol_units)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
-        assert isinstance(sampler, MultiStateSampler)
-        assert sampler.is_periodic
-        assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
-        assert sampler._thermodynamic_states[1].pressure == 1 * omm_unit.bar
+        result = dag_unit.run(dry=True)
+        htf = result["hybrid_factory"]
+        assert htf.hybrid_system.usesPeriodicBoundaryConditions()
+        barostats = [f for f in htf.hybrid_system.getForces() if isinstance(f, MonteCarloBarostat)]
+        assert len(barostats) == 1
 
         # Check we have the right number of atoms in the PDBs
         pdb = mdt.load_pdb("hybrid_system.pdb")
@@ -327,7 +324,7 @@ def test_dry_run_ligand(
         assert pdb.n_atoms == n_atoms
 
         # Check system forces
-        system = sampler._hybrid_factory.hybrid_system
+        system = htf.hybrid_system
         assert len(system.getForces()) == 10
 
         def assert_force_num(system, forcetype, number):
@@ -355,10 +352,10 @@ def test_dry_run_ligand(
         assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
-        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
-        assert len(sampler._hybrid_factory._unique_new_atoms) == 4
-        assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == (n_atoms - 16)
+        assert len(htf._unique_old_atoms) == 1
+        assert len(htf._unique_new_atoms) == 4
+        assert len(htf._core_old_to_new_map) == 11
+        assert len(htf._env_old_to_new_map) == (n_atoms - 16)
 
 
 def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir):
@@ -426,8 +423,8 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir
     dag_unit = list(dag.protocol_units)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
-        htf = sampler._factory
+        result = dag_unit.run(dry=True)
+        htf = result["hybrid_factory"]
         hybrid_system = htf.hybrid_system
 
         # get the standard nonbonded force
@@ -531,8 +528,6 @@ def test_dry_run_complex(
         # Check we have the right number of atoms in the PDB
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 2629
-        pdb = mdt.load_pdb("full_hybrid_system.pdb")
-        assert pdb.n_atoms == n_atoms
 
         # Check system forces
         system = sampler._hybrid_factory.hybrid_system
