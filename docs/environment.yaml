@@ -26,9 +26,11 @@ dependencies:
 - mock
 - pillow
 - pip:
+  - sphinx-design
+  - sphinx-toolbox
   - git+https://github.com/OpenFreeEnergy/openfe@v1.8.1
   - git+https://github.com/OpenFreeEnergy/gufe@v1.7.0
-  - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@v0.3.1
+  - git+https://github.com/OpenFreeEnergy/ofe-sphinx-theme@main  
   # pip install these so that we can make sure docs build on main while these packages' docs are under development
   - git+https://github.com/OpenFreeEnergy/kartograf@main
   - git+https://github.com/OpenFreeEnergy/konnektor@main
