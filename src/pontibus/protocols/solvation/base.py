@@ -12,7 +12,7 @@ from gufe import (
     SolventComponent,
 )
 from gufe.settings import SettingsBaseModel
-from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
+from openfe.protocols.openmm_afe.base_afe_units import BaseAbsoluteSetupUnit
 from openfe.protocols.openmm_afe.equil_afe_settings import AlchemicalSettings
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
@@ -37,7 +37,7 @@ from pontibus.utils.system_manipulation import adjust_system
 logger = logging.getLogger(__name__)
 
 
-class BaseASFEUnit(BaseAbsoluteUnit):
+class BaseASFEUnit(BaseAbsoluteSetupUnit):
     simtype: str
 
     @staticmethod
@@ -71,7 +71,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         settings: dict[str, SettingsBaseModel],
         protein_component: ProteinComponent | None,
         solvent_component: SolventComponent | None,
-        smc_components: dict[SmallMoleculeComponent, OFFMolecule],
+        small_mols: dict[SmallMoleculeComponent, OFFMolecule],
     ) -> tuple[app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]]:
         """
         Get the OpenMM Topology, Positions and System of the
@@ -85,7 +85,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           Protein component for the system.
         solvent_component : Optional[SolventComponent]
           Solvent component for the system.
-        smc_components : dict[str, OFFMolecule]
+        small_mols : dict[SmallMoleculeComponent, OFFMolecule]
           SmallMoleculeComponents defining ligands to be added to the system
 
         Returns
@@ -108,7 +108,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             self.logger.info("Parameterizing system")
 
         # Set partial charges for all smcs
-        self._assign_partial_charges(settings["charge_settings"], smc_components)
+        self._assign_partial_charges(settings["charge_settings"], small_mols)
 
         # Get solvent offmol if necessary
         if solvent_component is not None:
@@ -125,7 +125,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             interchange, comp_resids = interchange_system_creation(
                 ffsettings=settings["forcefield_settings"],
                 solvation_settings=settings["solvation_settings"],
-                smc_components=smc_components,
+                smc_components=small_mols,
                 protein_component=protein_component,
                 solvent_component=solvent_component,
                 solvent_offmol=solvent_offmol,
