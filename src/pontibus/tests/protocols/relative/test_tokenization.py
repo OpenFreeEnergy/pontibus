@@ -80,9 +80,6 @@ class TestSolventUnit(GufeTokenizableTestsMixin):
     def instance(self, solvent_protocol_unit):
         return solvent_protocol_unit
 
-    def test_key_stable(self):
-        pytest.skip()
-
     def test_repr(self, instance):
         """
         Overwrites the base `test_repr` call.
@@ -99,9 +96,6 @@ class TestVacuumUnit(GufeTokenizableTestsMixin):
     @pytest.fixture()
     def instance(self, vacuum_protocol_unit):
         return vacuum_protocol_unit
-
-    def test_key_stable(self):
-        pytest.skip()
 
     def test_repr(self, instance):
         """

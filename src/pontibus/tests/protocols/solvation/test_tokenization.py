@@ -44,6 +44,7 @@ def _get_unit(pus, pu_class):
     for pu in pus:
         if isinstance(pu, pu_class):
             return pu
+    raise ValueError(f"No unit of type {pu_class} found in protocol units")
 
 
 @pytest.fixture
@@ -87,7 +88,7 @@ class ModifiedGufeTokenizableTestsMixin(GufeTokenizableTestsMixin):
 
     def test_repr(self, instance):
         """
-        Overwrites the base `test_repr` call.
+        Overrides the base `test_repr` call.
         """
         assert isinstance(repr(instance), str)
         assert self.repr in repr(instance)
@@ -95,7 +96,6 @@ class ModifiedGufeTokenizableTestsMixin(GufeTokenizableTestsMixin):
 
 class TestProtocol(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEProtocol
-    key = None
     repr = "ASFEProtocol-"
 
     @pytest.fixture()
@@ -106,7 +106,6 @@ class TestProtocol(ModifiedGufeTokenizableTestsMixin):
 class TestSolventSetupUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFESolventSetupUnit
     repr = "ASFESolventSetupUnit(ASFE Setup: benzene solvent leg"
-    key = None
 
     @pytest.fixture()
     def instance(self, solvent_protocol_setup_unit):
@@ -116,7 +115,6 @@ class TestSolventSetupUnit(ModifiedGufeTokenizableTestsMixin):
 class TestSolventSimUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFESolventSimUnit
     repr = "ASFESolventSimUnit(ASFE Simulation: benzene solvent leg"
-    key = None
 
     @pytest.fixture()
     def instance(self, solvent_protocol_sim_unit):
@@ -126,7 +124,6 @@ class TestSolventSimUnit(ModifiedGufeTokenizableTestsMixin):
 class TestSolventAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFESolventAnalysisUnit
     repr = "ASFESolventAnalysisUnit(ASFE Analysis: benzene solvent leg"
-    key = None
 
     @pytest.fixture()
     def instance(self, solvent_protocol_analysis_unit):
@@ -136,7 +133,6 @@ class TestSolventAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
 class TestVacuumSetupUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEVacuumSetupUnit
     repr = "ASFEVacuumSetupUnit(ASFE Setup: benzene vacuum leg"
-    key = None
 
     @pytest.fixture()
     def instance(self, vacuum_protocol_setup_unit):
@@ -146,7 +142,6 @@ class TestVacuumSetupUnit(ModifiedGufeTokenizableTestsMixin):
 class TestVacuumSimUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEVacuumSimUnit
     repr = "ASFEVacuumSimUnit(ASFE Simulation: benzene vacuum leg"
-    key = None
 
     @pytest.fixture()
     def instance(self, vacuum_protocol_sim_unit):
@@ -156,7 +151,6 @@ class TestVacuumSimUnit(ModifiedGufeTokenizableTestsMixin):
 class TestVacuumAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEVacuumAnalysisUnit
     repr = "ASFEVacuumAnalysisUnit(ASFE Analysis: benzene vacuum leg"
-    key = None
 
     @pytest.fixture()
     def instance(self, vacuum_protocol_analysis_unit):
@@ -168,7 +162,6 @@ class TestVacuumAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
 )
 class TestProtocolResult(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEProtocolResult
-    key = None
     repr = "ASFEProtocolResult-"
 
     @pytest.fixture()

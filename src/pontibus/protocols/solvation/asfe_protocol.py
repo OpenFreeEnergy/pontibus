@@ -135,7 +135,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
     def _validate_solvent(state: ChemicalSystem, nonbonded_method: str):
         """
         Checks that the ChemicalSystem component has the right solvent
-        composition for an input nonbonded_methtod.
+        composition for an input nonbonded_method.
 
         Parameters
         ----------
