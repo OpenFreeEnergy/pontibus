@@ -5,7 +5,7 @@ dependencies:
   - pip
   - gufe >=1.7
   - openff-toolkit >0.16.0
-  - openff-interchange >=0.4.8
+  - openff-interchange >=0.5
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
   - openfe >=1.8

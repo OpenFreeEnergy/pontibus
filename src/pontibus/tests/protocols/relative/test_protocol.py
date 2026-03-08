@@ -303,7 +303,7 @@ def test_dry_run_ligand(
     else:
         solv_settings.solvation_settings = PackmolSolvationSettings()
 
-    # Default has changed to 0.715, set to 0.95 to preserve old behaviour
+    # Manually setting default value of 0.95 to avoid behaviour changes
     solv_settings.solvation_settings.target_density = 0.95 * unit.grams / unit.mL
 
     protocol = HybridTopProtocol(
@@ -516,7 +516,7 @@ def test_dry_run_complex(
     else:
         solv_settings.solvation_settings = PackmolSolvationSettings()
 
-    # Default has changed to 0.715, set to 0.95 to preserve old behaviour
+    # Manually setting default value of 0.95 to avoid behaviour changes
     solv_settings.solvation_settings.target_density = 0.95 * unit.grams / unit.mL
 
     protocol = HybridTopProtocol(settings=solv_settings)
