@@ -11,12 +11,12 @@ from pontibus.components import ExtendedSolventComponent
 from pontibus.protocols.solvation import (
     ASFEProtocol,
     ASFEProtocolResult,
+    ASFESolventAnalysisUnit,
     ASFESolventSetupUnit,
     ASFESolventSimUnit,
-    ASFESolventAnalysisUnit,
+    ASFEVacuumAnalysisUnit,
     ASFEVacuumSetupUnit,
     ASFEVacuumSimUnit,
-    ASFEVacuumAnalysisUnit,
 )
 
 
@@ -85,7 +85,6 @@ def protocol_result(afe_solv_water_transformation_json):
 
 
 class ModifiedGufeTokenizableTestsMixin(GufeTokenizableTestsMixin):
-
     def test_repr(self, instance):
         """
         Overrides the base `test_repr` call.

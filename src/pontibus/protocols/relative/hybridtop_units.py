@@ -9,16 +9,17 @@ import warnings
 
 import numpy as np
 import numpy.typing as npt
+import openmm
 from gufe import (
-    SmallMoleculeComponent,
-    SolventComponent,
-    ProteinComponent,
     ChemicalSystem,
     LigandAtomMapping,
+    ProteinComponent,
+    SmallMoleculeComponent,
+    SolventComponent,
 )
 from gufe.settings import (
-    ThermoSettings,
     SettingsBaseModel,
+    ThermoSettings,
 )
 from gufe.settings.typing import GufeArrayQuantity
 from openfe.protocols.openmm_rfe import _rfe_utils
@@ -32,7 +33,6 @@ from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units import Quantity, unit
 from openff.units.openmm import from_openmm, to_openmm
-import openmm
 from openmm import CMMotionRemover, MonteCarloBarostat, System
 from openmm import unit as omm_unit
 from openmm.app import Topology
@@ -145,6 +145,7 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
         alchem_resids : dict[str, npt.NDArray]
           Residue indices for the alchemical ligand in each state.
         """
+
         def _filter_small_mols(smols, state):
             return {smc: offmol for smc, offmol in smols.items() if state.contains(smc)}
 
@@ -247,6 +248,7 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
           OpenMM System with hydrogen mass repartitioning applied, and a
           MonteCarloBarostat if ``solvent_component`` is not ``None``.
         """
+
         def _get_barostat(
             solvent_component: SolventComponent | None,
             thermo_settings: ThermoSettings,
