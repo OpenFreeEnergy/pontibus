@@ -9,8 +9,17 @@ import warnings
 
 import numpy as np
 import numpy.typing as npt
-from gufe import SmallMoleculeComponent, SolventComponent
-from gufe.settings import ThermoSettings
+from gufe import (
+    SmallMoleculeComponent,
+    SolventComponent,
+    ProteinComponent,
+    ChemicalSystem,
+    LigandAtomMapping,
+)
+from gufe.settings import (
+    ThermoSettings,
+    SettingsBaseModel,
+)
 from gufe.settings.typing import GufeArrayQuantity
 from openfe.protocols.openmm_rfe import _rfe_utils
 from openfe.protocols.openmm_rfe.hybridtop_units import HybridTopologySetupUnit
@@ -23,6 +32,7 @@ from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units import Quantity, unit
 from openff.units.openmm import from_openmm, to_openmm
+import openmm
 from openmm import CMMotionRemover, MonteCarloBarostat, System
 from openmm import unit as omm_unit
 from openmm.app import Topology
@@ -48,8 +58,7 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
     Setup unit for the HybridTopProtocol.
 
     Overrides :meth:`_get_omm_objects` to use Interchange-based
-    parameterization instead of OpenMM's SystemGenerator, enabling
-    support for arbitrary solvents and force fields via OpenFF Interchange.
+    parameterization instead of OpenMM's SystemGenerator.
     """
 
     @staticmethod
@@ -70,8 +79,8 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
           The system A positions.
         positionsB : openff.units.Quantity
           The system B positions.
-        tolerance : openff.units.Quantity
-          The maximum deivation allowed before an error or warning is raised.
+        threshold : openff.units.Quantity
+          The maximum deviation allowed before an error or warning is raised.
 
         Raises
         ------
@@ -94,40 +103,9 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
                 logging.warning(msg)
 
     @staticmethod
-    def _get_barostat(
-        solvent_component: SolventComponent | None,
-        thermo_settings: ThermoSettings,
-        integrator_settings: IntegratorSettings,
-    ) -> MonteCarloBarostat | None:
-        """
-        Helper to get a barostat for the system.
-
-        Parameters
-        ----------
-        solvent_component: SolventComponent | None
-          The system's SolventComponent, if there is one.
-        thermo_settings : ThermoSettings
-          The thermodynamic settings.
-        integrator_settings : IntegratorSettings
-          The integrator settings
-
-        Returns
-        -------
-        MonteCarloBarostat | None
-          None is there is no solvent, a MonteCarloBarostat otherwise.
-        """
-        if solvent_component is None:
-            return None
-
-        return MonteCarloBarostat(
-            to_openmm(thermo_settings.pressure),
-            to_openmm(thermo_settings.temperature),
-            integrator_settings.barostat_frequency.m,
-        )
-
-    @staticmethod
     def _get_interchanges(
-        mapping,
+        stateA: ChemicalSystem,
+        stateB: ChemicalSystem,
         small_mols: dict[SmallMoleculeComponent, OFFMolecule],
         protein_component,
         solvent_component: SolventComponent | None,
@@ -140,8 +118,10 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
 
         Parameters
         ----------
-        mapping : LigandAtomMapping
-          The atom mapping between the alchemical ligands.
+        stateA : ChemicalSystem
+          ChemicalSystem defining end state A.
+        stateB : ChemicalSystem
+          ChemicalSystem defining end state B.
         small_mols : dict[SmallMoleculeComponent, OFFMolecule]
           All small molecule components for both states (flat dict).
         protein_component : ProteinComponent | None
@@ -165,13 +145,18 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
         alchem_resids : dict[str, npt.NDArray]
           Residue indices for the alchemical ligand in each state.
         """
-        alchem_A = mapping.componentA
-        alchem_B = mapping.componentB
-        molA = small_mols[alchem_A]
-        molB = small_mols[alchem_B]
+        def _filter_small_mols(smols, state):
+            return {smc: offmol for smc, offmol in smols.items() if state.contains(smc)}
 
-        # State A includes all molecules except the state-B-only alchemical mol
-        stateA_smc_comps = {smc: mol for smc, mol in small_mols.items() if smc != alchem_B}
+        stateA_small_mols = _filter_small_mols(small_mols, stateA)
+        stateB_small_mols = _filter_small_mols(small_mols, stateB)
+
+        # Get the alchemical components.
+        # We assume a single alchemical component, since we check for this
+        # early in the Protocol.
+        state_diff = stateA.component_diff(stateB)
+        alchem_A = state_diff[0][0]
+        alchem_B = state_diff[1][0]
 
         # Get solvent offmol if necessary
         if solvent_component is not None:
@@ -188,20 +173,18 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
             interA, comp_residsA = interchange_system_creation(
                 ffsettings=forcefield_settings,
                 solvation_settings=solvation_settings,
-                smc_components=stateA_smc_comps,
+                smc_components=stateA_small_mols,
                 protein_component=protein_component,
                 solvent_component=solvent_component,
                 solvent_offmol=solvent_offmol,
             )
 
-        # State B includes all molecules except the state-A-only alchemical mol
-        stateB_smc_comps = {smc: mol for smc, mol in small_mols.items() if smc != alchem_A}
-
-        stateB_charged_mols = list(stateB_smc_comps.values())
+        stateB_charged_mols = list(stateB_small_mols.values())
         if solvent_component is not None and solvation_settings.assign_solvent_charges:
             stateB_charged_mols.append(solvent_offmol)
 
         # Tag molB so copy_interchange_with_replacement can identify it
+        molB = stateB_small_mols[alchem_B]
         molB.properties["key"] = str(alchem_B.key)
 
         # Build state B interchange by swapping ligand A → ligand B in the
@@ -209,7 +192,7 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
         with without_oechem_backend():
             interB = copy_interchange_with_replacement(
                 interchange=interA,
-                del_mol=molA,
+                del_mol=stateA_small_mols[alchem_A],
                 insert_mol=molB,
                 ffsettings=forcefield_settings,
                 charged_molecules=stateB_charged_mols,
@@ -218,7 +201,7 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
 
         comp_residsB = _get_comp_resids(
             interchange=interB,
-            smc_components=stateB_smc_comps,
+            smc_components=stateB_small_mols,
             solvent_component=solvent_component,
             protein_component=protein_component,
         )
@@ -257,24 +240,181 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
         Returns
         -------
         topology : openmm.app.Topology
+          OpenMM Topology for the system.
         positions : openmm.unit.Quantity
+          Positions of all particles in the system.
         system : openmm.System
+          OpenMM System with hydrogen mass repartitioning applied, and a
+          MonteCarloBarostat if ``solvent_component`` is not ``None``.
         """
-        topology = interchange.to_openmm_topology(collate=True)
-        positions = to_openmm_positions(interchange, include_virtual_sites=True)
-        system = interchange.to_openmm_system(hydrogen_mass=forcefield_settings.hydrogen_mass)
+        def _get_barostat(
+            solvent_component: SolventComponent | None,
+            thermo_settings: ThermoSettings,
+            integrator_settings: IntegratorSettings,
+        ) -> MonteCarloBarostat | None:
+            """
+            Helper function to add a MonteCarloBarostat
+            if a solvent component is present.
+            """
+            if solvent_component is None:
+                return None
 
-        barostat = None
-        if solvent_component is not None:
-            barostat = MonteCarloBarostat(
+            return MonteCarloBarostat(
                 to_openmm(thermo_settings.pressure),
                 to_openmm(thermo_settings.temperature),
                 integrator_settings.barostat_frequency.m,
             )
 
-        adjust_system(system=system, remove_force_types=CMMotionRemover, add_forces=barostat)
+        topology = interchange.to_openmm_topology(collate=True)
+        positions = to_openmm_positions(interchange, include_virtual_sites=True)
+        system = interchange.to_openmm_system(hydrogen_mass=forcefield_settings.hydrogen_mass)
 
+        adjust_system(
+            system=system,
+            remove_force_types=CMMotionRemover,
+            add_forces=_get_barostat(
+                solvent_component=solvent_component,
+                thermo_settings=thermo_settings,
+                integrator_settings=integrator_settings,
+            ),
+        )
         return topology, positions, system
+
+    def _get_omm_objects(
+        self,
+        stateA: ChemicalSystem,
+        stateB: ChemicalSystem,
+        mapping: LigandAtomMapping,
+        settings: dict[str, SettingsBaseModel],
+        protein_component: ProteinComponent | None,
+        solvent_component: SolventComponent | None,
+        small_mols: dict[SmallMoleculeComponent, OFFMolecule],
+    ) -> tuple[
+        openmm.System,
+        openmm.app.Topology,
+        openmm.unit.Quantity,
+        openmm.System,
+        openmm.app.Topology,
+        openmm.unit.Quantity,
+        dict[str, dict[int, int]],
+    ]:
+        """
+        Get OpenMM objects for both end states using Interchange.
+
+        Overrides :meth:`HybridTopologySetupUnit._get_omm_objects` to use
+        OpenFF Interchange for parameterization instead of OpenMM's
+        SystemGenerator.
+
+        Parameters
+        ----------
+        stateA : ChemicalSystem
+          ChemicalSystem defining end state A.
+        stateB : ChemicalSystem
+          ChemicalSystem defining end state B.
+        mapping : LigandAtomMapping
+          The mapping for alchemical components between state A and B.
+        settings : dict[str, SettingsBaseModel]
+          Settings for the transformation.
+        protein_component : ProteinComponent | None
+          The common ProteinComponent between the end states, if there is one.
+        solvent_component : SolventComponent | None
+          The common SolventComponent between the end states, if there is one.
+        small_mols : dict[SmallMoleculeComponent, openff.toolkit.Molecule]
+          The small molecules for both end states.
+
+        Returns
+        -------
+        stateA_system : openmm.System
+          OpenMM System for state A.
+        stateA_topology : openmm.app.Topology
+          OpenMM Topology for the state A System.
+        stateA_positions : openmm.unit.Quantity
+          Positions of all particles in state A System.
+        stateB_system : openmm.System
+          OpenMM System for state B.
+        stateB_topology : openmm.app.Topology
+          OpenMM Topology for the state B System.
+        stateB_positions : openmm.unit.Quantity
+          Positions of all particles in state B System.
+        system_mappings : dict[str, dict[int, int]]
+          Dictionary of mappings defining the correspondence between
+          the two state Systems.
+        """
+        if self.verbose:
+            self.logger.info("Parameterizing systems.")
+
+        interA, interB, alchem_resids = self._get_interchanges(
+            stateA=stateA,
+            stateB=stateB,
+            small_mols=small_mols,
+            protein_component=protein_component,
+            solvent_component=solvent_component,
+            forcefield_settings=settings["forcefield_settings"],
+            solvation_settings=settings["solvation_settings"],
+            charge_settings=settings["charge_settings"],
+        )
+
+        stateA_topology, stateA_positions, stateA_system = self._omm_from_interchange(
+            interchange=interA,
+            forcefield_settings=settings["forcefield_settings"],
+            thermo_settings=settings["thermo_settings"],
+            integrator_settings=settings["integrator_settings"],
+            solvent_component=solvent_component,
+        )
+        stateB_topology, stateB_positions, stateB_system = self._omm_from_interchange(
+            interchange=interB,
+            forcefield_settings=settings["forcefield_settings"],
+            thermo_settings=settings["thermo_settings"],
+            integrator_settings=settings["integrator_settings"],
+            solvent_component=solvent_component,
+        )
+
+        system_mappings = _rfe_utils.topologyhelpers.get_system_mappings(
+            mapping.componentA_to_componentB,
+            stateA_system,
+            stateA_topology,
+            alchem_resids["stateA"],
+            stateB_system,
+            stateB_topology,
+            alchem_resids["stateB"],
+            # non-optional setting for this method
+            fix_constraints=True,
+        )
+
+        self._check_position_overlap(
+            system_mappings,
+            from_openmm(stateA_positions),
+            from_openmm(stateB_positions),
+        )
+
+        if settings["alchemical_settings"].explicit_charge_correction:
+            # Note: we don't need to modify the positions after this
+            # since stateB retains the hydrogens but as dummy atoms
+            charge_difference = mapping.get_alchemical_charge_difference()
+            alchem_water_resids = _rfe_utils.topologyhelpers.get_alchemical_waters(
+                stateA_topology,
+                from_openmm(stateA_positions).m,
+                charge_difference,
+                settings["alchemical_settings"].explicit_charge_correction_cutoff,
+            )
+            _rfe_utils.topologyhelpers.handle_alchemical_waters(
+                alchem_water_resids,
+                stateB_topology,
+                stateB_system,
+                system_mappings,
+                charge_difference,
+                solvent_component,
+            )
+
+        return (
+            stateA_system,
+            stateA_topology,
+            stateA_positions,
+            stateB_system,
+            stateB_topology,
+            stateB_positions,
+            system_mappings,
+        )
 
     def _subsample_topology(
         self,
@@ -306,122 +446,3 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
         )
 
         return selection_indices
-
-    def _get_omm_objects(
-        self,
-        stateA,
-        stateB,
-        mapping,
-        settings: dict,
-        protein_component,
-        solvent_component: SolventComponent | None,
-        small_mols: dict[SmallMoleculeComponent, OFFMolecule],
-    ) -> tuple:
-        """
-        Get OpenMM objects for both end states using Interchange.
-
-        Overrides :meth:`HybridTopologySetupUnit._get_omm_objects` to use
-        OpenFF Interchange for parameterization instead of OpenMM's
-        SystemGenerator.
-
-        Parameters
-        ----------
-        stateA : ChemicalSystem
-          ChemicalSystem defining end state A.
-        stateB : ChemicalSystem
-          ChemicalSystem defining end state B.
-        mapping : LigandAtomMapping
-          The mapping between alchemical components in state A and B.
-        settings : dict[str, SettingsBaseModel]
-          Protocol settings dictionary.
-        protein_component : ProteinComponent | None
-          The common protein component, if present.
-        solvent_component : SolventComponent | None
-          The common solvent component, if present.
-        small_mols : dict[SmallMoleculeComponent, OFFMolecule]
-          All small molecules from both end states (flat dict).
-
-        Returns
-        -------
-        stateA_system, stateA_topology, stateA_positions,
-        stateB_system, stateB_topology, stateB_positions,
-        system_mappings
-        """
-        if self.verbose:
-            self.logger.info("Parameterizing systems with Interchange")
-
-        forcefield_settings = settings["forcefield_settings"]
-        thermo_settings = settings["thermo_settings"]
-        integrator_settings = settings["integrator_settings"]
-        solvation_settings = settings["solvation_settings"]
-        charge_settings = settings["charge_settings"]
-        alchemical_settings = settings["alchemical_settings"]
-
-        interA, interB, alchem_resids = self._get_interchanges(
-            mapping=mapping,
-            small_mols=small_mols,
-            protein_component=protein_component,
-            solvent_component=solvent_component,
-            forcefield_settings=forcefield_settings,
-            solvation_settings=solvation_settings,
-            charge_settings=charge_settings,
-        )
-
-        stateA_topology, stateA_positions, stateA_system = self._omm_from_interchange(
-            interchange=interA,
-            forcefield_settings=forcefield_settings,
-            thermo_settings=thermo_settings,
-            integrator_settings=integrator_settings,
-            solvent_component=solvent_component,
-        )
-        stateB_topology, stateB_positions, stateB_system = self._omm_from_interchange(
-            interchange=interB,
-            forcefield_settings=forcefield_settings,
-            thermo_settings=thermo_settings,
-            integrator_settings=integrator_settings,
-            solvent_component=solvent_component,
-        )
-
-        system_mappings = _rfe_utils.topologyhelpers.get_system_mappings(
-            mapping.componentA_to_componentB,
-            stateA_system,
-            stateA_topology,
-            alchem_resids["stateA"],
-            stateB_system,
-            stateB_topology,
-            alchem_resids["stateB"],
-            fix_constraints=True,
-        )
-
-        self._check_position_overlap(
-            system_mappings,
-            from_openmm(stateA_positions),
-            from_openmm(stateB_positions),
-        )
-
-        if alchemical_settings.explicit_charge_correction:
-            charge_difference = mapping.get_alchemical_charge_difference()
-            alchem_water_resids = _rfe_utils.topologyhelpers.get_alchemical_waters(
-                stateA_topology,
-                from_openmm(stateA_positions).m,
-                charge_difference,
-                alchemical_settings.explicit_charge_correction_cutoff,
-            )
-            _rfe_utils.topologyhelpers.handle_alchemical_waters(
-                alchem_water_resids,
-                stateB_topology,
-                stateB_system,
-                system_mappings,
-                charge_difference,
-                solvent_component,
-            )
-
-        return (
-            stateA_system,
-            stateA_topology,
-            stateA_positions,
-            stateB_system,
-            stateB_topology,
-            stateB_positions,
-            system_mappings,
-        )
