@@ -12,10 +12,10 @@ from openfe.protocols.openmm_afe.base_afe_units import (
     BaseAbsoluteMultiStateSimulationUnit,
 )
 
-from pontibus.protocols.solvation.base import BaseASFEUnit
+from pontibus.protocols.solvation.base import BaseASFESetupUnit
 
 
-class ASFEVacuumSetupUnit(VacuumComponentsMixin, VacuumSettingsMixin, BaseASFEUnit):
+class ASFEVacuumSetupUnit(VacuumComponentsMixin, VacuumSettingsMixin, BaseASFESetupUnit):
     """
     Protocol Unit for setting up the vacuum phase of an absolute solvation
     free energy transformation.
@@ -44,7 +44,7 @@ class ASFEVacuumAnalysisUnit(VacuumSettingsMixin, BaseAbsoluteMultiStateAnalysis
     simtype: str = "vacuum"
 
 
-class ASFESolventSetupUnit(SolventComponentsMixin, SolventSettingsMixin, BaseASFEUnit):
+class ASFESolventSetupUnit(SolventComponentsMixin, SolventSettingsMixin, BaseASFESetupUnit):
     """
     Protocol Unit for setting up the solvent phase of an absolute solvation
     free energy transformation.

@@ -37,7 +37,7 @@ from pontibus.utils.system_manipulation import adjust_system
 logger = logging.getLogger(__name__)
 
 
-class BaseASFEUnit(BaseAbsoluteSetupUnit):
+class BaseASFESetupUnit(BaseAbsoluteSetupUnit):
     simtype: str
 
     @staticmethod
