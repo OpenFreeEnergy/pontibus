@@ -147,7 +147,7 @@ class BasePontibusSolvationSettings(BaseSolvationSettings):
     defining ``number_of_solvent_molecules``, in this case a value of
     0.715 * unit.grams / unit.mL is recommended.
 
-    Default: 0.715 * unit.grams / unit.mL.
+    Default: 0.95 * unit.grams / unit.mL.
 
     Notes
     -----
