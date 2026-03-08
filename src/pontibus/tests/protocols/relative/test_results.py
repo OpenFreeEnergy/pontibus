@@ -3,8 +3,6 @@
 import json
 
 import gufe
-import pytest
-
 import numpy as np
 import openfe
 import pytest

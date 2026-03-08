@@ -3,8 +3,6 @@
 import itertools
 import json
 
-import pytest
-
 import gufe
 import numpy as np
 import openfe
