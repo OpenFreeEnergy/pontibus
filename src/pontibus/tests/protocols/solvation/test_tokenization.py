@@ -156,9 +156,6 @@ class TestVacuumAnalysisUnit(ModifiedGufeTokenizableTestsMixin):
         return vacuum_protocol_analysis_unit
 
 
-@pytest.mark.skip(
-    reason="Fixture uses old key format (nc/last_checkpoint); regenerate to re-enable"
-)
 class TestProtocolResult(ModifiedGufeTokenizableTestsMixin):
     cls = ASFEProtocolResult
     repr = "ASFEProtocolResult-"

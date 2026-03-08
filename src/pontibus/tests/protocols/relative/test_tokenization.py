@@ -105,9 +105,6 @@ class TestVacuumSetupUnit(GufeTokenizableTestsMixin):
         assert self.repr in repr(instance)
 
 
-@pytest.mark.skip(
-    reason="Fixture uses old key format (nc/last_checkpoint); regenerate to re-enable"
-)
 class TestProtocolResult(GufeTokenizableTestsMixin):
     cls = HybridTopProtocolResult
     key = None

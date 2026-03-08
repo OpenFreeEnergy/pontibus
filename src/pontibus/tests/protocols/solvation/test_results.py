@@ -5,10 +5,6 @@ import json
 
 import pytest
 
-pytestmark = pytest.mark.skip(
-    reason="Fixtures use old key format (nc/last_checkpoint); regenerate to re-enable"
-)
-
 import gufe
 import numpy as np
 import openfe
@@ -176,7 +172,7 @@ class TestOctanolProtocolResult(TestWaterProtocolResult):
         est = protocolresult.get_estimate()
 
         assert est
-        assert est.m == pytest.approx(-4.83, abs=0.5)
+        assert est.m == pytest.approx(-5.85, abs=0.5)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 
