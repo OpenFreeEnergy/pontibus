@@ -71,7 +71,7 @@ class TestProtocol(GufeTokenizableTestsMixin):
         assert self.repr in repr(instance)
 
 
-class TestSolventUnit(GufeTokenizableTestsMixin):
+class TestSolventSetupUnit(GufeTokenizableTestsMixin):
     cls = HybridTopProtocolSetupUnit
     repr = "HybridTopProtocolSetupUnit("
     key = None
@@ -88,7 +88,7 @@ class TestSolventUnit(GufeTokenizableTestsMixin):
         assert self.repr in repr(instance)
 
 
-class TestVacuumUnit(GufeTokenizableTestsMixin):
+class TestVacuumSetupUnit(GufeTokenizableTestsMixin):
     cls = HybridTopProtocolSetupUnit
     repr = "HybridTopProtocolSetupUnit("
     key = None
