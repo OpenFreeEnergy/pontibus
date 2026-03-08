@@ -4,10 +4,10 @@
 import mdtraj as mdt
 import numpy as np
 import openfe
+import pytest
 from openfe.protocols.openmm_rfe.hybridtop_units import (
     HybridTopologyMultiStateSimulationUnit,
 )
-import pytest
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
 from openmm import (
