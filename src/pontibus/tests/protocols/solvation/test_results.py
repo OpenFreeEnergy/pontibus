@@ -18,6 +18,7 @@ class TestWaterProtocolResult:
     Please note that the simulations run are very short, too short to converge over time.
     You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
     """
+
     @pytest.fixture()
     def protocolresult(self, afe_solv_water_transformation_json):
         d = json.loads(
@@ -155,6 +156,7 @@ class TestOctanolProtocolResult(TestWaterProtocolResult):
     Please note that the simulations run are very short, too short to converge over time.
     You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
     """
+
     @pytest.fixture()
     def protocolresult(self, afe_solv_octanol_transformation_json):
         d = json.loads(

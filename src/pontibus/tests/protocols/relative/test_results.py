@@ -17,6 +17,7 @@ class TestSolventProtocolResult:
     Please note that the simulations run are very short, too short to converge over time.
     You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
     """
+
     @pytest.fixture()
     def protocolresult(self, rfe_solv_transformation_json):
         d = json.loads(
@@ -145,6 +146,7 @@ class TestVacuumProtocolResult(TestSolventProtocolResult):
     Please note that the simulations run are very short, too short to converge over time.
     You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
     """
+
     @pytest.fixture()
     def protocolresult(self, rfe_vacuum_transformation_json):
         d = json.loads(
