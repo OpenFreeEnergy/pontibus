@@ -170,3 +170,7 @@ rever/
 
 # VSCode
 .vscode
+
+# Pixi
+.pixi/
+pixi.lock

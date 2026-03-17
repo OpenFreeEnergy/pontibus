@@ -1,0 +1,30 @@
+[workspace]
+name = "pontibus"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[feature.docs.dependencies]
+autodoc-pydantic = ">=2.0"
+openfe = "1.8.*"
+packaging = "*"
+plugcli = "*"
+python = "3.11.*"
+sphinx = "<8"  # sphinx-toolbox 4.1.2 is broken with sphinx 8+ (missing autodoc.logger)
+sphinx-click = "*"
+gitpython = "*"
+libsass = "*"
+nbsphinx = "*"
+nbsphinx-link = "*"
+myst-parser = "*"
+mock = "*"
+pillow = "*"
+pip = "*"
+
+[feature.docs.pypi-dependencies]
+sphinx-design = "*"
+sphinx-toolbox = "*"
+ofe-sphinx-theme = { git = "https://github.com/OpenFreeEnergy/ofe-sphinx-theme", branch = "main" }
+pontibus = { path = ".", editable = true }
+
+[environments]
+docs = { features = ["docs"], solve-group = "docs" }
