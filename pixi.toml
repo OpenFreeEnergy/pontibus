@@ -26,9 +26,5 @@ sphinx-toolbox = "*"
 ofe-sphinx-theme = { git = "https://github.com/OpenFreeEnergy/ofe-sphinx-theme", branch = "main" }
 pontibus = { path = ".", editable = true }
 
-[feature.docs.tasks]
-docs-build = "sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html"
-docs-build-local = "sphinx-build -T -b html docs docs/_build/html"
-
 [environments]
 docs = { features = ["docs"], solve-group = "docs" }
