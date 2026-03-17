@@ -129,7 +129,7 @@ def _box_density_from_mols(
     Returns
     -------
     box_vectors : openff.units.Quantity
-      The unit cell box vecctors. Array with shape (3, 3).
+      The unit cell box vectors. Array with shape (3, 3).
 
     Acknowledgements
     ----------------
@@ -442,7 +442,7 @@ def openmm_solvation(
     Raises
     ------
     ValueError
-      * If neutralizing with a non-waterr solvent.
+      * If neutralizing with a non-water solvent.
       * If ``ion_concentration`` is not compatible with ``mole / liter``
       * If ``neutralize`` is ``False`` and the system has a net charge.
     """

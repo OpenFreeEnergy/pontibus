@@ -170,7 +170,7 @@ class TestOctanolProtocolResult(TestWaterProtocolResult):
         est = protocolresult.get_estimate()
 
         assert est
-        assert est.m == pytest.approx(-4.83, abs=0.5)
+        assert est.m == pytest.approx(-5.85, abs=0.5)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 

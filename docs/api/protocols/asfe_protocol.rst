@@ -18,8 +18,12 @@ Protocol API Specification
    ASFEProtocol
    ASFEProtocolResult
    ASFESettings
-   ASFESolventUnit
-   ASFEVacuumUnit
+   ASFESolventSetupUnit
+   ASFESolventSimUnit
+   ASFESolventAnalysisUnit
+   ASFEVacuumSetupUnit
+   ASFEVacuumSimUnit
+   ASFEVacuumAnalysisUnit
 
 
 Protocol Settings
