@@ -9,7 +9,7 @@ openfe = "1.8.*"
 packaging = "*"
 plugcli = "*"
 python = "3.11.*"
-sphinx = "==7.2.6"  # TODO: debug "duplicate object" warning with later versions
+sphinx = "<8"  # sphinx-toolbox 4.1.2 is broken with sphinx 8+ (missing autodoc.logger)
 sphinx-click = "*"
 gitpython = "*"
 libsass = "*"
