@@ -1,5 +1,8 @@
 name: "CI - main branch of deps"
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
