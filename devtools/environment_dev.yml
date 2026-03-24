@@ -1,0 +1,45 @@
+# env for testing against pre-release versions of openfe (and any other dependencies).
+name: pontibus-dev
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  # keep these openff packages even though we pip install@main so that necessary deps get pulled in.
+  - openff-toolkit >0.16.0
+  - openff-interchange >=0.4.8
+  - openff-nagl-base >=0.3.3
+  # OpenFE stack deps
+  - duecredit<0.10
+  - kartograf>=1.0.0
+  - konnektor
+  - lomap2>=3.0.0
+  - numpy
+  - networkx
+  - rdkit
+  - packaging
+  - pip
+  - pydantic >=2.0
+  - pyyaml
+  - coverage
+  - cinnabar ~=0.5.0
+  - click
+  - typing-extensions
+  - openmm >=8.0.0,!=8.1.0,<8.3.0
+  - openmmtools >=0.25.0
+  - openmmforcefields
+  - openfe-analysis >=0.3.1
+  - plugcli
+  - tqdm
+  # Testing deps
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  # pip deps
+  - pip:
+    - git+https://github.com/OpenFreeEnergy/openfe@main
+    - git+https://github.com/OpenFreeEnergy/gufe@main
+    - git+https://github.com/openforcefield/openff-toolkit@main
+    - git+https://github.com/openforcefield/openff-interchange@main
+    - git+https://github.com/openforcefield/openff-nagl@main
+    - git+https://github.com/openforcefield/openff-units@main
+    - git+https://github.com/openforcefield/openff-utilities@main
