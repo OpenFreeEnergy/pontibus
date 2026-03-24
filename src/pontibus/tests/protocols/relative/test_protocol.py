@@ -303,6 +303,9 @@ def test_dry_run_ligand(
     else:
         solv_settings.solvation_settings = PackmolSolvationSettings()
 
+    # Manually setting default value of 0.95 to avoid behaviour changes
+    solv_settings.solvation_settings.target_density = 0.95 * unit.grams / unit.mL
+
     protocol = HybridTopProtocol(
         settings=solv_settings,
     )
@@ -513,6 +516,9 @@ def test_dry_run_complex(
     else:
         solv_settings.solvation_settings = PackmolSolvationSettings()
 
+    # Manually setting default value of 0.95 to avoid behaviour changes
+    solv_settings.solvation_settings.target_density = 0.95 * unit.grams / unit.mL
+
     protocol = HybridTopProtocol(settings=solv_settings)
     dag = protocol.create(
         stateA=benzene_complex_system,
@@ -586,6 +592,7 @@ def test_dry_run_complex_setnwaters(
     solv_settings.solvation_settings = PackmolSolvationSettings(
         number_of_solvent_molecules=15000,
         solvent_padding=None,
+        target_density=0.537 * unit.grams / unit.mL,
     )
 
     protocol = HybridTopProtocol(settings=solv_settings)
@@ -658,6 +665,9 @@ def test_dry_run_complex_cofactor(
         solv_settings.solvation_settings = InterchangeOpenMMSolvationSettings()
     else:
         solv_settings.solvation_settings = PackmolSolvationSettings()
+
+    # Default has changed to 0.715, set to 0.95 to preserve old behaviour
+    solv_settings.solvation_settings.target_density = 0.95 * unit.grams / unit.mL
 
     solv_settings.output_settings.output_indices = "protein or resname AAA"
     solv_settings.solvation_settings.box_shape = "dodecahedron"
