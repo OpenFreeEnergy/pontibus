@@ -235,7 +235,7 @@ def test_validate_alchem_nonsmc(benzene_modifications):
         }
     )
 
-    errmsg = "Only disappearing SmallMoleculeComponents"
+    errmsg = "SmallMoleculeComponents are supported by this protocol"
     with pytest.raises(ValueError, match=errmsg):
         ASFEProtocol._validate_endstates(stateA, stateB)
 
