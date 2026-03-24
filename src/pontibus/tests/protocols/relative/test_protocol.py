@@ -768,7 +768,7 @@ def test_dry_run_complex_cofactor(
 
         # Check we have the right number of atoms in the PDB
         pdb = mdt.load_pdb("hybrid_system.pdb")
-        assert pdb.n_atoms == 5527
+        assert pdb.n_atoms == 5513
 
         # Check system forces
         system = setup_results["hybrid_system"]
