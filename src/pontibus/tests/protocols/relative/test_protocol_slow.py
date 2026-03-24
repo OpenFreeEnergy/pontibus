@@ -11,7 +11,7 @@ from pontibus.protocols.relative import HybridTopProtocol
 
 
 @pytest.mark.gpu
-def test_vacuum(benzene_vacuum_system, toluene_vacuum_system, benzene_to_toluene_mapping, tmpdir):
+def test_vacuum(benzene_vacuum_system, toluene_vacuum_system, benzene_to_toluene_mapping, tmp_path):
     """
     Run a short MD simulation and make sure things didn't fail.
     """
@@ -30,23 +30,32 @@ def test_vacuum(benzene_vacuum_system, toluene_vacuum_system, benzene_to_toluene
         mapping=benzene_to_toluene_mapping,
     )
 
-    cwd = pathlib.Path(str(tmpdir))
-    r = execute_DAG(dag, shared_basedir=cwd, scratch_basedir=cwd, keep_shared=True)
+    r = execute_DAG(dag, shared_basedir=tmp_path, scratch_basedir=tmp_path, keep_shared=True)
 
     assert r.ok()
+
     for pur in r.protocol_unit_results:
-        unit_shared = tmpdir / f"shared_{pur.source_key}_attempt_0"
-        assert unit_shared.exists()
-        assert pathlib.Path(unit_shared).is_dir()
+        if "Simulation" in pur.name:
+            sim_shared = tmp_path / f"shared_{pur.source_key}_attempt_0"
+            assert sim_shared.exists()
+            assert pathlib.Path(sim_shared).is_dir()
+
+    for pur in r.protocol_unit_results:
+        if "Analysis" not in pur.name:
+            continue
+
+        analysis_shared = tmp_path / f"shared_{pur.source_key}_attempt_0"
+        assert analysis_shared.exists()
+        assert pathlib.Path(analysis_shared).is_dir()
 
         # Check the checkpoint file exists
-        checkpoint = pur.outputs["last_checkpoint"]
-        assert checkpoint == "checkpoint.chk"
-        assert (unit_shared / checkpoint).exists()
+        checkpoint = pur.outputs["checkpoint"]
+        assert checkpoint == sim_shared / "checkpoint.chk"
+        assert checkpoint.exists()
 
         # Check the nc simulation file exists
-        nc = pur.outputs["nc"]
-        assert nc == unit_shared / "simulation.nc"
+        nc = pur.outputs["trajectory"]
+        assert nc == sim_shared / "simulation.nc"
         assert nc.exists()
 
         # Check structural analysis contents
