@@ -20,9 +20,23 @@ from openmm import (
     NonbondedForce,
     PeriodicTorsionForce,
 )
+from openmmtools.multistate import MultiStateSampler
 
 from pontibus.components import ExtendedSolventComponent
-from pontibus.protocols.solvation import ASFEProtocol, ASFESolventUnit, ASFEVacuumUnit
+from pontibus.protocols.solvation import (
+    ASFEProtocol,
+    ASFESolventSetupUnit,
+    ASFESolventSimUnit,
+    ASFEVacuumSetupUnit,
+    ASFEVacuumSimUnit,
+)
+
+
+def _get_units(protocol_units, unit_type):
+    """
+    Helper method to extract setup units
+    """
+    return [pu for pu in protocol_units if isinstance(pu, unit_type)]
 
 
 @pytest.fixture()
@@ -64,21 +78,27 @@ def test_dry_run_vacuum_benzene(charged_benzene, dry_settings, method, tmpdir):
     )
     prot_units = list(dag.protocol_units)
 
-    assert len(prot_units) == 2
+    assert len(prot_units) == 6
 
-    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumUnit)]
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
-
-    assert len(vac_unit) == 1
-    assert len(sol_unit) == 1
+    vac_setup_unit = _get_units(dag.protocol_units, ASFEVacuumSetupUnit)[0]
+    vac_sim_unit = _get_units(dag.protocol_units, ASFEVacuumSimUnit)[0]
 
     with tmpdir.as_cwd():
-        debug = vac_unit[0].run(dry=True)["debug"]
-        vac_sampler = debug["sampler"]
-        assert not vac_sampler.is_periodic
+        setup_results = vac_setup_unit.run(dry=True)
+        sim_results = vac_sim_unit.run(
+            system=setup_results["alchem_system"],
+            positions=setup_results["debug_positions"],
+            selection_indices=setup_results["selection_indices"],
+            box_vectors=setup_results["box_vectors"],
+            alchemical_restraints=False,
+            dry=True,
+        )
 
-        system = debug["alchem_system"]
+        sampler = sim_results["sampler"]
+        assert isinstance(sampler, MultiStateSampler)
+        assert not sampler.is_periodic
 
+        system = setup_results["alchem_system"]
         assert len(system.getForces()) == 12
 
         _assert_num_forces(system, NonbondedForce, 1)
@@ -140,23 +160,31 @@ def test_dry_run_solv_benzene(
     )
     prot_units = list(dag.protocol_units)
 
-    assert len(prot_units) == 2
+    assert len(prot_units) == 6
 
-    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumUnit)]
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
-
-    assert len(vac_unit) == 1
-    assert len(sol_unit) == 1
+    sol_setup_unit = _get_units(dag.protocol_units, ASFESolventSetupUnit)[0]
+    sol_sim_unit = _get_units(dag.protocol_units, ASFESolventSimUnit)[0]
 
     with tmpdir.as_cwd():
-        debug = sol_unit[0].run(dry=True)["debug"]
-        sol_sampler = debug["sampler"]
-        assert sol_sampler.is_periodic
+        setup_results = sol_setup_unit.run(dry=True)
+        sim_results = sol_sim_unit.run(
+            system=setup_results["alchem_system"],
+            positions=setup_results["debug_positions"],
+            selection_indices=setup_results["selection_indices"],
+            box_vectors=setup_results["box_vectors"],
+            alchemical_restraints=False,
+            dry=True,
+        )
+
+        sampler = sim_results["sampler"]
+        assert isinstance(sampler, MultiStateSampler)
+        assert sampler.is_periodic
+        assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
 
-        system = debug["alchem_system"]
+        system = setup_results["alchem_system"]
         assert len(system.getForces()) == 9
 
         _assert_num_forces(system, NonbondedForce, 1)
@@ -235,13 +263,11 @@ def test_dry_run_benzene_in_benzene_user_charges(charged_benzene, dry_settings, 
         stateB=stateB,
         mapping=None,
     )
-    prot_units = list(dag.protocol_units)
-
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
+    sol_setup_unit = _get_units(dag.protocol_units, ASFESolventSetupUnit)[0]
 
     with tmpdir.as_cwd():
-        debug = sol_unit[0].run(dry=True)["debug"]
-        system = debug["alchem_system"]
+        setup_results = sol_setup_unit.run(dry=True)
+        system = setup_results["alchem_system"]
 
         # Should be benzenes all the way down
         assert system.getNumParticles() % 12 == 0
@@ -302,14 +328,23 @@ def test_dry_run_solv_benzene_opc(charged_benzene, dry_settings, tmpdir):
         stateB=stateB,
         mapping=None,
     )
-    prot_units = list(dag.protocol_units)
-
-    sol_unit = [u for u in prot_units if isinstance(u, ASFESolventUnit)]
+    sol_setup_unit = _get_units(dag.protocol_units, ASFESolventSetupUnit)[0]
+    sol_sim_unit = _get_units(dag.protocol_units, ASFESolventSimUnit)[0]
 
     with tmpdir.as_cwd():
-        debug = sol_unit[0].run(dry=True)["debug"]
-        sol_sampler = debug["sampler"]
-        assert sol_sampler.is_periodic
+        setup_results = sol_setup_unit.run(dry=True)
+        sim_results = sol_sim_unit.run(
+            system=setup_results["alchem_system"],
+            positions=setup_results["debug_positions"],
+            selection_indices=setup_results["selection_indices"],
+            box_vectors=setup_results["box_vectors"],
+            alchemical_restraints=False,
+            dry=True,
+        )
+        sampler = sim_results["sampler"]
+        assert isinstance(sampler, MultiStateSampler)
+        assert sampler.is_periodic
+        assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
@@ -341,14 +376,12 @@ def test_confgen_fail_AFE(benzene_modifications, dry_settings, tmpdir):
         stateB=stateB,
         mapping=None,
     )
-    prot_units = list(dag.protocol_units)
-    vac_unit = [u for u in prot_units if isinstance(u, ASFEVacuumUnit)]
+    vac_setup_unit = _get_units(dag.protocol_units, ASFEVacuumSetupUnit)[0]
 
     with tmpdir.as_cwd():
         with mock.patch("rdkit.Chem.AllChem.EmbedMultipleConfs", return_value=0):
-            vac_sampler = vac_unit[0].run(dry=True)["debug"]["sampler"]
-
-            assert vac_sampler
+            result = vac_setup_unit.run(dry=True)
+            assert result
 
 
 """

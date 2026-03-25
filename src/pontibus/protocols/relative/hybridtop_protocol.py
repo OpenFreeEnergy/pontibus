@@ -22,14 +22,16 @@ from gufe import ChemicalSystem, ComponentMapping, ProtocolDAGResult, ProtocolUn
 from gufe.settings import ThermoSettings
 from openfe.protocols.openmm_rfe.equil_rfe_methods import (
     RelativeHybridTopologyProtocol,
-    RelativeHybridTopologyProtocolResult,
-    _validate_alchemical_components,
 )
 from openfe.protocols.openmm_rfe.equil_rfe_settings import (
     AlchemicalSettings,
     LambdaSettings,
 )
-from openfe.protocols.openmm_utils import system_validation
+from openfe.protocols.openmm_rfe.hybridtop_units import (
+    HybridTopologyMultiStateAnalysisUnit,
+    HybridTopologyMultiStateSimulationUnit,
+)
+from openfe.protocols.openmm_utils import settings_validation, system_validation
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
     MultiStateOutputSettings,
@@ -39,20 +41,13 @@ from openfe.protocols.openmm_utils.omm_settings import (
 )
 from openff.units import unit
 
-from pontibus.protocols.relative.hybridtop_units import HybridTopProtocolUnit
+from pontibus.protocols.relative.hybridtop_protocol_results import HybridTopProtocolResult
+from pontibus.protocols.relative.hybridtop_units import HybridTopProtocolSetupUnit
 from pontibus.protocols.relative.settings import HybridTopProtocolSettings
 from pontibus.utils.settings import (
     InterchangeFFSettings,
     InterchangeOpenMMSolvationSettings,
 )
-
-
-class HybridTopProtocolResult(RelativeHybridTopologyProtocolResult):
-    """
-    Results class for the HybridTopologyProtocol class.
-    Inherits from
-    :class:`openfe.protocols.openmm_rfe.RelativeHybridTopologyProtocolResult`.
-    """
 
 
 class HybridTopProtocol(RelativeHybridTopologyProtocol):
@@ -67,7 +62,7 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
     :class:`openfe.protocols.openmm_rfe.RelativeHybridTopologyProtocol`
     :class:`pontibus.protocols.relative.HybridTopSettings`
     :class:`pontibus.protocols.relative.HybridTopResult`
-    :class:`pontibus.protocols.relative.HybridTopProtocolUnit`
+    :class:`pontibus.protocols.relative.HybridTopProtocolSetupUnit`
     """
 
     result_cls = HybridTopProtocolResult
@@ -107,20 +102,26 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
             output_settings=MultiStateOutputSettings(),
         )
 
-    def _create(
+    def _validate(
         self,
         stateA: ChemicalSystem,
         stateB: ChemicalSystem,
         mapping: ComponentMapping | list[ComponentMapping] | None,
-        extends: ProtocolDAGResult | None,
-    ) -> list[ProtocolUnit]:
-        if extends:  # pragma: no cover
-            raise NotImplementedError("Can't extend simulations yet")
+        extends: ProtocolDAGResult | None = None,
+    ) -> None:
+        # Check we're not trying to extend
+        if extends:
+            raise ValueError("Can't extend simulations yet")
 
-        # Get alchemical components & validate them + mapping
+        # Validate the end states
+        self._validate_endstates(stateA, stateB)
+
+        # Validate the mapping
         alchem_comps = system_validation.get_alchemical_components(stateA, stateB)
-        _validate_alchemical_components(alchem_comps, mapping)
-        ligandmapping = mapping[0] if isinstance(mapping, list) else mapping
+        self._validate_mapping(mapping, alchem_comps)
+
+        # Validate the small molecule components
+        self._validate_smcs(stateA, stateB)
 
         # Validate solvent component
         nonbond = self.settings.forcefield_settings.nonbonded_method
@@ -129,22 +130,67 @@ class HybridTopProtocol(RelativeHybridTopologyProtocol):
         # Validate protein component
         system_validation.validate_protein(stateA)
 
-        # actually create and return Units
+        # Validate integrator things
+        settings_validation.validate_timestep(
+            self.settings.forcefield_settings.hydrogen_mass,
+            self.settings.integrator_settings.timestep,
+        )
+
+    def _create(
+        self,
+        stateA: ChemicalSystem,
+        stateB: ChemicalSystem,
+        mapping: ComponentMapping | list[ComponentMapping] | None,
+        extends: ProtocolDAGResult | None,
+    ) -> list[ProtocolUnit]:
+        # Run validation
+        self.validate(stateA=stateA, stateB=stateB, mapping=mapping, extends=extends)
+
+        # Get alchemical components & mapping
+        alchem_comps = system_validation.get_alchemical_components(stateA, stateB)
+        ligandmapping = mapping[0] if isinstance(mapping, list) else mapping
+
         Anames = ",".join(c.name for c in alchem_comps["stateA"])
         Bnames = ",".join(c.name for c in alchem_comps["stateB"])
-        # our DAG has no dependencies, so just list units
         n_repeats = self.settings.protocol_repeats
-        units = [
-            HybridTopProtocolUnit(
+
+        setup_units = []
+        simulation_units = []
+        analysis_units = []
+
+        for i in range(n_repeats):
+            repeat_id = int(uuid.uuid4())
+
+            setup = HybridTopProtocolSetupUnit(
                 protocol=self,
                 stateA=stateA,
                 stateB=stateB,
                 ligandmapping=ligandmapping,
+                alchemical_components=alchem_comps,
                 generation=0,
-                repeat_id=int(uuid.uuid4()),
-                name=f"{Anames} to {Bnames} repeat {i} generation 0",
+                repeat_id=repeat_id,
+                name=f"HybridTop Setup: {Anames} to {Bnames} repeat {i} generation 0",
             )
-            for i in range(n_repeats)
-        ]
 
-        return units
+            simulation = HybridTopologyMultiStateSimulationUnit(
+                protocol=self,
+                setup_results=setup,
+                generation=0,
+                repeat_id=repeat_id,
+                name=f"HybridTop Simulation: {Anames} to {Bnames} repeat {i} generation 0",
+            )
+
+            analysis = HybridTopologyMultiStateAnalysisUnit(
+                protocol=self,
+                setup_results=setup,
+                simulation_results=simulation,
+                generation=0,
+                repeat_id=repeat_id,
+                name=f"HybridTop Analysis: {Anames} to {Bnames} repeat {i} generation 0",
+            )
+
+            setup_units.append(setup)
+            simulation_units.append(simulation)
+            analysis_units.append(analysis)
+
+        return [*setup_units, *simulation_units, *analysis_units]

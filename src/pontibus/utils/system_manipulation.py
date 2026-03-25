@@ -82,14 +82,14 @@ def copy_interchange_with_replacement(
     ffsettings : InterchangeFFSettings
       The force field settings.
     charged_molecules : list[Molecule] | None
-      A  list of Molecules which partial charges to use in the new Interchange.
+      A list of Molecules which partial charges to use in the new Interchange.
     protein_component : ProteinComponent | None
       The ProteinComponent, only necessary if using the ff14sb force field.
 
     Returns
     -------
     new_interchange : Interchange
-      An copy of the input Interchange but with the Molecule mutation.
+      A copy of the input Interchange but with the Molecule mutation.
 
     Note
     ----

@@ -5,7 +5,7 @@ platforms = ["linux-64", "osx-arm64"]
 
 [feature.docs.dependencies]
 autodoc-pydantic = ">=2.0"
-openfe = "1.8.*"
+openfe = ">=1.9"
 packaging = "*"
 plugcli = "*"
 python = "3.11.*"

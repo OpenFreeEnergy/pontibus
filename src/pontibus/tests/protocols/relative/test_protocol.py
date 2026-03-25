@@ -5,6 +5,9 @@ import mdtraj as mdt
 import numpy as np
 import openfe
 import pytest
+from openfe.protocols.openmm_rfe.hybridtop_units import (
+    HybridTopologyMultiStateSimulationUnit,
+)
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
 from openmm import (
@@ -22,8 +25,15 @@ from openmm import unit as omm_unit
 from openmmtools.multistate import MultiStateSampler
 from rdkit import Chem
 
-from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolUnit
+from pontibus.protocols.relative import HybridTopProtocol, HybridTopProtocolSetupUnit
 from pontibus.utils.settings import InterchangeOpenMMSolvationSettings, PackmolSolvationSettings
+
+
+def _get_units(protocol_units, unit_type):
+    """
+    Helper method to extract setup units
+    """
+    return [pu for pu in protocol_units if isinstance(pu, unit_type)]
 
 
 @pytest.fixture()
@@ -73,7 +83,7 @@ def test_position_overlap_fail():
     positionsB = np.array([[1, 1, 2.1]] * 4) * unit.angstrom
 
     with pytest.raises(ValueError, match="deviates by more than"):
-        HybridTopProtocolUnit._check_position_overlap(
+        HybridTopProtocolSetupUnit._check_position_overlap(
             mapping,
             positionsA,
             positionsB,
@@ -86,7 +96,7 @@ def test_position_overlap_warn():
     positionsB = np.array([[1, 1, 2.1]] * 4) * unit.angstrom
 
     with pytest.warns(UserWarning, match="deviates by more than"):
-        HybridTopProtocolUnit._check_position_overlap(
+        HybridTopProtocolSetupUnit._check_position_overlap(
             mapping,
             positionsA,
             positionsB,
@@ -114,16 +124,28 @@ def test_dry_run_default_vacuum(
         stateB=toluene_vacuum_system,
         mapping=benzene_to_toluene_mapping,
     )
-    dag_unit = list(dag.protocol_units)[0]
+
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
+    dag_sim_unit = _get_units(dag.protocol_units, HybridTopologyMultiStateSimulationUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
+        setup_results = dag_setup_unit.run(dry=True)
+        sim_results = dag_sim_unit.run(
+            system=setup_results["hybrid_system"],
+            positions=setup_results["hybrid_positions"],
+            selection_indices=setup_results["selection_indices"],
+            dry=True,
+        )
+
+        sampler = sim_results["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert not sampler.is_periodic
         assert sampler._thermodynamic_states[0].barostat is None
 
-        # Check hybrid OMM and MDTtraj Topologies
-        htf = sampler._hybrid_factory
+        htf = setup_results["hybrid_factory"]
+        assert not htf.hybrid_system.usesPeriodicBoundaryConditions()
+        barostats = [f for f in htf.hybrid_system.getForces() if isinstance(f, MonteCarloBarostat)]
+        assert len(barostats) == 0
         # 16 atoms:
         # 11 common atoms, 1 extra hydrogen in benzene, 4 extra in toluene
         # 12 bonds in benzene + 4 extra toluene bonds
@@ -262,11 +284,12 @@ def test_dry_core_element_change(vac_settings, tmpdir):
         mapping=mapping,
     )
 
-    dag_unit = list(dag.protocol_units)[0]
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
-        system = sampler._hybrid_factory.hybrid_system
+        setup_results = dag_setup_unit.run(dry=True)
+
+        system = setup_results["hybrid_system"]
         assert system.getNumParticles() == 12
         # Average mass between nitrogen and carbon
         assert pytest.approx(system.getParticleMass(1)._value) == 12.0008030
@@ -314,14 +337,31 @@ def test_dry_run_ligand(
         stateB=toluene_system,
         mapping=benzene_to_toluene_mapping,
     )
-    dag_unit = list(dag.protocol_units)[0]
+
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
+    dag_sim_unit = _get_units(dag.protocol_units, HybridTopologyMultiStateSimulationUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
+        setup_results = dag_setup_unit.run(dry=True)
+
+        sim_results = dag_sim_unit.run(
+            system=setup_results["hybrid_system"],
+            positions=setup_results["hybrid_positions"],
+            selection_indices=setup_results["selection_indices"],
+            dry=True,
+        )
+
+        # Check the barostat in both the sampler and the htf
+        sampler = sim_results["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert sampler.is_periodic
         assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
         assert sampler._thermodynamic_states[1].pressure == 1 * omm_unit.bar
+
+        htf = setup_results["hybrid_factory"]
+        assert htf.hybrid_system.usesPeriodicBoundaryConditions()
+        barostats = [f for f in htf.hybrid_system.getForces() if isinstance(f, MonteCarloBarostat)]
+        assert len(barostats) == 1
 
         # Check we have the right number of atoms in the PDBs
         pdb = mdt.load_pdb("hybrid_system.pdb")
@@ -330,7 +370,7 @@ def test_dry_run_ligand(
         assert pdb.n_atoms == n_atoms
 
         # Check system forces
-        system = sampler._hybrid_factory.hybrid_system
+        system = htf.hybrid_system
         assert len(system.getForces()) == 10
 
         def assert_force_num(system, forcetype, number):
@@ -358,10 +398,10 @@ def test_dry_run_ligand(
         assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
-        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
-        assert len(sampler._hybrid_factory._unique_new_atoms) == 4
-        assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == (n_atoms - 16)
+        assert len(htf._unique_old_atoms) == 1
+        assert len(htf._unique_new_atoms) == 4
+        assert len(htf._core_old_to_new_map) == 11
+        assert len(htf._env_old_to_new_map) == (n_atoms - 16)
 
 
 def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir):
@@ -394,7 +434,7 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir
         prop_chgs = np.array(prop_chgs.split(), dtype=float)
         np.testing.assert_allclose(prop_chgs, charge_array.m)
 
-    # Create new smc with overriden charges
+    # Create new smc with overridden charges
     benzene_offmol = benzene_modifications["benzene"].to_openff()
     toluene_offmol = benzene_modifications["toluene"].to_openff()
     benzene_rand_chg = assign_fictitious_charges(benzene_offmol)
@@ -404,7 +444,7 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir
     benzene_smc = openfe.SmallMoleculeComponent.from_openff(benzene_offmol)
     toluene_smc = openfe.SmallMoleculeComponent.from_openff(toluene_offmol)
 
-    # Check that the new smcs have the new overriden charges
+    # Check that the new smcs have the new overridden charges
     check_propchgs(benzene_smc, benzene_rand_chg)
     check_propchgs(toluene_smc, toluene_rand_chg)
 
@@ -426,11 +466,12 @@ def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir
         ),
         mapping=mapping,
     )
-    dag_unit = list(dag.protocol_units)[0]
+
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
-        htf = sampler._factory
+        setup_results = dag_setup_unit.run(dry=True)
+        htf = setup_results["hybrid_factory"]
         hybrid_system = htf.hybrid_system
 
         # get the standard nonbonded force
@@ -525,10 +566,21 @@ def test_dry_run_complex(
         stateB=toluene_complex_system,
         mapping=benzene_to_toluene_mapping,
     )
-    dag_unit = list(dag.protocol_units)[0]
+
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
+    dag_sim_unit = _get_units(dag.protocol_units, HybridTopologyMultiStateSimulationUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
+        setup_results = dag_setup_unit.run(dry=True)
+
+        sim_results = dag_sim_unit.run(
+            system=setup_results["hybrid_system"],
+            positions=setup_results["hybrid_positions"],
+            selection_indices=setup_results["selection_indices"],
+            dry=True,
+        )
+
+        sampler = sim_results["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert sampler.is_periodic
         assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
@@ -541,7 +593,7 @@ def test_dry_run_complex(
         assert pdb.n_atoms == n_atoms
 
         # Check system forces
-        system = sampler._hybrid_factory.hybrid_system
+        system = setup_results["hybrid_system"]
         assert len(system.getForces()) == 10
 
         def assert_force_num(system, forcetype, number):
@@ -569,10 +621,11 @@ def test_dry_run_complex(
         assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
-        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
-        assert len(sampler._hybrid_factory._unique_new_atoms) == 4
-        assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == n_atoms - (11 + 4 + 1)
+        htf = setup_results["hybrid_factory"]
+        assert len(htf._unique_old_atoms) == 1
+        assert len(htf._unique_new_atoms) == 4
+        assert len(htf._core_old_to_new_map) == 11
+        assert len(htf._env_old_to_new_map) == n_atoms - (11 + 4 + 1)
 
 
 @pytest.mark.cpuvslow
@@ -601,10 +654,20 @@ def test_dry_run_complex_setnwaters(
         stateB=toluene_complex_system,
         mapping=benzene_to_toluene_mapping,
     )
-    dag_unit = list(dag.protocol_units)[0]
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
+    dag_sim_unit = _get_units(dag.protocol_units, HybridTopologyMultiStateSimulationUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
+        setup_results = dag_setup_unit.run(dry=True)
+
+        sim_results = dag_sim_unit.run(
+            system=setup_results["hybrid_system"],
+            positions=setup_results["hybrid_positions"],
+            selection_indices=setup_results["selection_indices"],
+            dry=True,
+        )
+
+        sampler = sim_results["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert sampler.is_periodic
         assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
@@ -615,7 +678,7 @@ def test_dry_run_complex_setnwaters(
         assert pdb.n_atoms == 2629
 
         # Check system forces
-        system = sampler._hybrid_factory.hybrid_system
+        system = setup_results["hybrid_system"]
         assert len(system.getForces()) == 10
 
         def assert_force_num(system, forcetype, number):
@@ -643,10 +706,11 @@ def test_dry_run_complex_setnwaters(
         assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
-        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
-        assert len(sampler._hybrid_factory._unique_new_atoms) == 4
-        assert len(sampler._hybrid_factory._core_old_to_new_map) == 11
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == 47340
+        htf = setup_results["hybrid_factory"]
+        assert len(htf._unique_old_atoms) == 1
+        assert len(htf._unique_new_atoms) == 4
+        assert len(htf._core_old_to_new_map) == 11
+        assert len(htf._env_old_to_new_map) == 47340
 
 
 @pytest.mark.cpuvslow
@@ -683,10 +747,20 @@ def test_dry_run_complex_cofactor(
         stateB=eg5_complex_systemB,
         mapping=eg5_ligands_mapping,
     )
-    dag_unit = list(dag.protocol_units)[0]
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
+    dag_sim_unit = _get_units(dag.protocol_units, HybridTopologyMultiStateSimulationUnit)[0]
 
     with tmpdir.as_cwd():
-        sampler = dag_unit.run(dry=True)["debug"]["sampler"]
+        setup_results = dag_setup_unit.run(dry=True)
+
+        sim_results = dag_sim_unit.run(
+            system=setup_results["hybrid_system"],
+            positions=setup_results["hybrid_positions"],
+            selection_indices=setup_results["selection_indices"],
+            dry=True,
+        )
+
+        sampler = sim_results["sampler"]
         assert isinstance(sampler, MultiStateSampler)
         assert sampler.is_periodic
         assert isinstance(sampler._thermodynamic_states[0].barostat, MonteCarloBarostat)
@@ -694,10 +768,10 @@ def test_dry_run_complex_cofactor(
 
         # Check we have the right number of atoms in the PDB
         pdb = mdt.load_pdb("hybrid_system.pdb")
-        assert pdb.n_atoms == 5527
+        assert pdb.n_atoms == 5513
 
         # Check system forces
-        system = sampler._hybrid_factory.hybrid_system
+        system = setup_results["hybrid_system"]
         assert len(system.getForces()) == 10
 
         def assert_force_num(system, forcetype, number):
@@ -725,7 +799,8 @@ def test_dry_run_complex_cofactor(
         assert custom_nonbond[0].getSwitchingDistance() == 0.8 * omm_unit.nanometer
 
         # Check the unique, core & env atoms
-        assert len(sampler._hybrid_factory._unique_old_atoms) == 1
-        assert len(sampler._hybrid_factory._unique_new_atoms) == 1
-        assert len(sampler._hybrid_factory._core_old_to_new_map) == 51
-        assert len(sampler._hybrid_factory._env_old_to_new_map) == n_atoms - (51 + 1 + 1)
+        htf = setup_results["hybrid_factory"]
+        assert len(htf._unique_old_atoms) == 1
+        assert len(htf._unique_new_atoms) == 1
+        assert len(htf._core_old_to_new_map) == 51
+        assert len(htf._env_old_to_new_map) == n_atoms - (51 + 1 + 1)

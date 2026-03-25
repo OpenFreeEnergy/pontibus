@@ -106,7 +106,7 @@ def water_off_am1bcc():
 
 
 def test_convert_proteincomp(T4_protein_component):
-    # Get an OpenFF Toplogy by going through rdkit
+    # Get an OpenFF Topology by going through rdkit
     rdmols = Chem.GetMolFrags(T4_protein_component.to_rdkit(), asMols=True, sanitizeFrags=False)
     ofe_mol = Molecule.from_rdkit(
         rdmols[0], allow_undefined_stereo=True, hydrogens_are_explicit=True
@@ -2162,7 +2162,7 @@ def test_box_setting_dodecahedron(
 
 """
 
-5. Unamed solvent
+5. Unnamed solvent
   - Check we get warned about renaming
 6. Named solvent with inconsistent name
 7. Duplicate named smcs

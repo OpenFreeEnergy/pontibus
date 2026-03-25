@@ -12,6 +12,12 @@ from pontibus.protocols.relative import HybridTopProtocolResult
 
 
 class TestSolventProtocolResult:
+    """
+    Protocol results are generated via https://github.com/OpenFreeEnergy/pontibus/blob/main/devtools/gen_serialized_results.py
+    Please note that the simulations run are very short, too short to converge over time.
+    You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
+    """
+
     @pytest.fixture()
     def protocolresult(self, rfe_solv_transformation_json):
         d = json.loads(
@@ -45,7 +51,7 @@ class TestSolventProtocolResult:
         est = protocolresult.get_uncertainty()
 
         assert est
-        assert est.m == pytest.approx(0.2, abs=0.2)
+        assert est.m == pytest.approx(0.4, abs=0.2)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 
@@ -135,6 +141,12 @@ class TestSolventProtocolResult:
 
 
 class TestVacuumProtocolResult(TestSolventProtocolResult):
+    """
+    Protocol results are generated via https://github.com/OpenFreeEnergy/pontibus/blob/main/devtools/gen_serialized_results.py
+    Please note that the simulations run are very short, too short to converge over time.
+    You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
+    """
+
     @pytest.fixture()
     def protocolresult(self, rfe_vacuum_transformation_json):
         d = json.loads(
