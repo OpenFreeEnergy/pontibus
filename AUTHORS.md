@@ -18,7 +18,7 @@ The rules for this file:
 - Matt Thompson <@mattwthompson>
 
 **2025**
-- Josh A. Mitchell <@Yoshanuikabundi>
+- Ashley Mitchell <@Yoshanuikabundi>
 - Jeffrey Wagner <@j-wags>
 - Michael M. Henry <@mikemhenry>
 - Alyssa Travitz <@atravitz>
