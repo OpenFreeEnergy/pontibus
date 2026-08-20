@@ -7,6 +7,7 @@ dependencies:
   - openff-interchange >=0.5
   - openff-nagl-base >=0.3.3
   # OpenFE stack deps
+  - dill  # needed for kartograf
   - duecredit<0.10
   - lomap2>=3.0.0
   - numpy
