@@ -14,12 +14,12 @@ vv0.5.0
   resulting box density will be much higher.
   If you were defining ``number_of_solvent_molecules`` and then you will
   need to scale the density by `(1 / (1.1^3)` instead of using the
-  default `target_density` (currently default of 0.95 * unit.grams / unit.mL).
-  In practice this means setting `target_density` to roughly
-  0.715 unit.grams / unit.mL when setting `number_of_solvent_molecules`.
+  default ``target_density`` (currently default of 0.95 * unit.grams / unit.mL).
+  In practice this means setting ``target_density`` to roughly
+  0.715 unit.grams / unit.mL when setting ``number_of_solvent_molecules``.
 * The ASFE and HybridTop Protocols have been updated to work
   with openfe v1.9. Notably this means that the Protocols have
-  now been split into three ProtocolUnits (PR #190).
+  now been split into three ProtocolUnits (`PR #190 <https://github.com/OpenFreeEnergy/pontibus/pull/190>`_).
 
 
 
