@@ -13,7 +13,7 @@ dependencies:
   - kartograf>=1.0.0
   - konnektor
   - lomap2>=3.0.0
-  - numpy <2.4 # unpin once #184 is fixed
+  - numpy
   - networkx
   - rdkit
   - packaging
@@ -21,10 +21,10 @@ dependencies:
   - pydantic >=2.0
   - pyyaml
   - coverage
-  - cinnabar ~=0.5.0
+  - cinnabar ~=0.6
   - click
   - typing-extensions
-  - openmm >=8.0.0,!=8.1.0,<8.3.0
+  - openmm >=8.4,<8.6
   - openmmtools >=0.25.0
   - openmmforcefields
   - openfe-analysis >=0.3.1
