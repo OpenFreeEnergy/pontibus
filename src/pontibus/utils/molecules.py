@@ -3,7 +3,7 @@ from openff.toolkit import Molecule
 
 offmol_water = Molecule.from_dict(
     {
-        "name": "",
+        "name": "water",
         "atoms": [
             {
                 "atomic_number": 8,
@@ -59,4 +59,4 @@ offmol_water = Molecule.from_dict(
     }
 )
 
-WATER = SmallMoleculeComponent.from_openff(offmol_water)
+WATER = SmallMoleculeComponent.from_openff(offmol_water, name="water")
