@@ -61,47 +61,96 @@ def _fill_vsite_compresids(
     * The ``comp_resids`` dictionary has already been filled
       with non-virtual site residues.
     """
+    # OpenMM Topology & System for later use
     omm_top = interchange.to_openmm_topology(collate=False)
-    num_missing = omm_top.getNumResidues() - interchange.topology.n_molecules
+    omm_system = interchange.to_openmm_system()
 
+    # Validate the number of known & missing residue indexes
+    known_resids = np.concatenate(list(comp_resids.values()), dtype=int)
+    known_resids_set = set(known_resids.tolist())
+
+    # There should only be unique indexes
+    if len(known_resids_set) != len(known_resids):
+        errmsg = "Non unique residue indexes found in comp_resids!"
+        raise ValueError(errmsg)
+
+    # Number of missing residues is the different between OpenMM Topology's
+    # reporter count and the set of known residue indexes
+    num_missing = omm_top.getNumResidues() - len(known_resids_set)
+
+    # If zero early return
+    if num_missing == 0:
+        return
+
+    # If less than zero, something went wrong
     if num_missing < 0:
         errmsg = (
             "There are fewer OpenMM Topology residues than interchange "
             "molecules. Something went wrong!"
         )
         raise ValueError(errmsg)
-    elif num_missing == 0:
-        # Nothing to do here, return
-        return
-    else:
-        msg = f"{num_missing} virtual site residues found, adding them to comp_resids"
-        logger.info(msg)
 
-    # create a single array with all the "known" residue numbers
-    known_resids = np.concatenate(list(comp_resids.values()))
+    # Number of missing residues has been validated, we now move ahead with
+    # backfilling the dictionary
+    logger.info(f"{num_missing} virtual site residues found, adding them to comp_resids")
 
-    # sanity check - there should only be uniques!
-    if len(np.unique(known_resids)) != len(known_resids):
-        errmsg = "Non unique residue indexes found in comp_resids!"
-        raise ValueError(errmsg)
+    # Invert comp_resids to be able to know which residue is which Component
+    resids_to_comp: dict[int, Component] = {
+        int(resid): comp
+        for comp, resids in comp_resids.items()
+        for resid in resids
+    }
 
-    # temporary comp_resids dictionary only for virtual sites
-    vsites_comp_resids = {key: [] for key in comp_resids}
+    # Also create a list of atoms for later use
+    omm_atoms = list(omm_top.atoms())
 
-    # We could use "isin" to make this real fast, but the cost here is tiny
+    # Create a temporary comp_resids dictionary just for virtual sites
+    vsites_comp_resids: dict[Component, list[int]] = {comp: [] for comp in comp_resids}
+
+    # Now loop over the residues and find parents
     for residue in omm_top.residues():
-        # Base case, it's a known residue, skip
-        if residue.index in known_resids:
+        # Skip if we already know you
+        if residue.index in known_resids_set:
             continue
 
-        # We can safely do this since there shouldn't be dupes
-        for comp in comp_resids:
-            if int(residue.id) in comp_resids[comp]:
-                vsites_comp_resids[comp].append(residue.index)
+        residue_component: set[Component] = set()
+        for atom in residue.atoms():
+            if not omm_system.isVirtualSite(atom.index):
+                errmsg = (
+                    f"OpenMM Topology residue {residue.index} was expected to "
+                    "contain only virtual sites, but particle {atom.index} is "
+                    "not a virtual site."
+                )
+                raise ValueError(errmsg)
+
+            # We can safely assume that the parent will always be Component
+            parent_atom_index = omm_system.getVirtualSite(atom.index).getParticle(0)
+            parent_res_index = omm_atoms[parent_atom_index].residue.index
+            residue_component.add(resids_to_comp[parent_res_index])
+
+        if len(residue_component) != 1:
+            errmsg = (
+                f"Virtual site residue {residue.index} has parent particles "
+                "spanning more than one Component"
+            )
+
+        vsites_comp_resids[residue_component.pop()].append(residue.index)
+
+    # Check that we have assigned the same number of residues as were originally missing
+    n_assigned = sum(len(v) for v in vsites_comp_resids.values())
+    if n_assigned != num_missing:
+        errmsg = (
+            f"{n_assigned} virtual site residues were assigned, but "
+            f"{num_missing} residues needed to be assigned. "
+        )
+        raise ValueError(errmsg)
 
     # Now we merge everything back and that's it!
     for comp in comp_resids:
-        comp_resids[comp] = np.append(comp_resids[comp], vsites_comp_resids[comp])
+        # force it back into ints since an empty list would cause floats
+        comp_resids[comp] = np.concatenate(
+            [comp_resids[comp], vsites_comp_resids[comp]]
+        ).astype(int)
 
 
 def _proteincomp_to_topology(protein_component: ProteinComponent) -> Topology:
