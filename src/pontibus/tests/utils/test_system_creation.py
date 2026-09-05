@@ -2247,6 +2247,7 @@ class TestVsitesCompresids:
         omm_top = interchange.to_openmm_topology(collate=False)
         assert omm_top.getNumResidues() == 2002
 
+        # 2 alchemical residues (1 normal atoms, 1 vsite), rest is water
         assert len(comp_resids[ExtendedSolventComponent()]) == 2000
         assert_equal(
             comp_resids[ExtendedSolventComponent()],

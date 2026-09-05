@@ -12,6 +12,7 @@ from openff.interchange import Interchange
 from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units import unit
+import openmm
 
 from pontibus.utils.molecule_utils import (
     _check_and_deduplicate_charged_mols,
@@ -30,6 +31,75 @@ from pontibus.utils.settings import (
 from pontibus.utils.system_solvation import openmm_solvation, packmol_solvation
 
 logger = logging.getLogger(__name__)
+
+
+def _get_virtual_site_components(
+    omm_system: openmm.System,
+    omm_topology: openmm.app.Topology,
+    nonvsite_comp_resids: dict[Component, list[int]],
+    nonvsite_resids: set[int],
+) -> dict[Component, list[int]]:
+    """
+    Helper method to get a comp_resids dictionary for the virtual sites in the system.
+
+    Parameters
+    ----------
+    omm_system : openmm.System
+      The OpenMM System to look through.
+    omm_topology : openmm.Topology
+      The OpenMM Topology to look through.
+    nonvsite_comp_resids : dict[Component, list[int]]
+      The dictionary of components to residue indexes
+      for the non virtual site atoms.
+    nonvsite_resids : set[int]
+      A set of residue indexes for the non virtual site atoms.
+    """
+    # Create a temporary comp_resids dictionary for virtual sites
+    vsites_comp_resids: dict[Component, list[int]] = {
+            comp: [] for comp in nonvsite_comp_resids
+    }
+
+    # Invert comp_resids to be able to know which residue is which Component
+    resids_to_comp: dict[int, Component] = {
+        int(resid): comp
+        for comp, resids in nonvsite_comp_resids.items()
+        for resid in resids
+    }
+
+    # Create a list of atoms for later use
+    omm_atoms = list(omm_topology.atoms())
+
+    # Now loop over the residues and find parents
+    for residue in omm_topology.residues():
+        # Skip if we already know you
+        if residue.index in nonvsite_resids:
+            continue
+
+        residue_component: set[Component] = set()
+        for atom in residue.atoms():
+            if not omm_system.isVirtualSite(atom.index):
+                errmsg = (
+                    f"OpenMM Topology residue {residue.index} was expected to "
+                    "contain only virtual sites, but particle {atom.index} is "
+                    "not a virtual site."
+                )
+                raise ValueError(errmsg)
+
+            # We can safely assume that the parent will always be Component
+            parent_atom_index = omm_system.getVirtualSite(atom.index).getParticle(0)
+            parent_res_index = omm_atoms[parent_atom_index].residue.index
+            residue_component.add(resids_to_comp[parent_res_index])
+
+        if len(residue_component) != 1:
+            errmsg = (
+                f"Virtual site residue {residue.index} has parent particles "
+                "spanning more than one Component"
+            )
+            raise ValueError(errmsg)
+
+        vsites_comp_resids[residue_component.pop()].append(residue.index)
+
+    return vsites_comp_resids
 
 
 def _fill_vsite_compresids(
@@ -91,51 +161,13 @@ def _fill_vsite_compresids(
     # backfilling the dictionary
     logger.info(f"{num_missing} virtual site residues found, adding them to comp_resids")
 
-    # Invert comp_resids to be able to know which residue is which Component
-    resids_to_comp: dict[int, Component] = {
-        int(resid): comp
-        for comp, resids in comp_resids.items()
-        for resid in resids
-    }
-    
-    # Get the openmm System
-    omm_system = interchange.to_openmm_system()
-
-    # Also create a list of atoms for later use
-    omm_atoms = list(omm_top.atoms())
-
-    # Create a temporary comp_resids dictionary just for virtual sites
-    vsites_comp_resids: dict[Component, list[int]] = {comp: [] for comp in comp_resids}
-
-    # Now loop over the residues and find parents
-    for residue in omm_top.residues():
-        # Skip if we already know you
-        if residue.index in known_resids_set:
-            continue
-
-        residue_component: set[Component] = set()
-        for atom in residue.atoms():
-            if not omm_system.isVirtualSite(atom.index):
-                errmsg = (
-                    f"OpenMM Topology residue {residue.index} was expected to "
-                    "contain only virtual sites, but particle {atom.index} is "
-                    "not a virtual site."
-                )
-                raise ValueError(errmsg)
-
-            # We can safely assume that the parent will always be Component
-            parent_atom_index = omm_system.getVirtualSite(atom.index).getParticle(0)
-            parent_res_index = omm_atoms[parent_atom_index].residue.index
-            residue_component.add(resids_to_comp[parent_res_index])
-
-        if len(residue_component) != 1:
-            errmsg = (
-                f"Virtual site residue {residue.index} has parent particles "
-                "spanning more than one Component"
-            )
-            raise ValueError(errmsg)
-
-        vsites_comp_resids[residue_component.pop()].append(residue.index)
+    # Get the vsite comp_resids dictionary
+    vsites_comp_resids = _get_virtual_site_components(
+        omm_system=interchange.to_openmm_system(),
+        omm_topology=omm_top,
+        nonvsite_comp_resids=comp_resids,
+        nonvsite_resids=known_resids_set,
+    )
 
     # Check that we have assigned the same number of residues as were originally missing
     n_assigned = sum(len(v) for v in vsites_comp_resids.values())
