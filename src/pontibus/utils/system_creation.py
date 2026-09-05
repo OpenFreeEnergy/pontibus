@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 def _get_virtual_site_components(
     omm_system: openmm.System,
     omm_topology: openmm.app.Topology,
-    nonvsite_comp_resids: dict[Component, list[int]],
+    nonvsite_comp_resids: dict[Component, npt.NDArray],
     nonvsite_resids: set[int],
 ) -> dict[Component, list[int]]:
     """
@@ -53,6 +53,12 @@ def _get_virtual_site_components(
       for the non virtual site atoms.
     nonvsite_resids : set[int]
       A set of residue indexes for the non virtual site atoms.
+
+    Returns
+    -------
+    viste_comp_resids : dict[Component, list[int]]
+      A dictionary with lists of residue indexes keyed by Component
+      for all virtual sites in the System.
     """
     # Create a temporary comp_resids dictionary for virtual sites
     vsites_comp_resids: dict[Component, list[int]] = {comp: [] for comp in nonvsite_comp_resids}
