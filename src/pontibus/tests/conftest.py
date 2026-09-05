@@ -8,10 +8,9 @@ import gufe
 import openfe
 import pytest
 from gufe import SmallMoleculeComponent
-from openff.toolkit import Topology
+from openff.toolkit import ForceField, Topology
 from openff.units import unit
 from rdkit import Chem
-from openff.toolkit import ForceField
 
 from pontibus.utils.system_creation import _proteincomp_to_topology
 
@@ -216,6 +215,7 @@ def vsite_offxml():
 
     ff = ForceField(offxml)
     return ff.to_string()
+
 
 @pytest.fixture(scope="session")
 def T4_protein_offtop(T4_protein_component):

@@ -8,4 +8,3 @@ The "gromacs_dG" results are solvation free energies calculated by Meghan Osato 
 
 - Please note that only smiles are provided here, SDFs (and therefore 3D structures) are not available.
 - The partial charges are directly assigned from the force field.
-
