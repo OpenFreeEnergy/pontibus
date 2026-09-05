@@ -3,9 +3,11 @@
 import openfe
 import openmm
 import pytest
+from openfe.tests.protocols.openmm_ahfe.test_ahfe_protocol import (
+    _assert_num_forces,
+)
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule
-from openmm import unit as omm_unit
 from openmm import (
     CustomBondForce,
     CustomNonbondedForce,
@@ -15,15 +17,13 @@ from openmm import (
     NonbondedForce,
     PeriodicTorsionForce,
 )
+from openmm import unit as omm_unit
 from openmmtools.alchemy import AlchemicalRegion
 from openmmtools.tests.test_alchemy import (
     check_interacting_energy_components,
     check_noninteracting_energy_components,
     compare_system_energies,
     overlap_check,
-)
-from openfe.tests.protocols.openmm_ahfe.test_ahfe_protocol import (
-    _assert_num_forces,
 )
 
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
@@ -113,9 +113,7 @@ class TestSoluteVSite:
         alch = alchemical_system.getVirtualSite(3006)
         assert type(alch) is type(ref)
         assert alch.getNumParticles() == ref.getNumParticles()
-        assert [
-            alch.getParticle(p) for p in range(alch.getNumParticles())
-        ] == [
+        assert [alch.getParticle(p) for p in range(alch.getNumParticles())] == [
             ref.getParticle(p) for p in range(ref.getNumParticles())
         ]
 
@@ -133,14 +131,18 @@ class TestSoluteVSite:
             assert charge.value_in_unit(omm_unit.elementary_charge) == pytest.approx(0.0)
             assert epsilon.value_in_unit(omm_unit.kilojoule_per_mole) == pytest.approx(0.0)
 
-    def test_environment_atoms_untouched_in_nonbonded_force(self, omm_system, alchemical_system, alchemical_indices):
+    def test_environment_atoms_untouched_in_nonbonded_force(
+        self, omm_system, alchemical_system, alchemical_indices
+    ):
         ref = _nonbonded_force(omm_system)
         alch = _nonbonded_force(alchemical_system)
         env = set(range(omm_system.getNumParticles())) - set(alchemical_indices)
         for i in sorted(env):
             assert alch.getParticleParameters(i) == ref.getParticleParameters(i)
 
-    def test_electrostatics_offsets_match_reference_charges(self, omm_system, alchemical_system, alchemical_indices):
+    def test_electrostatics_offsets_match_reference_charges(
+        self, omm_system, alchemical_system, alchemical_indices
+    ):
         ref = _nonbonded_force(omm_system)
         alch = _nonbonded_force(alchemical_system)
 
@@ -155,9 +157,7 @@ class TestSoluteVSite:
         assert set(offsets) == set(alchemical_indices)
 
         for i in alchemical_indices:
-            ref_charge = ref.getParticleParameters(i)[0].value_in_unit(
-                omm_unit.elementary_charge
-            )
+            ref_charge = ref.getParticleParameters(i)[0].value_in_unit(omm_unit.elementary_charge)
             assert offsets[i] == pytest.approx(ref_charge)
 
     def test_number_of_forces(self, alchemical_system):

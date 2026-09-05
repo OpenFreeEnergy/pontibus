@@ -1609,10 +1609,7 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
         assert list(comp_resids)[1] == ExtendedSolventComponent()
         assert_equal(list(comp_resids.values())[0], [0])
         # We have 2 residues per water instead of 1 (1 extra for the vsite)
-        assert_equal(
-            list(comp_resids.values())[1],
-            [i for i in range(1, (num_waters * 2) + 1)]
-        )
+        assert_equal(list(comp_resids.values())[1], [i for i in range(1, (num_waters * 2) + 1)])
 
     def test_virtual_sites(self, omm_system, num_waters, num_particles, nonbonds):
         for index in range(num_particles, num_particles - num_waters, -1):

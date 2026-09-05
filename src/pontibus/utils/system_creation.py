@@ -7,12 +7,12 @@ from string import ascii_uppercase
 
 import numpy as np
 import numpy.typing as npt
+import openmm
 from gufe import Component, ProteinComponent, SmallMoleculeComponent, SolventComponent
 from openff.interchange import Interchange
 from openff.toolkit import ForceField, Topology
 from openff.toolkit import Molecule as OFFMolecule
 from openff.units import unit
-import openmm
 
 from pontibus.utils.molecule_utils import (
     _check_and_deduplicate_charged_mols,
@@ -55,15 +55,11 @@ def _get_virtual_site_components(
       A set of residue indexes for the non virtual site atoms.
     """
     # Create a temporary comp_resids dictionary for virtual sites
-    vsites_comp_resids: dict[Component, list[int]] = {
-            comp: [] for comp in nonvsite_comp_resids
-    }
+    vsites_comp_resids: dict[Component, list[int]] = {comp: [] for comp in nonvsite_comp_resids}
 
     # Invert comp_resids to be able to know which residue is which Component
     resids_to_comp: dict[int, Component] = {
-        int(resid): comp
-        for comp, resids in nonvsite_comp_resids.items()
-        for resid in resids
+        int(resid): comp for comp, resids in nonvsite_comp_resids.items() for resid in resids
     }
 
     # Create a list of atoms for later use
@@ -181,9 +177,9 @@ def _fill_vsite_compresids(
     # Now we merge everything back and that's it!
     for comp in comp_resids:
         # force it back into ints since an empty list would cause floats
-        comp_resids[comp] = np.concatenate(
-            [comp_resids[comp], vsites_comp_resids[comp]]
-        ).astype(int)
+        comp_resids[comp] = np.concatenate([comp_resids[comp], vsites_comp_resids[comp]]).astype(
+            int
+        )
 
 
 def _proteincomp_to_topology(protein_component: ProteinComponent) -> Topology:
