@@ -1,6 +1,6 @@
 [build-system]
 requires=[
-    "setuptools>=64",
+    "setuptools>=77.0.3",
     "setuptools-scm>=8",
 ]
 build-backend = "setuptools.build_meta"
@@ -20,9 +20,10 @@ readme="README.md"
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.urls]
 "Homepage" = "https://github.com/OpenFreeEnergy/pontibus"
@@ -32,7 +33,6 @@ fallback_version = "0.0.0"
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ['src']

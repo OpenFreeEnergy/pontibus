@@ -29,7 +29,7 @@ def add_chemical_systems(
       Running dictionary of solvents to draw & store prepared solvent
       molecules from/to.
     systems: list[ChemicalSystem]
-      Runing list of ChemicalSystems we are appending to.
+      Running list of ChemicalSystems we are appending to.
     """
     for i, rdmol in enumerate(Chem.SDMolSupplier(sdffile, removeHs=False)):
         offmol = Molecule.from_rdkit(rdmol)

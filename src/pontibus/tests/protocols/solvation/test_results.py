@@ -13,6 +13,12 @@ from pontibus.protocols.solvation import ASFEProtocolResult
 
 
 class TestWaterProtocolResult:
+    """
+    Protocol results are generated via https://github.com/OpenFreeEnergy/pontibus/blob/main/devtools/gen_serialized_results.py
+    Please note that the simulations run are very short, too short to converge over time.
+    You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
+    """
+
     @pytest.fixture()
     def protocolresult(self, afe_solv_water_transformation_json):
         d = json.loads(
@@ -145,6 +151,12 @@ class TestWaterProtocolResult:
 
 
 class TestOctanolProtocolResult(TestWaterProtocolResult):
+    """
+    Protocol results are generated via https://github.com/OpenFreeEnergy/pontibus/blob/main/devtools/gen_serialized_results.py
+    Please note that the simulations run are very short, too short to converge over time.
+    You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
+    """
+
     @pytest.fixture()
     def protocolresult(self, afe_solv_octanol_transformation_json):
         d = json.loads(
@@ -170,7 +182,7 @@ class TestOctanolProtocolResult(TestWaterProtocolResult):
         est = protocolresult.get_estimate()
 
         assert est
-        assert est.m == pytest.approx(-4.83, abs=0.5)
+        assert est.m == pytest.approx(-5.85, abs=0.5)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 

@@ -2,9 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
 import logging
-from typing import Any
 
-import gufe
 import numpy.typing as npt
 import openmm
 from gufe import (
@@ -14,85 +12,33 @@ from gufe import (
     SolventComponent,
 )
 from gufe.settings import SettingsBaseModel
-from openfe.protocols.openmm_afe.base import BaseAbsoluteUnit
-from openfe.protocols.openmm_utils import charge_generation
+from openfe.protocols.openmm_afe.base_afe_units import BaseAbsoluteSetupUnit
+from openfe.protocols.openmm_afe.equil_afe_settings import AlchemicalSettings
 from openfe.protocols.openmm_utils.omm_settings import (
     IntegratorSettings,
-    OpenFFPartialChargeSettings,
 )
-from openfe.utils import log_system_probe, without_oechem_backend
+from openfe.utils import without_oechem_backend
 from openff.interchange.interop.openmm import to_openmm_positions
 from openff.toolkit import Molecule as OFFMolecule
+from openff.units.openmm import to_openmm
 from openmm import app
 from openmmtools.alchemy import (
     AbsoluteAlchemicalFactory,
     AlchemicalRegion,
 )
 
-from pontibus.components import ExtendedSolventComponent
-from pontibus.protocols.solvation.settings import PackmolSolvationSettings
 from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )
-from pontibus.utils.system_creation import interchange_packmol_creation
+from pontibus.utils.protocol_utils import _get_and_charge_solvent_offmol
+from pontibus.utils.system_creation import interchange_system_creation
+from pontibus.utils.system_manipulation import adjust_system
 
 logger = logging.getLogger(__name__)
 
 
-class BaseASFEUnit(BaseAbsoluteUnit):
-    _simtype: str
-
-    @staticmethod
-    def _get_and_charge_solvent_offmol(
-        solvent_component: SolventComponent | ExtendedSolventComponent,
-        solvation_settings: PackmolSolvationSettings,
-        partial_charge_settings: OpenFFPartialChargeSettings,
-    ) -> OFFMolecule:
-        """
-        Helper method to fetch the solvent offmol either
-        from an existing solvent_smcs, or from smiles.
-
-        Parameters
-        ----------
-        solvent_component : SolventComponent
-          smiles for the solvent molecule
-        solvation_settings : PackmolSolvationSettings
-          Settings defining how the system will be solvated
-        partial_charge_settings : OpenFFPartialChargeSettigns
-          Settings defining how partial charges are applied
-
-        Returns
-        -------
-        offmol : openff.toolkit.Molecule
-
-        Notes
-        -----
-        * If created from a smiles, the solvent will be assigned
-          a single conformer through `Molecule.generate_conformers`.
-        """
-        # Get the solvent offmol
-        if isinstance(solvent_component, ExtendedSolventComponent):
-            solvent_offmol = solvent_component.solvent_molecule.to_openff()  # type: ignore[union-attr]
-        else:
-            # If not, we create the solvent from smiles
-            # We generate a single conformer to avoid packing issues
-            solvent_offmol = OFFMolecule.from_smiles(solvent_component.smiles)
-            solvent_offmol.generate_conformers(n_conformers=1)
-
-        # In-place assign solvent offmol charges if necessary
-        # Note: we don't enforce partial charge assignment to avoid
-        # cases where we want to rely on library charges instead.
-        if solvation_settings.assign_solvent_charges:
-            charge_generation.assign_offmol_partial_charges(
-                offmol=solvent_offmol,
-                overwrite=False,
-                method=partial_charge_settings.partial_charge_method,
-                toolkit_backend=partial_charge_settings.off_toolkit_backend,
-                generate_n_conformers=partial_charge_settings.number_of_conformers,
-                nagl_model=partial_charge_settings.nagl_model,
-            )
-
-        return solvent_offmol
+class BaseASFESetupUnit(BaseAbsoluteSetupUnit):
+    simtype: str
 
     @staticmethod
     def _validate_vsites(system: openmm.System, integrator_settings: IntegratorSettings) -> None:
@@ -114,16 +60,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         -----
         * Small placeholder for a larger thing.
         """
-        has_virtual_sites: bool = False
-        for ix in range(system.getNumParticles()):
-            if system.isVirtualSite(ix):
-                has_virtual_sites = True
-
-        if has_virtual_sites:
-            if not integrator_settings.reassign_velocities:
-                errmsg = (
-                    "Simulations with virtual sites without velocity reassignments are unstable"
-                )
+        if not integrator_settings.reassign_velocities:
+            has_vsite = any(system.isVirtualSite(i) for i in range(system.getNumParticles()))
+            if has_vsite:
+                errmsg = "Simulations with virtual sites without velocity reassignment are unstable"
                 raise ValueError(errmsg)
 
     def _get_omm_objects(
@@ -131,7 +71,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         settings: dict[str, SettingsBaseModel],
         protein_component: ProteinComponent | None,
         solvent_component: SolventComponent | None,
-        smc_components: dict[SmallMoleculeComponent, OFFMolecule],
+        small_mols: dict[SmallMoleculeComponent, OFFMolecule],
     ) -> tuple[app.Topology, openmm.System, openmm.unit.Quantity, dict[str, npt.NDArray]]:
         """
         Get the OpenMM Topology, Positions and System of the
@@ -145,7 +85,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           Protein component for the system.
         solvent_component : Optional[SolventComponent]
           Solvent component for the system.
-        smc_components : dict[str, OFFMolecule]
+        small_mols : dict[SmallMoleculeComponent, OFFMolecule]
           SmallMoleculeComponents defining ligands to be added to the system
 
         Returns
@@ -168,11 +108,11 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             self.logger.info("Parameterizing system")
 
         # Set partial charges for all smcs
-        self._assign_partial_charges(settings["charge_settings"], smc_components)
+        self._assign_partial_charges(settings["charge_settings"], small_mols)
 
         # Get solvent offmol if necessary
         if solvent_component is not None:
-            solvent_offmol = self._get_and_charge_solvent_offmol(
+            solvent_offmol = _get_and_charge_solvent_offmol(
                 solvent_component,
                 settings["solvation_settings"],
                 settings["charge_settings"],
@@ -182,10 +122,10 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         # Create your interchange object
         with without_oechem_backend():
-            interchange, comp_resids = interchange_packmol_creation(
+            interchange, comp_resids = interchange_system_creation(
                 ffsettings=settings["forcefield_settings"],
                 solvation_settings=settings["solvation_settings"],
-                smc_components=smc_components,
+                smc_components=small_mols,
                 protein_component=protein_component,
                 solvent_component=solvent_component,
                 solvent_offmol=solvent_offmol,
@@ -197,12 +137,19 @@ class BaseASFEUnit(BaseAbsoluteUnit):
             hydrogen_mass=settings["forcefield_settings"].hydrogen_mass
         )
 
-        # Pull out the CMMotionRemover
-        # TODO: add test that checks the number of forces
-        for idx in reversed(range(omm_system.getNumForces())):
-            force = omm_system.getForce(idx)
-            if isinstance(force, openmm.CMMotionRemover):
-                omm_system.removeForce(idx)
+        # Add a barostat if needed
+        if solvent_component is not None:
+            barostat = openmm.MonteCarloBarostat(
+                to_openmm(settings["thermo_settings"].pressure),
+                to_openmm(settings["thermo_settings"].temperature),
+                settings["integrator_settings"].barostat_frequency.m,
+            )
+        else:
+            barostat = None
+
+        adjust_system(
+            system=omm_system, remove_force_types=openmm.CMMotionRemover, add_forces=barostat
+        )
 
         positions = to_openmm_positions(interchange, include_virtual_sites=True)
 
@@ -217,6 +164,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         system: openmm.System,
         comp_resids: dict[Component, npt.NDArray],
         alchem_comps: dict[str, list[Component]],
+        alchemical_settings: AlchemicalSettings,
     ) -> tuple[ExperimentalAbsoluteAlchemicalFactory, openmm.System, list[int]]:
         """
         Get an alchemically modified system and its associated factory using
@@ -232,6 +180,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
           A dictionary of residues for each component in the System.
         alchem_comps : dict[str, list[Component]]
           A dictionary of alchemical components for each end state.
+        alchemical_settings : AlchemicalSettings
+          Settings controlling how the alchemical system is built.
 
         Returns
         -------
@@ -255,9 +205,26 @@ class BaseASFEUnit(BaseAbsoluteUnit):
 
         alchemical_region = AlchemicalRegion(
             alchemical_atoms=alchemical_indices,
+            softcore_alpha=alchemical_settings.softcore_alpha,
+            annihilate_electrostatics=True,
+            annihilate_sterics=alchemical_settings.annihilate_sterics,
+            softcore_a=alchemical_settings.softcore_a,
+            softcore_b=alchemical_settings.softcore_b,
+            softcore_c=alchemical_settings.softcore_c,
+            softcore_beta=0.0,
+            softcore_d=1.0,
+            softcore_e=1.0,
+            softcore_f=2.0,
         )
 
-        alchemical_factory = ExperimentalAbsoluteAlchemicalFactory()
+        alchemical_factory = ExperimentalAbsoluteAlchemicalFactory(
+            consistent_exceptions=False,
+            switch_width=1.0 * openmm.unit.angstroms,
+            alchemical_pme_treatment="exact",
+            alchemical_rf_treatment="switched",
+            disable_alchemical_dispersion_correction=alchemical_settings.disable_alchemical_dispersion_correction,
+            split_alchemical_forces=True,
+        )
         alchemical_system = alchemical_factory.create_alchemical_system(system, alchemical_region)
 
         return alchemical_factory, alchemical_system, alchemical_indices
@@ -268,6 +235,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         system: openmm.System,
         comp_resids: dict[Component, npt.NDArray],
         alchem_comps: dict[str, list[Component]],
+        alchemical_settings: AlchemicalSettings,
     ) -> tuple[AbsoluteAlchemicalFactory, openmm.System, list[int]]:
         """
         Get an alchemically modified system and its associated factory.
@@ -296,6 +264,8 @@ class BaseASFEUnit(BaseAbsoluteUnit):
         alchemical_indices : list[int]
           A list of atom indices for the alchemically modified
           species in the system.
+        alchemical_settings : AlchemicalSettings
+          Settings controlling how the alchemical system is built.
         """
         if self._inputs["protocol"].settings.alchemical_settings.experimental:
             return self._get_experimental_alchemical_system(
@@ -303,6 +273,7 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 system,
                 comp_resids,
                 alchem_comps,
+                alchemical_settings,
             )
         else:
             return super()._get_alchemical_system(
@@ -310,20 +281,5 @@ class BaseASFEUnit(BaseAbsoluteUnit):
                 system,
                 comp_resids,
                 alchem_comps,
+                alchemical_settings,
             )
-
-    def _execute(
-        self,
-        ctx: gufe.Context,
-        **kwargs,
-    ) -> dict[str, Any]:
-        log_system_probe(logging.INFO, paths=[ctx.scratch])
-
-        outputs = self.run(scratch_basepath=ctx.scratch, shared_basepath=ctx.shared)
-
-        return {
-            "repeat_id": self._inputs["repeat_id"],
-            "generation": self._inputs["generation"],
-            "simtype": self._simtype,
-            **outputs,
-        }

@@ -7,3 +7,4 @@ API Documentation
    :caption: API Contents:
 
    api/protocols/index
+   api/utils/index

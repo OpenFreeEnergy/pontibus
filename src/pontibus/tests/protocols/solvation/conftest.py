@@ -17,7 +17,7 @@ def afe_solv_water_transformation_json() -> str:
     """
     ASFE results object as created by quickrun.
 
-    generated with devtools/gent-serialized-results.py
+    generated with devtools/gen-serialized-results.py
     """
     d = resources.files("pontibus.tests.data.solvation_protocol")
     file = d / "ASFEProtocol_water_json_results.gz"
@@ -31,7 +31,7 @@ def afe_solv_octanol_transformation_json() -> str:
     """
     ASFE results object as created by quickrun.
 
-    generated with devtools/gent-serialized-results.py
+    generated with devtools/gen-serialized-results.py
     """
     d = resources.files("pontibus.tests.data.solvation_protocol")
     file = d / "ASFEProtocol_octanol_json_results.gz"
