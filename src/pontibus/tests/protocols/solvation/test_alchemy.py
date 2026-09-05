@@ -21,7 +21,7 @@ from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )
 from pontibus.utils.molecules import WATER
-from pontibus.utils.system_creation import interchange_packmol_creation
+from pontibus.utils.system_creation import interchange_system_creation
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +41,7 @@ class TestSoluteVSite:
     @pytest.fixture(scope="class")
     def interchange(self, vinyl_chloride, vsite_offxml, water_off):
         solute = openfe.SmallMoleculeComponent.from_openff(vinyl_chloride)
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[vsite_offxml],
             ),
