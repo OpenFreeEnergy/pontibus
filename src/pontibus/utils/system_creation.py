@@ -74,10 +74,7 @@ def _fill_vsite_compresids(
         # Nothing to do here, return
         return
     else:
-        msg = (
-            f"{num_missing} virtual site residues found, "
-            "adding them to comp_resids"
-        )
+        msg = f"{num_missing} virtual site residues found, adding them to comp_resids"
         logger.info(msg)
 
     # create a single array with all the "known" residue numbers

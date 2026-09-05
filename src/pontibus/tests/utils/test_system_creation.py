@@ -32,9 +32,9 @@ from pontibus.utils.settings import (
     PackmolSolvationSettings,
 )
 from pontibus.utils.system_creation import (
-    _fill_vsite_compresids,
     _assign_comp_resnames_and_keys,
     _check_and_deduplicate_charged_mols,
+    _fill_vsite_compresids,
     _get_force_field,
     _protein_split_combine_interchange,
     _proteincomp_to_topology,
@@ -1182,6 +1182,7 @@ class TestVacuumUnamedBenzene(BaseSystemTests):
     """
     TODO: add test checking we get a warning on renaming
     """
+
     smc_comps = "smc_components_benzene_unnamed"
     resname = "AAA"
     nonbond_index = 0
@@ -1605,13 +1606,9 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
 
         assert len(comp_resids) == 2
         assert list(comp_resids)[0] == ExtendedSolventComponent()
-        assert list(comp_resids)[1] == next(
-            iter(request.getfixturevalue(self.smc_comps))
-        )
+        assert list(comp_resids)[1] == next(iter(request.getfixturevalue(self.smc_comps)))
         # We have 2 residues (one extra for vsite) per water
-        assert_equal(
-            list(comp_resids.values())[0], [i for i in range(1, (num_waters * 2) + 1)]
-        )
+        assert_equal(list(comp_resids.values())[0], [i for i in range(1, (num_waters * 2) + 1)])
         assert_equal(list(comp_resids.values())[1], [0])
 
     def test_virtual_sites(self, omm_system, num_waters, num_particles, nonbonds):

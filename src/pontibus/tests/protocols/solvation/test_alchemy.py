@@ -1,26 +1,27 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
-import pytest
 import openfe
+import pytest
+from openff.interchange.interop.openmm import to_openmm_positions
+from openff.toolkit import Molecule
+from openmmtools.alchemy import AlchemicalRegion
 from openmmtools.tests.test_alchemy import (
-    compare_system_energies,
-    check_noninteracting_energy_components,
     check_interacting_energy_components,
+    check_noninteracting_energy_components,
+    compare_system_energies,
     overlap_check,
 )
-from openmmtools.alchemy import AlchemicalRegion
-from openff.toolkit import ForceField, Molecule
-from openff.interchange.interop.openmm import to_openmm_positions
+
 from pontibus.components.extended_solvent_component import ExtendedSolventComponent
-from pontibus.utils.molecules import WATER
 from pontibus.protocols.solvation.settings import (
     InterchangeFFSettings,
     PackmolSolvationSettings,
 )
-from pontibus.utils.system_creation import interchange_packmol_creation
 from pontibus.utils.experimental_absolute_factory import (
     ExperimentalAbsoluteAlchemicalFactory,
 )
+from pontibus.utils.molecules import WATER
+from pontibus.utils.system_creation import interchange_packmol_creation
 
 
 @pytest.fixture(scope="module")
@@ -72,20 +73,14 @@ class TestSoluteVSite:
     @pytest.fixture(scope="class")
     def alchemical_system(self, omm_system, alchemical_region):
         alchemical_factory = ExperimentalAbsoluteAlchemicalFactory()
-        return alchemical_factory.create_alchemical_system(
-            omm_system, alchemical_region
-        )
+        return alchemical_factory.create_alchemical_system(omm_system, alchemical_region)
 
     def test_particle_parameters(self, alchemical_system):
         # TODO: add tests for this here
         pass
 
-    def test_compare_energies(
-        self, omm_system, alchemical_system, alchemical_region, positions
-    ):
-        compare_system_energies(
-            omm_system, alchemical_system, alchemical_region, positions
-        )
+    def test_compare_energies(self, omm_system, alchemical_system, alchemical_region, positions):
+        compare_system_energies(omm_system, alchemical_system, alchemical_region, positions)
 
     def test_noninteracting_energies(
         self, omm_system, alchemical_system, alchemical_region, positions
