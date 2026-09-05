@@ -61,10 +61,6 @@ def _fill_vsite_compresids(
     * The ``comp_resids`` dictionary has already been filled
       with non-virtual site residues.
     """
-    # OpenMM Topology & System for later use
-    omm_top = interchange.to_openmm_topology(collate=False)
-    omm_system = interchange.to_openmm_system()
-
     # Validate the number of known & missing residue indexes
     known_resids = np.concatenate(list(comp_resids.values()), dtype=int)
     known_resids_set = set(known_resids.tolist())
@@ -76,6 +72,7 @@ def _fill_vsite_compresids(
 
     # Number of missing residues is the different between OpenMM Topology's
     # reporter count and the set of known residue indexes
+    omm_top = interchange.to_openmm_topology(collate=False)
     num_missing = omm_top.getNumResidues() - len(known_resids_set)
 
     # If zero early return
@@ -85,7 +82,7 @@ def _fill_vsite_compresids(
     # If less than zero, something went wrong
     if num_missing < 0:
         errmsg = (
-            "There are fewer OpenMM Topology residues than interchange "
+            "There are fewer OpenMM Topology residues than expected "
             "molecules. Something went wrong!"
         )
         raise ValueError(errmsg)
@@ -100,6 +97,9 @@ def _fill_vsite_compresids(
         for comp, resids in comp_resids.items()
         for resid in resids
     }
+    
+    # Get the openmm System
+    omm_system = interchange.to_openmm_system()
 
     # Also create a list of atoms for later use
     omm_atoms = list(omm_top.atoms())
@@ -133,6 +133,7 @@ def _fill_vsite_compresids(
                 f"Virtual site residue {residue.index} has parent particles "
                 "spanning more than one Component"
             )
+            raise ValueError(errmsg)
 
         vsites_comp_resids[residue_component.pop()].append(residue.index)
 

@@ -2215,16 +2215,22 @@ class TestVsitesCompresids:
         # 1000 * 4 sites + 13 atoms + 1 site
         assert openmm_system.getNumParticles() == (4000 + 14)
 
-    def test_num_missing_error(self, interchange_system, monkeypatch):
+    def test_num_missing_error(self, interchange_system):
 
         interchange, comp_resids = interchange_system
 
-        monkeypatch.setattr(Topology, "n_molecules", 10000000000000000)
+        n_residues = interchange.to_openmm_topology(collate=False).getNumResidues()
+
+        # Claim more residues than the topology has, so num_missing goes negative
+        broken_comp_resids = {key: val.copy() for key, val in comp_resids.items()}
+        first_key = next(iter(broken_comp_resids))
+        broken_comp_resids[first_key] = np.concatenate(
+            [broken_comp_resids[first_key], np.arange(n_residues, 2 * n_residues)]
+        ).astype(int)
 
         errmsg = "There are fewer OpenMM Topology residues"
-
         with pytest.raises(ValueError, match=errmsg):
-            _fill_vsite_compresids(interchange, comp_resids)
+            _fill_vsite_compresids(interchange, broken_comp_resids)
 
     def test_non_unique_resids(self, interchange_system):
 
