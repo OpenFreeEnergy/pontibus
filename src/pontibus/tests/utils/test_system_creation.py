@@ -1599,20 +1599,19 @@ class TestSolventOPCNamedBenzene(TestSolventOPC3UnamedBenzene):
 
     def test_comp_resids(self, interchange_system, request, num_residues, num_waters):
         """
-        Need to redefine to account for virtual sites in solvent.
+        Must redefine to account for virtual site residues in comp_resids
         """
         _, comp_resids = interchange_system
 
         assert len(comp_resids) == 2
-        assert list(comp_resids)[0] == ExtendedSolventComponent()
-        assert list(comp_resids)[1] == next(
-            iter(request.getfixturevalue(self.smc_comps))
-        )
-        # We have 2 residues (one extra for vsite) per water
+        assert list(comp_resids)[0] == next(iter(request.getfixturevalue(self.smc_comps)))
+        assert list(comp_resids)[1] == ExtendedSolventComponent()
+        assert_equal(list(comp_resids.values())[0], [0])
+        # We have 2 residues per water instead of 1
         assert_equal(
-            list(comp_resids.values())[0], [i for i in range(1, (num_waters * 2) + 1)]
+            list(comp_resids.values())[1],
+            [i for i in range(1, (num_waters * 2) + 1)]
         )
-        assert_equal(list(comp_resids.values())[1], [0])
 
     def test_virtual_sites(self, omm_system, num_waters, num_particles, nonbonds):
         for index in range(num_particles, num_particles - num_waters, -1):
@@ -2193,7 +2192,7 @@ class TestVsitesCompresids:
     @pytest.fixture(scope="class")
     def interchange_system(self, solute, water_off, vsite_offxml):
         smc_components = {solute: solute.to_openff()}
-        interchange, comp_resids = interchange_packmol_creation(
+        interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[vsite_offxml, "opc.offxml"],
             ),
@@ -2212,7 +2211,8 @@ class TestVsitesCompresids:
 
         interchange, comp_resids = interchange_system
         openmm_system = interchange.to_openmm_system()
-        assert system.getNumParticles() == (3000 + 13)
+        # 1000 * 4 sites + 13 atoms + 1 site
+        assert openmm_system.getNumParticles() == (4000 + 14)
 
     def test_num_missing_error(self, interchange_system, monkeypatch):
 
