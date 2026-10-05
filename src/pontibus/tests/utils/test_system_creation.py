@@ -35,8 +35,9 @@ from pontibus.utils.system_creation import (
     _assign_comp_resnames_and_keys,
     _check_and_deduplicate_charged_mols,
     _get_force_field,
-    _protein_split_combine_interchange,
+    _get_small_molecule_force_field,
     _proteincomp_to_topology,
+    _split_combine_interchange,
     interchange_system_creation,
 )
 from pontibus.utils.system_manipulation import copy_interchange_with_replacement
@@ -413,6 +414,24 @@ def test_get_force_field_custom():
     bonds = ff.get_parameter_handler("Bonds")
     bond_param = bonds[bond_parameter.smirks]
     assert bond_param.length == 2 * unit.angstrom
+
+
+def test_get_small_molecule_force_field():
+    ffsettings = InterchangeFFSettings(
+        small_molecule_forcefield="openff-2.2.1",
+        nonbonded_cutoff=1.0 * unit.nanometer,
+        switch_width=0.2 * unit.nanometer,
+    )
+
+    ff = _get_small_molecule_force_field(ffsettings)
+
+    assert ff["vdW"].cutoff == ff["Electrostatics"].cutoff == 1.0 * unit.nanometer
+    assert ff["vdW"].switch_width == 0.2 * unit.nanometer
+
+
+def test_get_small_molecule_force_field_none():
+    with pytest.raises(ValueError, match="No small_molecule_forcefield"):
+        _ = _get_small_molecule_force_field(InterchangeFFSettings())
 
 
 def test_multiple_solvent_conformers(
@@ -1028,7 +1047,7 @@ def test_nonwater_solvent_long(solvent_smiles, solute_smiles):
 
 def test_split_combine_noprotein_error(water_off, protein_ff_settings):
     with pytest.raises(ValueError, match="without a protein is a bad idea"):
-        _ = _protein_split_combine_interchange(
+        _ = _split_combine_interchange(
             input_topology=Topology.from_molecules(water_off),
             charge_from_molecules=None,
             protein_component=None,
@@ -1079,7 +1098,7 @@ def test_split_combine_parameters(
     waterff = ForceField("opc3.offxml")
     waterff_smirks = [parameter.smirks for parameter in waterff["vdW"].parameters]
 
-    interA = _protein_split_combine_interchange(
+    interA = _split_combine_interchange(
         stateA_top,
         charge_from_molecules=[l_6a_off],
         protein_component=thrombin_protein_component,
@@ -1157,6 +1176,220 @@ def test_split_combine_parameters(
             assert val.id not in proteinff_smirks
             assert val.id not in waterff_smirks
             assert val.id in ligandff_smirks
+
+
+def _get_bond_params(interchange, start, n_atoms):
+    """
+    Get the bond parameters for atoms in [start, start + n_atoms),
+    keyed by atom indices relative to ``start``.
+    """
+    bonds = interchange["Bonds"]
+    params = {}
+    for key, pkey in bonds.key_map.items():
+        if all(start <= idx < start + n_atoms for idx in key.atom_indices):
+            pot = bonds.potentials[pkey]
+            params[tuple(idx - start for idx in key.atom_indices)] = (
+                pot.parameters["k"].m_as("kilocalorie / mole / angstrom ** 2"),
+                pot.parameters["length"].m_as("angstrom"),
+            )
+    return params
+
+
+def test_split_combine_smc_no_keys_error(water_off):
+    water = copy.deepcopy(water_off)
+    water.properties["key"] = "foo"
+    with pytest.raises(ValueError, match="small_molecule_keys must be passed"):
+        _ = _split_combine_interchange(
+            input_topology=Topology.from_molecules(water),
+            charge_from_molecules=None,
+            protein_component=None,
+            ffsettings=InterchangeFFSettings(small_molecule_forcefield="openff-2.2.1"),
+        )
+
+
+def test_split_combine_small_molecule_parameters(
+    thrombin_protein_component, thrombin_protein_offtop, thrombin_ligands_charged
+):
+    # Prep ligand 6a
+    l_6a = thrombin_ligands_charged["6a"]
+    l_6a_off = l_6a.to_openff()
+    l_6a_off.properties["key"] = str(l_6a.key)
+
+    # Prep ligand 6b
+    l_6b = thrombin_ligands_charged["6b"]
+    l_6b_off = l_6b.to_openff()
+    l_6b_off.properties["key"] = str(l_6b.key)
+
+    # Prep a non-alchemical small molecule, i.e. a cofactor
+    cofactor = thrombin_ligands_charged["1a"]
+    cofactor_off = cofactor.to_openff()
+    cofactor_off.properties["key"] = str(cofactor.key)
+
+    # A water molecule
+    water = Molecule.from_smiles("O")
+    water.generate_conformers(n_conformers=1)
+    water.properties["key"] = "foo"
+
+    protein_mols = [m for m in thrombin_protein_offtop.molecules]
+    n_protein_atoms = thrombin_protein_offtop.n_atoms
+
+    # stateA topology, with water after the small molecules
+    stateA_top = Topology.from_molecules(protein_mols + [l_6a_off, cofactor_off, water])
+
+    ffsettings = InterchangeFFSettings(
+        forcefields=[
+            "openff-2.0.0.offxml",
+            "ff14sb_off_impropers_0.0.4.offxml",
+            "opc3.offxml",
+        ],
+        small_molecule_forcefield="openff-2.2.1",
+    )
+
+    def _ref_bond_params(ffname, mol):
+        inter = ForceField(ffname).create_interchange(
+            mol.to_topology(), charge_from_molecules=[mol]
+        )
+        return _get_bond_params(inter, 0, mol.n_atoms)
+
+    interA = _split_combine_interchange(
+        stateA_top,
+        charge_from_molecules=[l_6a_off, cofactor_off],
+        protein_component=thrombin_protein_component,
+        ffsettings=ffsettings,
+        small_molecule_keys=[str(l_6a.key), str(cofactor.key)],
+    )
+
+    # Order should be protein, water, ligand, cofactor
+    ligand_start = n_protein_atoms + water.n_atoms
+    mols = [m for m in interA.topology.molecules]
+    assert mols[-3].properties["key"] == "foo"
+    assert mols[-2].properties["key"] == str(l_6a.key)
+    assert mols[-1].properties["key"] == str(cofactor.key)
+
+    # The small molecules should have the small molecule force field parameters
+    ref_6a = _ref_bond_params("openff-2.2.1.offxml", l_6a_off)
+    assert ref_6a != _ref_bond_params("openff-2.0.0.offxml", l_6a_off)
+    assert _get_bond_params(interA, ligand_start, l_6a_off.n_atoms) == ref_6a
+    ref_cofactor = _ref_bond_params("openff-2.2.1.offxml", cofactor_off)
+    assert ref_cofactor != _ref_bond_params("openff-2.0.0.offxml", cofactor_off)
+    assert (
+        _get_bond_params(interA, ligand_start + l_6a_off.n_atoms, cofactor_off.n_atoms)
+        == ref_cofactor
+    )
+
+    # The protein and water parameters should be the same as without
+    # a small molecule force field, i.e. protein, ligand, cofactor, water
+    interA_ref = _split_combine_interchange(
+        stateA_top,
+        charge_from_molecules=[l_6a_off, cofactor_off],
+        protein_component=thrombin_protein_component,
+        ffsettings=InterchangeFFSettings(forcefields=ffsettings.forcefields),
+    )
+    assert _get_bond_params(interA, 0, n_protein_atoms) == _get_bond_params(
+        interA_ref, 0, n_protein_atoms
+    )
+    water_ref_start = n_protein_atoms + l_6a_off.n_atoms + cofactor_off.n_atoms
+    assert _get_bond_params(interA, n_protein_atoms, water.n_atoms) == _get_bond_params(
+        interA_ref, water_ref_start, water.n_atoms
+    )
+
+    # Now get a stateB interchange, ligand 6b should again be last
+    interB = copy_interchange_with_replacement(
+        interchange=interA,
+        del_mol=l_6a_off,
+        insert_mol=l_6b_off,
+        ffsettings=ffsettings,
+        charged_molecules=[l_6b_off, cofactor_off],
+        protein_component=thrombin_protein_component,
+        small_molecule_keys=[str(l_6b.key), str(cofactor.key)],
+    )
+
+    mols = [m for m in interB.topology.molecules]
+    assert mols[-3].properties["key"] == "foo"
+    assert mols[-2].properties["key"] == str(cofactor.key)
+    assert mols[-1].properties["key"] == str(l_6b.key)
+
+    ref_6b = _ref_bond_params("openff-2.2.1.offxml", l_6b_off)
+    assert ref_6b != _ref_bond_params("openff-2.0.0.offxml", l_6b_off)
+    assert (
+        _get_bond_params(interB, ligand_start + cofactor_off.n_atoms, l_6b_off.n_atoms)
+        == ref_6b
+    )
+    assert _get_bond_params(interB, ligand_start, cofactor_off.n_atoms) == ref_cofactor
+
+
+def test_copy_replacement_insert_mol_not_small_molecule(water_off, methanol):
+    water = copy.deepcopy(water_off)
+    water.properties["key"] = "foo"
+    mol = copy.deepcopy(methanol)
+    mol.properties["key"] = "bar"
+
+    interchange = ForceField("openff-2.0.0.offxml", "tip3p.offxml").create_interchange(
+        Topology.from_molecules([water])
+    )
+
+    with pytest.raises(ValueError, match="insert_mol must have a key in small_molecule_keys"):
+        _ = copy_interchange_with_replacement(
+            interchange=interchange,
+            del_mol=water,
+            insert_mol=mol,
+            ffsettings=InterchangeFFSettings(small_molecule_forcefield="openff-2.2.1"),
+            charged_molecules=None,
+            small_molecule_keys=["baz"],
+        )
+
+
+def test_small_molecule_forcefield_solvent(smc_components_benzene_named, water_off):
+    ffsettings = InterchangeFFSettings(
+        forcefields=["openff-2.0.0.offxml", "tip3p.offxml"],
+        small_molecule_forcefield="openff-2.2.1",
+    )
+
+    interchange, comp_resids = interchange_system_creation(
+        ffsettings=ffsettings,
+        solvation_settings=PackmolSolvationSettings(),
+        smc_components=smc_components_benzene_named,
+        protein_component=None,
+        solvent_component=ExtendedSolventComponent(),
+        solvent_offmol=water_off,
+    )
+
+    benzene_comp = next(iter(smc_components_benzene_named))
+    benzene = smc_components_benzene_named[benzene_comp]
+
+    # Benzene is moved to the end, after the solvent
+    mols = [m for m in interchange.topology.molecules]
+    assert mols[-1].properties["key"] == str(benzene_comp.key)
+    assert_equal(comp_resids[benzene_comp], [len(mols) - 1])
+    assert_equal(comp_resids[ExtendedSolventComponent()], [i for i in range(len(mols) - 1)])
+    benzene_start = interchange.topology.n_atoms - benzene.n_atoms
+
+    # Benzene got the small molecule force field parameters
+    ref_ff = ForceField("openff-2.2.1.offxml")
+    ref = _get_bond_params(
+        ref_ff.create_interchange(benzene.to_topology(), charge_from_molecules=[benzene]),
+        0,
+        benzene.n_atoms,
+    )
+    assert ref != _get_bond_params(
+        ForceField("openff-2.0.0.offxml").create_interchange(
+            benzene.to_topology(), charge_from_molecules=[benzene]
+        ),
+        0,
+        benzene.n_atoms,
+    )
+    assert _get_bond_params(interchange, benzene_start, benzene.n_atoms) == ref
+
+    # Water got the tip3p parameters
+    tip3p_ff = ForceField("openff-2.0.0.offxml", "tip3p.offxml")
+    water_ref = _get_bond_params(tip3p_ff.create_interchange(water_off.to_topology()), 0, 3)
+    assert _get_bond_params(interchange, 0, 3) == water_ref
+
+    # The combined system is still valid
+    omm_system = interchange.to_openmm_system()
+    assert omm_system.getNumParticles() == interchange.topology.n_atoms
+    nonbond = [f for f in omm_system.getForces() if isinstance(f, NonbondedForce)][0]
+    assert nonbond.getCutoffDistance() == to_openmm(ffsettings.nonbonded_cutoff)
 
 
 class BaseSystemTests:

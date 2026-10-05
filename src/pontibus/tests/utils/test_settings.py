@@ -23,6 +23,27 @@ class TestInterchangeFFSettings:
         assert settings.nonbonded_method == "pme"
         assert settings.nonbonded_cutoff == 0.9 * unit.nanometer
         assert settings.switch_width == 0.1 * unit.nanometer
+        assert settings.small_molecule_forcefield is None
+
+    @pytest.mark.parametrize(
+        "name",
+        ["openff-2.2.1", "openff-2.2.1.offxml"],
+    )
+    def test_small_molecule_forcefield_suffix(self, name):
+        settings = InterchangeFFSettings(small_molecule_forcefield=name)
+        assert settings.small_molecule_forcefield == "openff-2.2.1.offxml"
+
+    @pytest.mark.parametrize(
+        "name, errmsg",
+        [
+            ["gaff-2.11", "could not be loaded as a SMIRNOFF"],
+            ["espaloma-0.3.2", "could not be loaded as a SMIRNOFF"],
+            ["ff14sb_off_impropers_0.0.4.offxml", "is a protein force field"],
+        ],
+    )
+    def test_small_molecule_forcefield_unsupported(self, name, errmsg):
+        with pytest.raises(ValueError, match=errmsg):
+            InterchangeFFSettings(small_molecule_forcefield=name)
 
     @pytest.mark.parametrize(
         "attr, value",

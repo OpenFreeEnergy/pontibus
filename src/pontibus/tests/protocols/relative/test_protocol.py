@@ -8,6 +8,7 @@ import pytest
 from openfe.protocols.openmm_rfe.hybridtop_units import (
     HybridTopologyMultiStateSimulationUnit,
 )
+from openff.toolkit import ForceField
 from openff.units import unit
 from openff.units.openmm import ensure_quantity
 from openmm import (
@@ -402,6 +403,62 @@ def test_dry_run_ligand(
         assert len(htf._unique_new_atoms) == 4
         assert len(htf._core_old_to_new_map) == 11
         assert len(htf._env_old_to_new_map) == (n_atoms - 16)
+
+
+def test_dry_run_ligand_small_molecule_forcefield(
+    benzene_system,
+    toluene_system,
+    benzene_to_toluene_mapping,
+    benzene_modifications_charged,
+    solv_settings,
+    tmpdir,
+):
+    solv_settings.forcefield_settings.small_molecule_forcefield = "openff-2.2.1"
+
+    protocol = HybridTopProtocol(
+        settings=solv_settings,
+    )
+    dag = protocol.create(
+        stateA=benzene_system,
+        stateB=toluene_system,
+        mapping=benzene_to_toluene_mapping,
+    )
+
+    dag_setup_unit = _get_units(dag.protocol_units, HybridTopProtocolSetupUnit)[0]
+
+    with tmpdir.as_cwd():
+        setup_results = dag_setup_unit.run(dry=True)
+
+    htf = setup_results["hybrid_factory"]
+
+    def _bond_params(system, n_atoms):
+        # Get the bond parameters of the last n_atoms in the system
+        start = system.getNumParticles() - n_atoms
+        bond_force = [f for f in system.getForces() if isinstance(f, HarmonicBondForce)][0]
+        params = {}
+        for i in range(bond_force.getNumBonds()):
+            a, b, length, k = bond_force.getBondParameters(i)
+            if a >= start and b >= start:
+                params[(a - start, b - start)] = (
+                    length.value_in_unit(omm_unit.nanometer),
+                    k.value_in_unit(omm_unit.kilojoule_per_mole / omm_unit.nanometer**2),
+                )
+        return params
+
+    def _ref_bond_params(ffname, smc):
+        offmol = smc.to_openff()
+        inter = ForceField(ffname).create_interchange(
+            offmol.to_topology(), charge_from_molecules=[offmol]
+        )
+        return _bond_params(inter.to_openmm_system(), offmol.n_atoms)
+
+    # The ligands are parameterized with the small molecule force field
+    # and come last in both end state systems
+    for system, name in [(htf._old_system, "benzene"), (htf._new_system, "toluene")]:
+        smc = benzene_modifications_charged[name]
+        ref = _ref_bond_params("openff-2.2.1.offxml", smc)
+        assert ref != _ref_bond_params("openff-2.0.0.offxml", smc)
+        assert _bond_params(system, smc.to_openff().n_atoms) == pytest.approx(ref)
 
 
 def test_dry_run_vacuum_user_charges(benzene_modifications, vac_settings, tmpdir):

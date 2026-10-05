@@ -18,6 +18,7 @@ from openfe.protocols.openmm_utils.omm_settings import (
     BaseSolvationSettings,
 )
 from openff.interchange.components._packmol import _box_vectors_are_in_reduced_form
+from openff.toolkit import ForceField
 from openff.units import unit
 from pydantic import field_validator, model_validator
 
@@ -46,6 +47,24 @@ class InterchangeFFSettings(BaseForceFieldSettings):
     ]
     """List of force field ffxmls to apply"""
 
+    small_molecule_forcefield: str | None = None
+    """
+    Name of the SMIRNOFF force field to apply to all
+    :class:`SmallMoleculeComponent` molecules, e.g. ``"openff-2.2.1"`` or
+    ``"openff-2.2.1.offxml"``. If ``None`` (the default), small molecules
+    are parameterized together with all other molecules using
+    ``forcefields``.
+
+    Notes
+    -----
+    * Only SMIRNOFF (``.offxml``) force fields are supported.
+    * If a name without the ``.offxml`` suffix is given, the
+      suffix is appended.
+    * Small molecules are parameterized separately and then combined with
+      the rest of the system, so ``forcefields`` only needs to contain
+      parameters for the solvent, ions and protein.
+    """
+
     nonbonded_method: Literal["pme", "nocutoff"] = "pme"
     """
     Method for treating nonbonded interactions, currently only PME and
@@ -70,6 +89,30 @@ class InterchangeFFSettings(BaseForceFieldSettings):
         if v.lower() not in ["pme", "nocutoff"]:
             errmsg = "Only PME and NoCutoff are allowed nonbonded methods"
             raise ValueError(errmsg)
+        return v
+
+    @field_validator("small_molecule_forcefield")
+    def supported_small_molecule_forcefield(cls, v):
+        if v is None:
+            return v
+
+        if not v.endswith(".offxml"):
+            v = f"{v}.offxml"
+
+        if "ff14sb" in v.lower():
+            errmsg = f"small_molecule_forcefield: {v} is a protein force field"
+            raise ValueError(errmsg)
+
+        try:
+            ForceField(v)
+        except Exception as e:
+            errmsg = (
+                f"small_molecule_forcefield: {v} could not be loaded as a "
+                "SMIRNOFF force field. Only SMIRNOFF (.offxml) force fields "
+                "are supported."
+            )
+            raise ValueError(errmsg) from e
+
         return v
 
     @field_validator("hydrogen_mass", "nonbonded_cutoff", "switch_width")

@@ -1,6 +1,7 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
+from collections.abc import Iterable
 from itertools import groupby
 
 import numpy as np
@@ -16,8 +17,8 @@ from pontibus.utils.molecule_utils import (
 )
 from pontibus.utils.settings import InterchangeFFSettings
 from pontibus.utils.system_creation import (
-    _get_force_field,
-    _protein_split_combine_interchange,
+    _split_combine_interchange,
+    _uses_ff14sb,
 )
 
 
@@ -67,6 +68,7 @@ def copy_interchange_with_replacement(
     ffsettings: InterchangeFFSettings,
     charged_molecules: list[Molecule] | None,
     protein_component: ProteinComponent | None = None,
+    small_molecule_keys: Iterable[str] | None = None,
 ) -> Interchange:
     """
     Copy an Interchange deleting one Molecule and appending another.
@@ -85,6 +87,10 @@ def copy_interchange_with_replacement(
       A list of Molecules which partial charges to use in the new Interchange.
     protein_component : ProteinComponent | None
       The ProteinComponent, only necessary if using the ff14sb force field.
+    small_molecule_keys : Iterable[str] | None
+      The keys of the SmallMoleculeComponents in the new Interchange,
+      including that of ``insert_mol``. Only necessary if
+      ``ffsettings.small_molecule_forcefield`` is defined.
 
     Returns
     -------
@@ -119,6 +125,16 @@ def copy_interchange_with_replacement(
         errmsg = "No Molecule matching del_mol in input Interchange"
         raise ValueError(errmsg)
 
+    if ffsettings.small_molecule_forcefield is not None:
+        if small_molecule_keys is None or insert_mol.properties.get("key") not in set(
+            small_molecule_keys
+        ):
+            errmsg = (
+                "insert_mol must have a key in small_molecule_keys when "
+                "using a small_molecule_forcefield"
+            )
+            raise ValueError(errmsg)
+
     # Set molB residue number to molA
     _set_offmol_metadata(insert_mol, "residue_number", del_mol_resnum)
 
@@ -133,7 +149,7 @@ def copy_interchange_with_replacement(
     if charged_molecules is not None:
         charged_molecules = _check_and_deduplicate_charged_mols(charged_molecules)
 
-    if any(["ff14sb" in name for name in ffsettings.forcefields]):
+    if _uses_ff14sb(ffsettings):
         if protein_component is None:
             raise ValueError("A protein component is necessary with ff14sb")
         # Check that all protein molecules are contiguous and at the start of
@@ -144,17 +160,12 @@ def copy_interchange_with_replacement(
         if len(statuses) != 2 or (statuses[0] is False) or (statuses[-1] is True):
             raise ValueError("Protein is not at the start of topology")
 
-        new_interchange = _protein_split_combine_interchange(
-            input_topology=new_topology,
-            charge_from_molecules=charged_molecules,
-            protein_component=protein_component,
-            ffsettings=ffsettings,
-        )
-    else:
-        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
-        new_interchange = force_field.create_interchange(
-            topology=new_topology,
-            charge_from_molecules=charged_molecules,
-        )
+    new_interchange = _split_combine_interchange(
+        input_topology=new_topology,
+        charge_from_molecules=charged_molecules,
+        protein_component=protein_component,
+        ffsettings=ffsettings,
+        small_molecule_keys=small_molecule_keys,
+    )
 
     return new_interchange

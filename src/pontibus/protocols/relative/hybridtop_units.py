@@ -198,6 +198,7 @@ class HybridTopProtocolSetupUnit(HybridTopologySetupUnit):
                 ffsettings=forcefield_settings,
                 charged_molecules=stateB_charged_mols,
                 protein_component=protein_component,
+                small_molecule_keys=[str(smc.key) for smc in stateB_small_mols],
             )
 
         comp_residsB = _get_comp_resids(

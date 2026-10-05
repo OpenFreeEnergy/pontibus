@@ -2,6 +2,7 @@
 # For details, see https://github.com/OpenFreeEnergy/openfe
 import logging
 import tempfile
+from collections.abc import Iterable
 from itertools import product
 from string import ascii_uppercase
 
@@ -154,13 +155,63 @@ def _get_force_field(ffsettings: InterchangeFFSettings, exclude_ff14sb: bool) ->
     else:
         force_field = ForceField(*ffsettings.forcefields)
 
-    # We also set nonbonded cutoffs whilst we are here
+    _set_force_field_cutoffs(force_field, ffsettings)
+
+    return force_field
+
+
+def _uses_ff14sb(ffsettings: InterchangeFFSettings) -> bool:
+    """
+    Whether ff14sb is in ``ffsettings.forcefields``.
+    """
+    return any(["ff14sb" in name for name in ffsettings.forcefields])
+
+
+def _get_small_molecule_force_field(ffsettings: InterchangeFFSettings) -> ForceField:
+    """
+    Get the ForceField object for the small molecules, as defined by
+    ``ffsettings.small_molecule_forcefield``.
+
+    Parameters
+    ----------
+    ffsettings : InterchangeFFSettings
+      Settings defining how the force field is applied.
+
+    Returns
+    -------
+    force_field : ForceField
+      An OpenFF toolkit ForceField object.
+
+    Raises
+    ------
+    ValueError
+      If ``ffsettings.small_molecule_forcefield`` is ``None``.
+    """
+    if ffsettings.small_molecule_forcefield is None:
+        errmsg = "No small_molecule_forcefield is defined"
+        raise ValueError(errmsg)
+
+    force_field = ForceField(ffsettings.small_molecule_forcefield)
+    _set_force_field_cutoffs(force_field, ffsettings)
+
+    return force_field
+
+
+def _set_force_field_cutoffs(force_field: ForceField, ffsettings: InterchangeFFSettings) -> None:
+    """
+    Set the nonbonded cutoffs of a ForceField in place.
+
+    Parameters
+    ----------
+    force_field : ForceField
+      The ForceField to modify.
+    ffsettings : InterchangeFFSettings
+      Settings defining the nonbonded cutoff and switch width.
+    """
     # TODO: double check what this means for nocutoff simulations
     force_field["Electrostatics"].cutoff = ffsettings.nonbonded_cutoff
     force_field["vdW"].cutoff = ffsettings.nonbonded_cutoff
     force_field["vdW"].switch_width = ffsettings.switch_width
-
-    return force_field
 
 
 def _assign_comp_resnames_and_keys(
@@ -323,15 +374,29 @@ def _post_process_topology(
     return post_topology
 
 
-def _protein_split_combine_interchange(
+def _split_combine_interchange(
     input_topology: Topology,
     charge_from_molecules: list[OFFMolecule] | None,
     protein_component: ProteinComponent | None,
     ffsettings: InterchangeFFSettings,
+    small_molecule_keys: Iterable[str] | None = None,
 ) -> Interchange:
     """
-    Create an interchange as the combination of the protein
-    and non-protein components.
+    Create an interchange, splitting the topology into groups of molecules
+    that are parameterized with different force fields and combining the
+    resulting Interchanges.
+
+    The groups, in the order they appear in the returned Interchange, are:
+      1. Protein molecules, only if ff14sb is in ``ffsettings.forcefields``,
+         parameterized with all of ``ffsettings.forcefields``.
+      2. All other molecules, parameterized with
+         ``ffsettings.forcefields`` excluding ff14sb.
+      3. Small molecules, only if ``ffsettings.small_molecule_forcefield``
+         is defined, parameterized with ``small_molecule_forcefield``.
+
+    If only one group contains molecules (e.g. neither ff14sb nor
+    ``small_molecule_forcefield`` are used), a single Interchange is created
+    from the input topology, with molecule order unchanged.
 
     Parameters
     ----------
@@ -343,51 +408,97 @@ def _protein_split_combine_interchange(
       The ProteinComponent, if there is one.
     ffsettings : InterchangeFFSettings
       The force field settings.
+    small_molecule_keys : Iterable[str] | None
+      The keys of the SmallMoleculeComponents in the topology. Required
+      if ``ffsettings.small_molecule_forcefield`` is defined.
 
     Returns
     -------
     Interchange
-      The combined Interchange, with the protein going first.
+      The combined Interchange.
 
     Raises
     ------
     ValueError
-      If ``protein_component`` is ``None``.
+      If ff14sb is used and ``protein_component`` is ``None``.
+      If ``ffsettings.small_molecule_forcefield`` is defined and
+      ``small_molecule_keys`` is ``None``.
     """
-    if protein_component is None:
+    use_ff14sb = _uses_ff14sb(ffsettings)
+    use_smc_ff = ffsettings.small_molecule_forcefield is not None
+
+    if use_ff14sb and protein_component is None:
         raise ValueError("Using ff14SB without a protein is a bad idea")
 
-    protein_ff = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=False)
-    nonprotein_ff = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
+    if use_smc_ff and small_molecule_keys is None:
+        errmsg = "small_molecule_keys must be passed when using a small_molecule_forcefield"
+        raise ValueError(errmsg)
 
-    # Get a list of all the protein molecules
-    protein_key = str(protein_component.key)
+    protein_key = str(protein_component.key) if use_ff14sb else None  # type: ignore[union-attr]
+    smc_keys = set(small_molecule_keys) if use_smc_ff else set()  # type: ignore[arg-type]
+
     protein_mols = []
-    nonprotein_mols = []
+    smc_mols = []
+    other_mols = []
 
     for mol in input_topology.molecules:
-        if mol.properties["key"] == protein_key:
+        # Only look up keys if we need to split things
+        key = mol.properties["key"] if (use_ff14sb or use_smc_ff) else None
+        if use_ff14sb and key == protein_key:
             protein_mols.append(mol)
+        elif key in smc_keys:
+            smc_mols.append(mol)
         else:
-            nonprotein_mols.append(mol)
-
-    # Create the individual topologies and make sure we copy the box vectors
-    protein_top = Topology.from_molecules(protein_mols)
-    protein_top.box_vectors = input_topology.box_vectors
-    nonprotein_top = Topology.from_molecules(nonprotein_mols)
-    nonprotein_top.box_vectors = input_topology.box_vectors
+            other_mols.append(mol)
 
     # We assume proteins will never have input charge
-    protein_interchange = protein_ff.create_interchange(
-        topology=protein_top,
-    )
+    groups = []
+    if protein_mols:
+        groups.append(
+            (_get_force_field(ffsettings=ffsettings, exclude_ff14sb=False), protein_mols, None)
+        )
+    if other_mols:
+        groups.append(
+            (
+                _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True),
+                other_mols,
+                charge_from_molecules,
+            )
+        )
+    # Small molecules go last so that a ligand appended to the end of the
+    # topology (see ``copy_interchange_with_replacement``) stays last,
+    # as expected by the hybrid topology system mappings.
+    if smc_mols:
+        groups.append(
+            (_get_small_molecule_force_field(ffsettings), smc_mols, charge_from_molecules)
+        )
 
-    non_protein_interchange = nonprotein_ff.create_interchange(
-        topology=nonprotein_top, charge_from_molecules=charge_from_molecules
-    )
+    if len(groups) == 0:
+        raise ValueError("Cannot create an Interchange from an empty topology")
 
-    # Return the combination of the two
-    return protein_interchange.combine(non_protein_interchange)
+    # No splitting needed, use the input topology as-is
+    if len(groups) == 1:
+        force_field, _, charged_mols = groups[0]
+        return force_field.create_interchange(
+            topology=input_topology, charge_from_molecules=charged_mols
+        )
+
+    interchange = None
+    for force_field, mols, charged_mols in groups:
+        # Create the individual topology and make sure we copy the box vectors
+        group_top = Topology.from_molecules(mols)
+        group_top.box_vectors = input_topology.box_vectors
+
+        group_interchange = force_field.create_interchange(
+            topology=group_top, charge_from_molecules=charged_mols
+        )
+
+        if interchange is None:
+            interchange = group_interchange
+        else:
+            interchange = interchange.combine(group_interchange)
+
+    return interchange
 
 
 def _get_comp_resids(
@@ -556,21 +667,15 @@ def interchange_system_creation(
     # Examples: https://github.com/openforcefield/openff-interchange/issues/1058
     unique_charged_mols = _check_and_deduplicate_charged_mols(charged_mols)
 
-    # ff14sb can end up with overlapping parameters, so split things
-    # if necessary
-    if any(["ff14sb" in name for name in ffsettings.forcefields]):
-        interchange = _protein_split_combine_interchange(
-            input_topology=topology,
-            charge_from_molecules=unique_charged_mols,
-            protein_component=protein_component,
-            ffsettings=ffsettings,
-        )
-    else:
-        force_field = _get_force_field(ffsettings=ffsettings, exclude_ff14sb=True)
-        interchange = force_field.create_interchange(
-            topology=topology,
-            charge_from_molecules=unique_charged_mols,
-        )
+    # ff14sb can end up with overlapping parameters, and small molecules
+    # may use their own force field, so split things if necessary
+    interchange = _split_combine_interchange(
+        input_topology=topology,
+        charge_from_molecules=unique_charged_mols,
+        protein_component=protein_component,
+        ffsettings=ffsettings,
+        small_molecule_keys=[str(comp.key) for comp in smc_components],
+    )
 
     # get the comp_resids dict
     comp_resids = _get_comp_resids(
