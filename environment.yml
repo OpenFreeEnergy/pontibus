@@ -9,6 +9,7 @@ dependencies:
   # OpenFE stack deps
   - dill  # needed for kartograf
   - duecredit<0.10
+  - exorcist
   - lomap2>=3.0.0
   - numpy
   - networkx
