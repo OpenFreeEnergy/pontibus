@@ -114,7 +114,7 @@ class TestWaterProtocolResult:
             dim = 5
         else:
             dim = 14
-        
+
         assert ovp1["matrix"].shape == (dim, dim)
 
     @pytest.mark.parametrize("key", ["solvent", "vacuum"])
