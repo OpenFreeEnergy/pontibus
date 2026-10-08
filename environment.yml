@@ -7,8 +7,8 @@ dependencies:
   - openff-interchange >=0.5
   - openff-nagl-base >=0.3.3
   - openff-packmol
-  # packmol from ambertools 26 hangs in tests
-  - ambertools <26
+  # packmol from ambertools 25+ hangs in tests
+  - ambertools <25
   # OpenFE stack deps
   - dill  # needed for kartograf
   - duecredit<0.10

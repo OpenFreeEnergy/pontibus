@@ -6,6 +6,7 @@ from numpy.testing import assert_allclose
 from openff.interchange import Interchange
 from openff.packmol import solvate_topology
 from openff.toolkit import ForceField, Molecule, Topology
+from openff.units import unit as offunit
 from openmm import CMMotionRemover, MonteCarloBarostat, System
 from openmm import unit as omm_unit
 
@@ -138,7 +139,10 @@ def test_copy_full(forcefield):
     m2.assign_partial_charges(partial_charge_method="gasteiger")
 
     # Solvate m1
-    solvated_top = solvate_topology(Topology.from_molecules([m1]))
+    solvated_top = solvate_topology(
+        Topology.from_molecules([m1]),
+        target_density=0.8 * offunit.gram / offunit.milliliter,
+    )
 
     # Create interchange
     inter = Interchange.from_smirnoff(forcefield, solvated_top, charge_from_molecules=[m1])
