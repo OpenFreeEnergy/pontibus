@@ -319,6 +319,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
 
                 analysis = unit_classes[phase]["analysis"](
                     protocol=self,
+                    alchemical_components=alchem_comps,
                     setup_results=setup,
                     simulation_results=simulation,
                     generation=0,
