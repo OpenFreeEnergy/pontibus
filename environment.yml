@@ -3,13 +3,15 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - gufe >=1.7
+  - gufe >=1.13
+  - openfe >=1.13
   - openff-toolkit >0.16.0
   - openff-interchange >=0.5
   - openff-nagl-base >=0.3.3
   - openff-packmol
+  # packmol from ambertools 25+ hangs in tests
+  - ambertools <25
   # OpenFE stack deps
-  - openfe >= 1.9.0
   - duecredit<0.10
   - kartograf>=1.0.0
   - konnektor
@@ -18,7 +20,6 @@ dependencies:
   - networkx
   - rdkit
   - packaging
-  - pip
   - pydantic >=2.0
   - pyyaml
   - coverage
@@ -34,4 +35,5 @@ dependencies:
   # Testing deps
   - pytest
   - pytest-cov
+  - pytest-timeout
   - pytest-xdist

@@ -10,6 +10,8 @@ from openfe.protocols.openmm_afe.ahfe_units import (
 from openfe.protocols.openmm_afe.base_afe_units import (
     BaseAbsoluteMultiStateAnalysisUnit,
     BaseAbsoluteMultiStateSimulationUnit,
+    LigandTrajectoryAnalysisMixin,
+    LigandVacuumTrajectoryAnalysisMixin,
 )
 
 from pontibus.protocols.solvation.base import BaseASFESetupUnit
@@ -35,7 +37,9 @@ class ASFEVacuumSimUnit(
     simtype: str = "vacuum"
 
 
-class ASFEVacuumAnalysisUnit(VacuumSettingsMixin, BaseAbsoluteMultiStateAnalysisUnit):
+class ASFEVacuumAnalysisUnit(
+    LigandVacuumTrajectoryAnalysisMixin, VacuumSettingsMixin, BaseAbsoluteMultiStateAnalysisUnit
+):
     """
     Protocol Unit for analysing the vacuum phase of an absolute solvation
     free energy transformation.
@@ -64,7 +68,9 @@ class ASFESolventSimUnit(
     simtype: str = "solvent"
 
 
-class ASFESolventAnalysisUnit(SolventSettingsMixin, BaseAbsoluteMultiStateAnalysisUnit):
+class ASFESolventAnalysisUnit(
+    LigandTrajectoryAnalysisMixin, SolventSettingsMixin, BaseAbsoluteMultiStateAnalysisUnit
+):
     """
     Protocol Unit for analysing the solvent phase of an absolute solvation
     free energy transformation.

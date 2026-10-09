@@ -486,7 +486,8 @@ def openmm_solvation(
 
         forcefield.registerTemplateGenerator(
             SMIRNOFFTemplateGenerator(
-                molecules=_get_unique_mols([m for m in solute_topology.molecules])
+                forcefield="openff-2.3.0",
+                molecules=_get_unique_mols([m for m in solute_topology.molecules]),
             ).generator
         )
 
