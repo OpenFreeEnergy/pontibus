@@ -22,3 +22,6 @@ The rules for this file:
 - Jeffrey Wagner <@j-wags>
 - Michael M. Henry <@mikemhenry>
 - Alyssa Travitz <@atravitz>
+
+**2026**
+- Jennifer A. Clark <@jaclark5>

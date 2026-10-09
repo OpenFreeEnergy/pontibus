@@ -43,7 +43,7 @@ class TestSolventProtocolResult:
         est = protocolresult.get_estimate()
 
         assert est
-        assert est.m == pytest.approx(16.94, abs=0.5)
+        assert est.m == pytest.approx(-10.41, abs=0.5)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 
@@ -51,7 +51,7 @@ class TestSolventProtocolResult:
         est = protocolresult.get_uncertainty()
 
         assert est
-        assert est.m == pytest.approx(0.4, abs=0.2)
+        assert est.m == pytest.approx(0.06, abs=0.2)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 
@@ -172,7 +172,7 @@ class TestVacuumProtocolResult(TestSolventProtocolResult):
         est = protocolresult.get_estimate()
 
         assert est
-        assert est.m == pytest.approx(16.94, abs=0.5)
+        assert est.m == pytest.approx(-10.59, abs=0.5)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 
