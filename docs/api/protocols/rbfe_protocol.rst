@@ -20,7 +20,7 @@ Protocol API Specification
    HybridTopProtocol
    HybridTopProtocolResult
    HybridTopProtocolSettings
-   HybridTopProtocolUnit
+   HybridTopProtocolSetupUnit
 
 
 Protocol Settings

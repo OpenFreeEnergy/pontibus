@@ -217,7 +217,7 @@ def _check_and_deduplicate_charged_mols(
     ------
     ValueError
       If any molecules in the list are isomorphic with different charges.
-      If any molecules in the last have no charges.
+      If any molecules in the list have no charges.
     """
     if any(m.partial_charges is None for m in molecules):
         errmsg = (

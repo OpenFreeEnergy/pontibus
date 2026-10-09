@@ -27,7 +27,7 @@ System solvation
 
 .. module:: pontibus.utils.system_solvation
 
-Methods used to solvate systems with either packmol or openmm through OpenFF Intercahnge.
+Methods used to solvate systems with either packmol or openmm through OpenFF Interchange.
 
 .. autosummary::
    :nosignatures:

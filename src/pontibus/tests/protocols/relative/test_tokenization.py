@@ -9,7 +9,7 @@ from gufe.tests.test_tokenization import GufeTokenizableTestsMixin
 from pontibus.protocols.relative import (
     HybridTopProtocol,
     HybridTopProtocolResult,
-    HybridTopProtocolUnit,
+    HybridTopProtocolSetupUnit,
 )
 
 
@@ -71,17 +71,14 @@ class TestProtocol(GufeTokenizableTestsMixin):
         assert self.repr in repr(instance)
 
 
-class TestSolventUnit(GufeTokenizableTestsMixin):
-    cls = HybridTopProtocolUnit
-    repr = "HybridTopProtocolUnit("
+class TestSolventSetupUnit(GufeTokenizableTestsMixin):
+    cls = HybridTopProtocolSetupUnit
+    repr = "HybridTopProtocolSetupUnit("
     key = None
 
     @pytest.fixture()
     def instance(self, solvent_protocol_unit):
         return solvent_protocol_unit
-
-    def test_key_stable(self):
-        pytest.skip()
 
     def test_repr(self, instance):
         """
@@ -91,17 +88,14 @@ class TestSolventUnit(GufeTokenizableTestsMixin):
         assert self.repr in repr(instance)
 
 
-class TestVacuumUnit(GufeTokenizableTestsMixin):
-    cls = HybridTopProtocolUnit
-    repr = "HybridTopProtocolUnit("
+class TestVacuumSetupUnit(GufeTokenizableTestsMixin):
+    cls = HybridTopProtocolSetupUnit
+    repr = "HybridTopProtocolSetupUnit("
     key = None
 
     @pytest.fixture()
     def instance(self, vacuum_protocol_unit):
         return vacuum_protocol_unit
-
-    def test_key_stable(self):
-        pytest.skip()
 
     def test_repr(self, instance):
         """

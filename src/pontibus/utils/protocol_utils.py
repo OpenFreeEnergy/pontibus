@@ -29,7 +29,7 @@ def _get_and_charge_solvent_offmol(
       smiles for the solvent molecule
     solvation_settings : PackmolSolvationSettings
       Settings defining how the system will be solvated
-    partial_charge_settings : OpenFFPartialChargeSettigns
+    partial_charge_settings : OpenFFPartialChargeSettings
       Settings defining how partial charges are applied
 
     Returns

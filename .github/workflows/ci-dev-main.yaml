@@ -1,16 +1,11 @@
-name: "CI"
+name: "CI - main branch of deps"
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "docs/*"
   push:
     branches:
       - main
   schedule:
-    # At 07:00 UTC on Monday and Thursday
-    - cron: "0 7 * * *"
+    # At 07:00 UTC on Monday (weekly)
+    - cron: "0 7 * * 1"
   workflow_dispatch:
 
 
@@ -32,11 +27,6 @@ jobs:
         os: ["ubuntu-latest"]
         python-version:
           - "3.12"
-          - "3.13"
-          - "3.14"
-        include:
-          - os: "macos-latest"
-            python-version: "3.14"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,8 +35,8 @@ jobs:
       - name: "Setup Micromamba"
         uses: mamba-org/setup-micromamba@v3
         with:
-          environment-file: environment.yml
-          environment-name: pontibus
+          environment-file: devtools/environment_dev.yml
+          environment-name: pontibus-dev
           create-args: >-
             python=${{ matrix.python-version }}
           init-shell: bash
@@ -67,18 +57,9 @@ jobs:
 
       - name: "Run tests"
         env:
-          # For now, disable these as they are too slow to run on gh ci
-          PONTIBUS_SLOW_TESTS: ${{ fromJSON('{"false":"false","true":"true"}')[github.event_name != 'pull_request'] }}
+          PONTIBUS_SLOW_TESTS: TRUE
+          PONTIBUS_CPUVSLOW_TESTS: FALSE
+          PONTIBUS_GPU_TESTS: FALSE
           DUECREDIT_ENABLE: 'yes'
         run: |
-          pytest -n logical -v --cov=pontibus --cov-report=xml --durations=10 --timeout=1800
-
-      - name: codecov-pr
-        if: ${{ github.repository == 'OpenFreeEnergy/pontibus'
-                && github.event_name != 'schedule' }}
-        uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: coverage.xml
-          fail_ci_if_error: False
-          verbose: True
+          pytest -n logical -v --durations=10

@@ -100,6 +100,7 @@ def generate_asfe_json_water(smc):
 def generate_asfe_json_octanol(smc):
     settings = generate_ahfe_settings()
     settings.solvation_settings.assign_solvent_charges = True
+    settings.solvation_settings.target_density = 0.715 * unit.grams / unit.mL
     protocol = ASFEProtocol(settings=settings)
     solvent = Molecule.from_smiles("CCCCCCCCO")
     solvent.assign_partial_charges(partial_charge_method="am1bcc")

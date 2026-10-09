@@ -33,16 +33,16 @@ class ExtendedSolventComponent(SolventComponent):
           positive and negative monoatomic ions, defaults "Na+", "Cl-"
         neutralize : bool, optional
           if the net charge on the chemical state is neutralized by the ions in
-          this solvent component.  Default `True`
+          this solvent component.  Default `False`
         ion_concentration : openff.units.Quantity, optional
-          ionic concentration required, default 0.15 * unit.molar
+          ionic concentration required, default 0.0 * unit.molar
           this must be supplied with units, e.g. "1.5 * unit.molar"
 
         Examples
         --------
         To create a sodium chloride solution at 0.2 molar concentration::
 
-          >>> s = SolventComponent(position_ion='Na', negative_ion='Cl',
+          >>> s = SolventComponent(positive_ion='Na', negative_ion='Cl',
           ...                      ion_concentration=0.2 * unit.molar)
 
         To create a methane solvent::

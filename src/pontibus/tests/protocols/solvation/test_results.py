@@ -13,6 +13,12 @@ from pontibus.protocols.solvation import ASFEProtocolResult
 
 
 class TestWaterProtocolResult:
+    """
+    Protocol results are generated via https://github.com/OpenFreeEnergy/pontibus/blob/main/devtools/gen_serialized_results.py
+    Please note that the simulations run are very short, too short to converge over time.
+    You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
+    """
+
     @pytest.fixture()
     def protocolresult(self, afe_solv_water_transformation_json):
         d = json.loads(
@@ -104,7 +110,12 @@ class TestWaterProtocolResult:
 
         ovp1 = ovp[key][0]
         assert isinstance(ovp1["matrix"], np.ndarray)
-        assert ovp1["matrix"].shape == (14, 14)
+        if key == "vacuum":
+            dim = 5
+        else:
+            dim = 14
+
+        assert ovp1["matrix"].shape == (dim, dim)
 
     @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_get_replica_transition_statistics(self, key, protocolresult):
@@ -116,8 +127,13 @@ class TestWaterProtocolResult:
         rpx1 = rpx[key][0]
         assert "eigenvalues" in rpx1
         assert "matrix" in rpx1
-        assert rpx1["eigenvalues"].shape == (14,)
-        assert rpx1["matrix"].shape == (14, 14)
+        if key == "vacuum":
+            dim = 5
+        else:
+            dim = 14
+
+        assert rpx1["eigenvalues"].shape == (dim,)
+        assert rpx1["matrix"].shape == (dim, dim)
 
     @pytest.mark.parametrize("key", ["solvent", "vacuum"])
     def test_equilibration_iterations(self, key, protocolresult):
@@ -145,6 +161,12 @@ class TestWaterProtocolResult:
 
 
 class TestOctanolProtocolResult(TestWaterProtocolResult):
+    """
+    Protocol results are generated via https://github.com/OpenFreeEnergy/pontibus/blob/main/devtools/gen_serialized_results.py
+    Please note that the simulations run are very short, too short to converge over time.
+    You should therefore expect that the numbers we check against will change when and if the ProtocolResults are regenerated.
+    """
+
     @pytest.fixture()
     def protocolresult(self, afe_solv_octanol_transformation_json):
         d = json.loads(
@@ -170,7 +192,7 @@ class TestOctanolProtocolResult(TestWaterProtocolResult):
         est = protocolresult.get_estimate()
 
         assert est
-        assert est.m == pytest.approx(-4.83, abs=0.5)
+        assert est.m == pytest.approx(-4.92, abs=0.5)
         assert isinstance(est, offunit.Quantity)
         assert est.is_compatible_with(offunit.kilojoule_per_mole)
 

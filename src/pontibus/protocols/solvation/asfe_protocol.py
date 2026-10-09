@@ -1,6 +1,7 @@
 # This code is part of OpenFE and is licensed under the MIT license.
 # For details, see https://github.com/OpenFreeEnergy/openfe
 
+import logging
 import uuid
 import warnings
 
@@ -8,10 +9,7 @@ import gufe
 import numpy as np
 from gufe import ChemicalSystem, SolventComponent
 from gufe.settings import ThermoSettings
-from openfe.protocols.openmm_afe import (
-    AbsoluteSolvationProtocol,
-    AbsoluteSolvationProtocolResult,
-)
+from openfe.protocols.openmm_afe import AbsoluteSolvationProtocol
 from openfe.protocols.openmm_afe.equil_afe_settings import LambdaSettings
 from openfe.protocols.openmm_utils import settings_validation, system_validation
 from openfe.protocols.openmm_utils.omm_settings import (
@@ -25,7 +23,15 @@ from openfe.protocols.openmm_utils.omm_settings import (
 )
 from openff.units import unit
 
-from pontibus.protocols.solvation.base import BaseASFEUnit
+from pontibus.protocols.solvation.asfe_protocol_results import ASFEProtocolResult
+from pontibus.protocols.solvation.asfe_protocol_units import (
+    ASFESolventAnalysisUnit,
+    ASFESolventSetupUnit,
+    ASFESolventSimUnit,
+    ASFEVacuumAnalysisUnit,
+    ASFEVacuumSetupUnit,
+    ASFEVacuumSimUnit,
+)
 from pontibus.protocols.solvation.settings import (
     ASFESettings,
     ExperimentalAlchemicalSettings,
@@ -33,16 +39,7 @@ from pontibus.protocols.solvation.settings import (
     PackmolSolvationSettings,
 )
 
-
-class ASFEProtocolResult(AbsoluteSolvationProtocolResult):
-    """
-    Results class for the ASFEProtocol.
-
-    Notes
-    -----
-    * Derives from OpenFE's AbsoluteSolvationProtocolResult with the intent
-      of extending further if necessary in the future.
-    """
+logger = logging.getLogger(__name__)
 
 
 class ASFEProtocol(AbsoluteSolvationProtocol):
@@ -76,7 +73,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 pressure=1 * unit.bar,
             ),
             alchemical_settings=ExperimentalAlchemicalSettings(),
-            lambda_settings=LambdaSettings(
+            solvent_lambda_settings=LambdaSettings(
                 lambda_elec=[
                     0.0, 0.25, 0.5, 0.75, 1.0,
                     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
@@ -89,6 +86,11 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                     0.0, 0.0, 0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
+            ),
+            vacuum_lambda_settings=LambdaSettings(
+                lambda_elec=[0.0, 0.25, 0.5, 0.75, 1.0],
+                lambda_vdw=[0.0, 0.0, 0.0, 0.0, 1.0],
+                lambda_restraints=[0.0, 0.0, 0.0, 0.0, 0.0],
             ),
             partial_charge_settings=OpenFFPartialChargeSettings(),
             solvation_settings=PackmolSolvationSettings(),
@@ -127,7 +129,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
                 log_output="equil_simulation.log",
             ),
             vacuum_simulation_settings=MultiStateSimulationSettings(
-                n_replicas=14,
+                n_replicas=5,
                 equilibration_length=0.5 * unit.nanosecond,
                 production_length=2.0 * unit.nanosecond,
             ),
@@ -141,7 +143,7 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
     def _validate_solvent(state: ChemicalSystem, nonbonded_method: str):
         """
         Checks that the ChemicalSystem component has the right solvent
-        composition for an input nonbonded_methtod.
+        composition for an input nonbonded_method.
 
         Parameters
         ----------
@@ -195,14 +197,33 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
         self._validate_endstates(stateA, stateB)
 
         # Validate the lambda schedule
-        for solv_sets in (
+        self._validate_lambda_schedule(
+            self.settings.solvent_lambda_settings,
             self.settings.solvent_simulation_settings,
+        )
+
+        self._validate_lambda_schedule(
+            self.settings.vacuum_lambda_settings,
             self.settings.vacuum_simulation_settings,
+        )
+
+        # When annihilating sterics, the intramolecular LJ interactions
+        # are also turned off, so the vacuum leg needs intermediate vdw windows
+        vacuum_lambda_vdw = self.settings.vacuum_lambda_settings.lambda_vdw
+        if self.settings.alchemical_settings.annihilate_sterics and not any(
+            0 < lam < 1 for lam in vacuum_lambda_vdw
         ):
-            self._validate_lambda_schedule(
-                self.settings.lambda_settings,
-                solv_sets,
+            wmsg = (
+                "Sterics are being annihilated (annihilate_sterics=True) but "
+                "the vacuum lambda schedule has no intermediate vdw windows. "
+                "Annihilating sterics also turns off intramolecular "
+                "Lennard-Jones interactions, so the vacuum leg will likely "
+                "have poor overlap. Consider adding intermediate vdw windows "
+                "to ``vacuum_lambda_settings``. "
+                f"Given vacuum lambda_vdw: {vacuum_lambda_vdw}"
             )
+            logger.warning(wmsg)
+            warnings.warn(wmsg)
 
         # Check nonbond & solvent compatibility
         solv_nonbonded_method = self.settings.solvent_forcefield_settings.nonbonded_method
@@ -257,195 +278,55 @@ class ASFEProtocol(AbsoluteSolvationProtocol):
 
         alchname = alchem_comps["stateA"][0].name
 
-        # Create list units for vacuum and solvent transforms
-        solvent_units = [
-            ASFESolventUnit(
-                protocol=self,
-                stateA=stateA,
-                stateB=stateB,
-                alchemical_components=alchem_comps,
-                generation=0,
-                repeat_id=int(uuid.uuid4()),
-                name=(f"Absolute Solvation, {alchname} solvent leg: repeat {i} generation 0"),
-            )
-            for i in range(self.settings.protocol_repeats)
-        ]
+        unit_classes = {
+            "solvent": {
+                "setup": ASFESolventSetupUnit,
+                "simulation": ASFESolventSimUnit,
+                "analysis": ASFESolventAnalysisUnit,
+            },
+            "vacuum": {
+                "setup": ASFEVacuumSetupUnit,
+                "simulation": ASFEVacuumSimUnit,
+                "analysis": ASFEVacuumAnalysisUnit,
+            },
+        }
 
-        vacuum_units = [
-            ASFEVacuumUnit(
-                protocol=self,
-                stateA=stateA,
-                stateB=stateB,
-                alchemical_components=alchem_comps,
-                generation=0,
-                repeat_id=int(uuid.uuid4()),
-                name=(f"Absolute Solvation, {alchname} vacuum leg: repeat {i} generation 0"),
-            )
-            for i in range(self.settings.protocol_repeats)
-        ]
+        protocol_units: dict[str, list[gufe.ProtocolUnit]] = {"solvent": [], "vacuum": []}
 
-        return solvent_units + vacuum_units
+        for phase in ["solvent", "vacuum"]:
+            for i in range(self.settings.protocol_repeats):
+                repeat_id = int(uuid.uuid4())
 
+                setup = unit_classes[phase]["setup"](
+                    protocol=self,
+                    stateA=stateA,
+                    stateB=stateB,
+                    alchemical_components=alchem_comps,
+                    generation=0,
+                    repeat_id=repeat_id,
+                    name=f"ASFE Setup: {alchname} {phase} leg: repeat {i} generation 0",
+                )
 
-class ASFEVacuumUnit(BaseASFEUnit):
-    """
-    Protocol Unit for the vacuum phase of an absolute solvation free energy
-    """
+                simulation = unit_classes[phase]["simulation"](
+                    protocol=self,
+                    stateA=stateA,
+                    alchemical_components=alchem_comps,
+                    setup_results=setup,
+                    generation=0,
+                    repeat_id=repeat_id,
+                    name=f"ASFE Simulation: {alchname} {phase} leg: repeat {i} generation 0",
+                )
 
-    simtype: str = "vacuum"
+                analysis = unit_classes[phase]["analysis"](
+                    protocol=self,
+                    alchemical_components=alchem_comps,
+                    setup_results=setup,
+                    simulation_results=simulation,
+                    generation=0,
+                    repeat_id=repeat_id,
+                    name=f"ASFE Analysis: {alchname} {phase} leg: repeat {i} generation 0",
+                )
 
-    def _get_components(self):
-        """
-        Get the relevant components for a vacuum transformation.
+                protocol_units[phase] += [setup, simulation, analysis]
 
-        Returns
-        -------
-        alchem_comps : dict[str, list[Component]]
-          A list of alchemical components
-        solv_comp : None
-          For the gas phase transformation, None will always be returned
-          for the solvent component of the chemical system.
-        prot_comp : Optional[ProteinComponent]
-          The protein component of the system, if it exists.
-        small_mols : dict[Component, OpenFF Molecule]
-          The openff Molecules to add to the system. This
-          is equivalent to the alchemical components in stateA (since
-          we only allow for disappearing ligands).
-        """
-        stateA = self._inputs["stateA"]
-        alchem_comps = self._inputs["alchemical_components"]
-
-        off_comps = {m: m.to_openff() for m in alchem_comps["stateA"]}
-
-        _, prot_comp, _ = system_validation.get_components(stateA)
-
-        # Notes:
-        # 1. Our input state will contain a solvent, we ``None`` that out
-        # since this is the gas phase unit.
-        # 2. Our small molecules will always just be the alchemical components
-        # (of stateA since we enforce only one disappearing ligand)
-        return alchem_comps, None, prot_comp, off_comps
-
-    def _handle_settings(self) -> dict[str, gufe.settings.SettingsBaseModel]:
-        """
-        Extract the relevant settings for a vacuum transformation.
-
-        Returns
-        -------
-        settings : dict[str, SettingsBaseModel]
-          A dictionary with the following entries:
-            * forcefield_settings : InterchangeFFSettings
-            * thermo_settings : ThermoSettings
-            * charge_settings : OpenFFPartialChargeSettings
-            * solvation_settings : PackmolSolvationSettings
-            * alchemical_settings : ExperimentalAlchemicalSettings
-            * lambda_settings : LambdaSettings
-            * engine_settings : OpenMMEngineSettings
-            * integrator_settings : IntegratorSettings
-            * equil_simulation_settings : MDSimulationSettings
-            * equil_output_settings : MDOutputSettings
-            * simulation_settings : SimulationSettings
-            * output_settings: MultiStateOutputSettings
-        """
-        prot_settings = self._inputs["protocol"].settings
-
-        settings = {}
-        settings["forcefield_settings"] = prot_settings.vacuum_forcefield_settings
-        settings["thermo_settings"] = prot_settings.thermo_settings
-        settings["charge_settings"] = prot_settings.partial_charge_settings
-        settings["solvation_settings"] = prot_settings.solvation_settings
-        settings["alchemical_settings"] = prot_settings.alchemical_settings
-        settings["lambda_settings"] = prot_settings.lambda_settings
-        settings["engine_settings"] = prot_settings.vacuum_engine_settings
-        settings["integrator_settings"] = prot_settings.integrator_settings
-        settings["equil_simulation_settings"] = prot_settings.vacuum_equil_simulation_settings
-        settings["equil_output_settings"] = prot_settings.vacuum_equil_output_settings
-        settings["simulation_settings"] = prot_settings.vacuum_simulation_settings
-        settings["output_settings"] = prot_settings.vacuum_output_settings
-
-        settings_validation.validate_timestep(
-            settings["forcefield_settings"].hydrogen_mass,
-            settings["integrator_settings"].timestep,
-        )
-
-        return settings
-
-
-class ASFESolventUnit(BaseASFEUnit):
-    """
-    Protocol Unit for the solvent phase of an absolute solvation free energy
-    """
-
-    simtype: str = "solvent"
-
-    def _get_components(self):
-        """
-        Get the relevant components for a solvent transformation.
-
-        Returns
-        -------
-        alchem_comps : dict[str, Component]
-          A list of alchemical components
-        solv_comp : SolventComponent
-          The SolventComponent of the system
-        prot_comp : Optional[ProteinComponent]
-          The protein component of the system, if it exists.
-        small_mols : dict[SmallMoleculeComponent: OFFMolecule]
-          SmallMoleculeComponents to add to the system.
-        """
-        stateA = self._inputs["stateA"]
-        alchem_comps = self._inputs["alchemical_components"]
-
-        solv_comp, prot_comp, small_mols = system_validation.get_components(stateA)
-        off_comps = {m: m.to_openff() for m in small_mols}
-
-        # We don't need to check that solv_comp is not None, otherwise
-        # an error will have been raised when calling `validate_solvent`
-        # in the Protocol's `_create`.
-        # Similarly we don't need to check prot_comp since that's also
-        # disallowed on create
-        return alchem_comps, solv_comp, prot_comp, off_comps
-
-    def _handle_settings(self) -> dict[str, gufe.settings.SettingsBaseModel]:
-        """
-        Extract the relevant settings for a vacuum transformation.
-
-        Returns
-        -------
-        settings : dict[str, SettingsBaseModel]
-          A dictionary with the following entries:
-            * forcefield_settings : InterchangeFFSettings
-            * thermo_settings : ThermoSettings
-            * charge_settings : OpenFFPartialChargeSettings
-            * solvation_settings : PackmolSolvationSettings
-            * alchemical_settings : ExperimentalAlchemicalSettings
-            * lambda_settings : LambdaSettings
-            * engine_settings : OpenMMEngineSettings
-            * integrator_settings : IntegratorSettings
-            * equil_simulation_settings : MDSimulationSettings
-            * equil_output_settings : MDOutputSettings
-            * simulation_settings : MultiStateSimulationSettings
-            * output_settings: MultiStateOutputSettings
-        """
-        prot_settings = self._inputs["protocol"].settings
-
-        settings = {}
-        settings["forcefield_settings"] = prot_settings.solvent_forcefield_settings
-        settings["thermo_settings"] = prot_settings.thermo_settings
-        settings["charge_settings"] = prot_settings.partial_charge_settings
-        settings["solvation_settings"] = prot_settings.solvation_settings
-        settings["alchemical_settings"] = prot_settings.alchemical_settings
-        settings["lambda_settings"] = prot_settings.lambda_settings
-        settings["engine_settings"] = prot_settings.solvent_engine_settings
-        settings["integrator_settings"] = prot_settings.integrator_settings
-        settings["equil_simulation_settings"] = prot_settings.solvent_equil_simulation_settings
-        settings["equil_output_settings"] = prot_settings.solvent_equil_output_settings
-        settings["simulation_settings"] = prot_settings.solvent_simulation_settings
-        settings["output_settings"] = prot_settings.solvent_output_settings
-
-        settings_validation.validate_timestep(
-            settings["forcefield_settings"].hydrogen_mass,
-            settings["integrator_settings"].timestep,
-        )
-
-        return settings
+        return protocol_units["solvent"] + protocol_units["vacuum"]

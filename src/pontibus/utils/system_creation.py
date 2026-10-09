@@ -175,7 +175,7 @@ def _assign_comp_resnames_and_keys(
 
     Parameters
     ----------
-    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]
       Solute SmallMoleculeComponents.
     solvent_component : Optional[SolventComponent]
       Solvent component of the system, if any.
@@ -253,7 +253,7 @@ def _post_process_topology(
     ----------
     pre_topology : openff.toolkit.Topology
       The Topology to post-process
-    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]
       Solute SmallMoleculeComponents.
     solvent_component : Optional[SolventComponent]
       Solvent component of the system, if any.
@@ -409,7 +409,7 @@ def _get_comp_resids(
     Returns
     -------
     comp_resids : dict[Component, npt.NDArray]
-      A dictionary definingg the resisdue indices matching
+      A dictionary defining the residue indices matching
       various components in the system.
     """
     comps = [*smc_components.keys()]
@@ -463,7 +463,7 @@ def interchange_system_creation(
       Settings defining how the force field is applied.
     solvation_settings : PackmolSolvationSettings | InterchangeOpenMMSolvationSettings
       Settings defining how the system will be solvated.
-    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]`
+    smc_components : dict[SmallMoleculeComponent, openff.toolkit.Molecule]
       Solute SmallMoleculeComponents.
     protein_component : Optional[ProteinComponent]
       Protein component of the system, if any.

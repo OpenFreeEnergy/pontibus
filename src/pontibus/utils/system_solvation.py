@@ -4,14 +4,16 @@ import logging
 
 import numpy as np
 import numpy.typing as npt
-from openff.interchange.components._packmol import (
+from openff.packmol import (
     RHOMBIC_DODECAHEDRON,
     UNIT_CUBE,
+    pack_box,
+)
+from openff.packmol._packmol import (
     _check_add_positive_mass,
     _check_box_shape_shape,
     _max_dist_between_points,
     _scale_box,
-    pack_box,
 )
 from openff.toolkit import Molecule as OFFMolecule
 from openff.toolkit import Topology
@@ -106,7 +108,7 @@ def _box_density_from_mols(
     """
     Approximate box size with known number and type of molecules.
 
-        Generate an approximate box size based on the number and molecular
+    Generate an approximate box size based on the number and molecular
     weight of the molecules present, and a target density for the final
     solvated mixture.
 
@@ -129,7 +131,7 @@ def _box_density_from_mols(
     Returns
     -------
     box_vectors : openff.units.Quantity
-      The unit cell box vecctors. Array with shape (3, 3).
+      The unit cell box vectors. Array with shape (3, 3).
 
     Acknowledgements
     ----------------
@@ -145,7 +147,7 @@ def _box_density_from_mols(
     total_mass = molecules_total_mass + solute_total_mass
     volume = total_mass / target_density
 
-    return _scale_box(box_shape, volume)
+    return _scale_box(box_shape, volume, box_scaleup_factor=1.0)
 
 
 def _neutralize_and_pack_box(
@@ -442,7 +444,7 @@ def openmm_solvation(
     Raises
     ------
     ValueError
-      * If neutralizing with a non-waterr solvent.
+      * If neutralizing with a non-water solvent.
       * If ``ion_concentration`` is not compatible with ``mole / liter``
       * If ``neutralize`` is ``False`` and the system has a net charge.
     """
@@ -484,7 +486,8 @@ def openmm_solvation(
 
         forcefield.registerTemplateGenerator(
             SMIRNOFFTemplateGenerator(
-                molecules=_get_unique_mols([m for m in solute_topology.molecules])
+                forcefield="openff-2.3.0",
+                molecules=_get_unique_mols([m for m in solute_topology.molecules]),
             ).generator
         )
 
