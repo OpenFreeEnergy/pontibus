@@ -2253,3 +2253,25 @@ class TestVsitesCompresids:
         assert len(comp_resids[solute]) == 2
         assert comp_resids[solute][0] == 0
         assert comp_resids[solute][1] == 1001
+
+
+@pytest.mark.slow
+class TestOldVsitesCompresids(TestVsitesCompresids):
+    @pytest.fixture(scope="class")
+    def interchange_system(self, solute, water_off, old_vsite_offxml):
+        smc_components = {solute: solute.to_openff()}
+        interchange, comp_resids = interchange_system_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=[old_vsite_offxml, "opc.offxml"],
+            ),
+            solvation_settings=PackmolSolvationSettings(
+                number_of_solvent_molecules=1000, solvent_padding=None
+            ),
+            smc_components=smc_components,
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=water_off,
+        )
+
+        return interchange, comp_resids
+

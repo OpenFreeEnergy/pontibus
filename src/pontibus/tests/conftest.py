@@ -207,10 +207,21 @@ def T4_protein_component():
 
 
 @pytest.fixture(scope="session")
-def vsite_offxml():
+def old_vsite_offxml():
     offxml = (
         resources.files("pontibus.tests.data.forcefields")
         / "vsites-v3_n2r-vdw-dimers_hmix-only-v2-torsions.offxml"
+    ).as_posix()
+
+    ff = ForceField(offxml)
+    return ff.to_string()
+
+
+@pytest.fixture(scope="session")
+def vsite_offxml():
+    offxml = (
+        resources.files("pontibus.tests.data.forcefields")
+        / "2026_09_28_vsite_fitted_ff.offxml"
     ).as_posix()
 
     ff = ForceField(offxml)

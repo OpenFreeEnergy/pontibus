@@ -201,3 +201,26 @@ class TestSoluteVSite:
             cached_trajectory_filename=None,
             name="test",
         )
+
+
+@pytest.mark.slow
+class TestSoluteVSiteOld(TestSoluteVSite):
+    @pytest.fixture(scope="class")
+    def interchange(self, vinyl_chloride, old_vsite_offxml, water_off):
+        solute = openfe.SmallMoleculeComponent.from_openff(vinyl_chloride)
+        interchange, comp_resids = interchange_system_creation(
+            ffsettings=InterchangeFFSettings(
+                forcefields=[old_vsite_offxml],
+            ),
+            solvation_settings=PackmolSolvationSettings(
+                number_of_solvent_molecules=1000,
+                solvent_padding=None,
+            ),
+            smc_components={solute: vinyl_chloride},
+            protein_component=None,
+            solvent_component=ExtendedSolventComponent(),
+            solvent_offmol=water_off,
+        )
+
+        return interchange
+
