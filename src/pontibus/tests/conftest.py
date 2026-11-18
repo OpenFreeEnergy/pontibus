@@ -230,8 +230,7 @@ def old_vsite_offxml():
 @pytest.fixture(scope="session")
 def vsite_offxml():
     offxml = (
-        resources.files("pontibus.tests.data.forcefields")
-        / "2026_09_28_vsite_fitted_ff.offxml"
+        resources.files("pontibus.tests.data.forcefields") / "2026_09_28_vsite_fitted_ff.offxml"
     ).as_posix()
 
     ff = ForceField(offxml)

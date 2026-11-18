@@ -234,4 +234,3 @@ class TestSoluteVSiteOld(TestSoluteVSite):
         )
 
         return interchange
-

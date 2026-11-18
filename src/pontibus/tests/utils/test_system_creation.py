@@ -2274,4 +2274,3 @@ class TestOldVsitesCompresids(TestVsitesCompresids):
         )
 
         return interchange, comp_resids
-

@@ -500,9 +500,7 @@ def test_dry_run_vsite_ff_charges(
                 force.getPerParticleParameterName(i)
                 for i in range(force.getNumPerParticleParameters())
             ].index("charge")
-            charges = np.array(
-                [force.getParticleParameters(i)[charge_idx] for i in alchem_indices]
-            )
+            charges = np.array([force.getParticleParameters(i)[charge_idx] for i in alchem_indices])
             assert charges == pytest.approx(ref_charges, abs=1e-6)
     else:
         # In solvent the charges are lambda_electrostatics offsets
