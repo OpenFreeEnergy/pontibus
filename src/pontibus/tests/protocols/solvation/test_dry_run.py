@@ -3,12 +3,17 @@
 from unittest import mock
 
 import mdtraj as mdt
+import numpy as np
 import pytest
-from gufe import ChemicalSystem
+from gufe import ChemicalSystem, SmallMoleculeComponent
+from openfe.protocols.openmm_utils.charge_generation import (
+    assign_offmol_partial_charges,
+)
 from openfe.tests.protocols.openmm_ahfe.test_ahfe_protocol import (
     _assert_num_forces,
     _verify_alchemical_sterics_force_parameters,
 )
+from openff.toolkit import ForceField, Molecule
 from openff.units import unit
 from openff.units.openmm import ensure_quantity, from_openmm
 from openmm import (
@@ -348,6 +353,174 @@ def test_dry_run_solv_benzene_opc(charged_benzene, dry_settings, tmpdir):
 
         pdb = mdt.load_pdb("hybrid_system.pdb")
         assert pdb.n_atoms == 12
+
+
+@pytest.fixture(scope="module")
+def bromopyridine_ff_charged(bromopyridine_sdf, vsite_offxml):
+    """
+    3-bromopyridine with partial charges assigned from the vsite
+    force field (i.e. base charges prior to vsite charge increments).
+    """
+    offmol = Molecule.from_file(bromopyridine_sdf)
+    with pytest.warns(UserWarning, match="VirtualSiteHandler"):
+        assign_offmol_partial_charges(
+            offmol=offmol,
+            overwrite=False,
+            method="forcefield",
+            toolkit_backend="ambertools",
+            generate_n_conformers=None,
+            nagl_model=None,
+            forcefields=[vsite_offxml],
+        )
+    return SmallMoleculeComponent.from_openff(offmol)
+
+
+@pytest.fixture(scope="module")
+def bromopyridine_reference_charges(bromopyridine_sdf, vsite_offxml):
+    """
+    Reference partial charges (atoms followed by virtual sites) from a
+    vacuum system created natively with Interchange.
+    """
+    offmol = Molecule.from_file(bromopyridine_sdf)
+    assert offmol.partial_charges is None
+
+    interchange = ForceField(vsite_offxml).create_interchange(offmol.to_topology())
+    system = interchange.to_openmm_system()
+    nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)][0]
+
+    charges = np.array(
+        [
+            ensure_quantity(nonbond.getParticleParameters(i)[0], "openff").m
+            for i in range(system.getNumParticles())
+        ]
+    )
+    is_vsite = [system.isVirtualSite(i) for i in range(system.getNumParticles())]
+    return charges, is_vsite
+
+
+def _get_nonbonded_charges(system, indices):
+    nonbond = [f for f in system.getForces() if isinstance(f, NonbondedForce)]
+    assert len(nonbond) == 1
+    return np.array(
+        [ensure_quantity(nonbond[0].getParticleParameters(i)[0], "openff").m for i in indices]
+    )
+
+
+@pytest.mark.parametrize("unit_type", [ASFEVacuumSetupUnit, ASFESolventSetupUnit])
+def test_dry_run_vsite_ff_charges(
+    unit_type,
+    bromopyridine_ff_charged,
+    bromopyridine_reference_charges,
+    vsite_offxml,
+    dry_settings,
+    tmpdir,
+):
+    """
+    Check that partial charges assigned using the openfe `forcefield`
+    charge method on a molecule with multiple virtual sites (a halogen
+    BondCharge and a pyridine DivalentLonePair) yield the same System
+    charges as a native Interchange parameterization.
+    """
+    ref_charges, ref_is_vsite = bromopyridine_reference_charges
+    n_atoms = bromopyridine_ff_charged.to_openff().n_atoms
+
+    # sanity check the reference: 11 atoms + 2 vsites
+    assert n_atoms == 11
+    assert len(ref_charges) == 13
+    assert sum(ref_is_vsite) == 2
+    assert ref_is_vsite == [False] * 11 + [True] * 2
+
+    for ffsettings in [
+        dry_settings.vacuum_forcefield_settings,
+        dry_settings.solvent_forcefield_settings,
+    ]:
+        ffsettings.forcefields = [vsite_offxml]
+    # vsites need velocity reassignment & the experimental factory
+    dry_settings.integrator_settings.reassign_velocities = True
+    dry_settings.alchemical_settings.experimental = True
+
+    protocol = ASFEProtocol(settings=dry_settings)
+
+    stateA = ChemicalSystem(
+        {
+            "solute": bromopyridine_ff_charged,
+            "solvent": ExtendedSolventComponent(),
+        }
+    )
+    stateB = ChemicalSystem({"solvent": ExtendedSolventComponent()})
+
+    dag = protocol.create(stateA=stateA, stateB=stateB, mapping=None)
+    setup_unit = _get_units(dag.protocol_units, unit_type)[0]
+
+    with tmpdir.as_cwd():
+        setup_results = setup_unit.run(dry=True)
+
+    # Solute particles: atoms followed by its virtual sites, in the same
+    # order as the reference (in solvent the vsites come after the water)
+    alchem_indices = setup_results["alchem_indices"]
+    assert len(alchem_indices) == 13
+    assert alchem_indices[:n_atoms] == list(range(n_atoms))
+
+    # Standard (non-alchemical) system
+    system = setup_results["standard_system"]
+    # Exactly 2 virtual sites in the whole system, both on the solute
+    vsites = [i for i in range(system.getNumParticles()) if system.isVirtualSite(i)]
+    assert len(vsites) == 2
+    assert set(vsites) <= set(alchem_indices)
+    assert [system.isVirtualSite(i) for i in alchem_indices] == ref_is_vsite
+    system_charges = _get_nonbonded_charges(system, alchem_indices)
+    assert system_charges == pytest.approx(ref_charges, abs=1e-6)
+    assert system_charges.sum() == pytest.approx(0, abs=1e-6)
+
+    # Check that the vsite charge increments were actually applied
+    # on top of the input charges.
+    input_charges = bromopyridine_ff_charged.to_openff().partial_charges.m
+    assert np.all(system_charges[n_atoms:] != 0)
+    assert not np.allclose(system_charges[:n_atoms], input_charges)
+
+    # Alchemical system
+    alchem_system = setup_results["alchem_system"]
+    assert alchem_system.getNumParticles() == system.getNumParticles()
+    assert [alchem_system.isVirtualSite(i) for i in alchem_indices] == ref_is_vsite
+
+    # Solute charges are zeroed in the NonbondedForce...
+    assert _get_nonbonded_charges(alchem_system, alchem_indices) == pytest.approx(0)
+
+    # ...and held elsewhere
+    if unit_type == ASFEVacuumSetupUnit:
+        # In vacuum electrostatics live in CustomNonbondedForces
+        elecf = [
+            f
+            for f in alchem_system.getForces()
+            if isinstance(f, CustomNonbondedForce) and "U_electrostatics" in f.getEnergyFunction()
+        ]
+        assert len(elecf) == 2
+        for force in elecf:
+            charge_idx = [
+                force.getPerParticleParameterName(i)
+                for i in range(force.getNumPerParticleParameters())
+            ].index("charge")
+            charges = np.array(
+                [force.getParticleParameters(i)[charge_idx] for i in alchem_indices]
+            )
+            assert charges == pytest.approx(ref_charges, abs=1e-6)
+    else:
+        # In solvent the charges are lambda_electrostatics offsets
+        nonbond = [f for f in alchem_system.getForces() if isinstance(f, NonbondedForce)][0]
+        offsets = {}
+        for i in range(nonbond.getNumParticleParameterOffsets()):
+            param, idx, chg, _, _ = nonbond.getParticleParameterOffset(i)
+            assert param == "lambda_electrostatics"
+            offsets[idx] = chg
+        assert set(offsets) == set(alchem_indices)
+        offset_charges = np.array([offsets[i] for i in alchem_indices])
+        assert offset_charges == pytest.approx(ref_charges, abs=1e-6)
+
+        # Non-alchemical (solvent) charges are untouched
+        other = [i for i in range(system.getNumParticles()) if i not in set(alchem_indices)]
+        assert _get_nonbonded_charges(alchem_system, other) == pytest.approx(
+            _get_nonbonded_charges(system, other)
+        )
 
 
 def test_confgen_fail_AFE(benzene_modifications, dry_settings, tmpdir):

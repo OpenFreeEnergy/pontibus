@@ -198,6 +198,16 @@ def CN_molecule():
 
 
 @pytest.fixture(scope="session")
+def bromopyridine_sdf():
+    """
+    3-bromopyridine (no partial charges), a molecule with
+    multiple virtual sites (C-Br BondCharge & pyridine N DivalentLonePair).
+    """
+    with resources.as_file(resources.files("pontibus.tests.data")) as d:
+        yield str(d / "3-bromopyridine.sdf")
+
+
+@pytest.fixture(scope="session")
 def T4_protein_component():
     with resources.as_file(resources.files("pontibus.tests.data")) as d:
         fn = str(d / "181l_only.pdb")

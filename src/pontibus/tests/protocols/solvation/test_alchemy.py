@@ -45,9 +45,8 @@ def _nonbonded_force(system: openmm.System) -> openmm.NonbondedForce:
 
 
 @pytest.fixture(scope="module")
-def vinyl_chloride():
-    m = Molecule.from_smiles("C=CCl")
-    m.generate_conformers(n_conformers=1)
+def bromopyridine(bromopyridine_sdf):
+    m = Molecule.from_file(bromopyridine_sdf)
     m.assign_partial_charges(partial_charge_method="gasteiger")
     return m
 
@@ -59,8 +58,8 @@ def water_off():
 
 class TestSoluteVSite:
     @pytest.fixture(scope="class")
-    def interchange(self, vinyl_chloride, vsite_offxml, water_off):
-        solute = openfe.SmallMoleculeComponent.from_openff(vinyl_chloride)
+    def interchange(self, bromopyridine, vsite_offxml, water_off):
+        solute = openfe.SmallMoleculeComponent.from_openff(bromopyridine)
         interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[vsite_offxml],
@@ -69,7 +68,7 @@ class TestSoluteVSite:
                 number_of_solvent_molecules=1000,
                 solvent_padding=None,
             ),
-            smc_components={solute: vinyl_chloride},
+            smc_components={solute: bromopyridine},
             protein_component=None,
             solvent_component=ExtendedSolventComponent(),
             solvent_offmol=water_off,
@@ -86,10 +85,14 @@ class TestSoluteVSite:
         return to_openmm_positions(interchange, include_virtual_sites=True)
 
     @pytest.fixture(scope="class")
-    def alchemical_indices(self):
-        # vinyl chloride is 6 atoms; 1000 waters * 3 sites = 3000 atoms
-        # so the solute's single virtual site is particle index 3006.
-        return [0, 1, 2, 3, 4, 5, 3006]
+    def vsite_indices(self):
+        # 3-bromopyridine is 11 atoms; 1000 waters * 3 sites = 3000 atoms
+        # so the solute's two virtual sites are particles 3011 & 3012.
+        return [3011, 3012]
+
+    @pytest.fixture(scope="class")
+    def alchemical_indices(self, vsite_indices):
+        return list(range(11)) + vsite_indices
 
     @pytest.fixture(scope="class")
     def alchemical_region(self, alchemical_indices):
@@ -103,19 +106,27 @@ class TestSoluteVSite:
     def test_particle_count_preserved(self, omm_system, alchemical_system):
         assert alchemical_system.getNumParticles() == omm_system.getNumParticles()
 
-    def test_virtual_sites_preserved(self, omm_system, alchemical_system):
-        assert omm_system.isVirtualSite(3006)
+    def test_num_virtual_sites(self, omm_system, alchemical_system, vsite_indices):
+        # Exactly 2 virtual sites (C-Br BondCharge & pyridine N lone pair),
+        # both on the solute, in the reference & alchemical systems.
+        for system in [omm_system, alchemical_system]:
+            vsites = [i for i in range(system.getNumParticles()) if system.isVirtualSite(i)]
+            assert len(vsites) == 2
+            assert vsites == vsite_indices
 
+    def test_virtual_sites_preserved(self, omm_system, alchemical_system, vsite_indices):
         for i in range(omm_system.getNumParticles()):
             assert alchemical_system.isVirtualSite(i) == omm_system.isVirtualSite(i)
 
-        ref = omm_system.getVirtualSite(3006)
-        alch = alchemical_system.getVirtualSite(3006)
-        assert type(alch) is type(ref)
-        assert alch.getNumParticles() == ref.getNumParticles()
-        assert [alch.getParticle(p) for p in range(alch.getNumParticles())] == [
-            ref.getParticle(p) for p in range(ref.getNumParticles())
-        ]
+        for idx in vsite_indices:
+            assert omm_system.isVirtualSite(idx)
+            ref = omm_system.getVirtualSite(idx)
+            alch = alchemical_system.getVirtualSite(idx)
+            assert type(alch) is type(ref)
+            assert alch.getNumParticles() == ref.getNumParticles()
+            assert [alch.getParticle(p) for p in range(alch.getNumParticles())] == [
+                ref.getParticle(p) for p in range(ref.getNumParticles())
+            ]
 
     def test_masses_and_constraints_preserved(self, omm_system, alchemical_system):
         assert alchemical_system.getNumConstraints() == omm_system.getNumConstraints()
@@ -206,8 +217,8 @@ class TestSoluteVSite:
 @pytest.mark.slow
 class TestSoluteVSiteOld(TestSoluteVSite):
     @pytest.fixture(scope="class")
-    def interchange(self, vinyl_chloride, old_vsite_offxml, water_off):
-        solute = openfe.SmallMoleculeComponent.from_openff(vinyl_chloride)
+    def interchange(self, bromopyridine, old_vsite_offxml, water_off):
+        solute = openfe.SmallMoleculeComponent.from_openff(bromopyridine)
         interchange, comp_resids = interchange_system_creation(
             ffsettings=InterchangeFFSettings(
                 forcefields=[old_vsite_offxml],
@@ -216,7 +227,7 @@ class TestSoluteVSiteOld(TestSoluteVSite):
                 number_of_solvent_molecules=1000,
                 solvent_padding=None,
             ),
-            smc_components={solute: vinyl_chloride},
+            smc_components={solute: bromopyridine},
             protein_component=None,
             solvent_component=ExtendedSolventComponent(),
             solvent_offmol=water_off,
